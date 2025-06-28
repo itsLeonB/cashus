@@ -35,11 +35,15 @@ const Register: React.FC = () => {
 
     try {
       await apiClient.register(formData);
-      navigate('/login', { 
+      navigate('/login', {
         state: { message: 'Registration successful! Please log in.' }
       });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error
+        ? err.message
+        : '';
+
+      setError(errorMessage || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +54,7 @@ const Register: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your BillSplittr account
+            Create your Cashus account
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

@@ -35,8 +35,12 @@ const Login: React.FC = () => {
       const response = await apiClient.login(formData);
       await login(response.token);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error
+        ? err.message
+        : '';
+
+      setError(errorMessage || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +51,7 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to BillSplittr
+            Sign in to Cashus
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

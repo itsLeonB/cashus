@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">BillSplittr</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Cashus</h1>
               <p className="text-gray-600">Welcome back, {user?.name}!</p>
             </div>
             <button
@@ -89,7 +89,7 @@ const Dashboard: React.FC = () => {
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
                     Friends
                   </h3>
-                  <button 
+                  <button
                     onClick={() => setIsCreateFriendModalOpen(true)}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm font-medium"
                   >
@@ -127,7 +127,7 @@ const Dashboard: React.FC = () => {
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
                     Recent Transactions
                   </h3>
-                  <button 
+                  <button
                     onClick={handleNewTransaction}
                     className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-medium"
                   >
@@ -152,11 +152,10 @@ const Dashboard: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              transaction.type === 'CREDIT'
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${transaction.type === 'CREDIT'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
-                            }`}
+                              }`}
                           >
                             {transaction.type}
                           </span>

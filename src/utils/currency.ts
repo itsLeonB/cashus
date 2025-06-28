@@ -4,7 +4,7 @@ export const formatCurrency = (amount: number | string): string => {
 
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
 
-  if (isNaN(numAmount) || !isFinite(numAmount)) {
+  if (isNaN(numAmount) || !Number.isFinite(numAmount)) {
     return `${currencySymbol} 0`;
   }
 

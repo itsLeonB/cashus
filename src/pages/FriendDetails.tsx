@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/currency';
-import { MockFriendApiService } from '../services/mockFriendApi';
-import type { FriendDetailsResponse, FriendTransaction } from '../types/friend';
+import type { FriendDetailsResponse } from '../types/friend';
 import apiClient from '../services/api';
 
 const FriendDetails: React.FC = () => {
   const { friendId } = useParams<{ friendId: string }>();
   const navigate = useNavigate();
-  
+
   const [friendData, setFriendData] = useState<FriendDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +25,12 @@ const FriendDetails: React.FC = () => {
       try {
         const data = await apiClient.getFriendDetails(friendId);
         setFriendData(data);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load friend details');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error
+          ? err.message
+          : '';
+
+        setError(errorMessage || 'Failed to load friend details');
       } finally {
         setIsLoading(false);
       }
@@ -67,7 +70,7 @@ const FriendDetails: React.FC = () => {
     }
   };
 
-  const getActionDescription = (action: string, type: string) => {
+  const getActionDescription = (action: string) => {
     switch (action) {
       case 'LEND':
         return 'You lent money';
@@ -79,6 +82,19 @@ const FriendDetails: React.FC = () => {
         return 'You returned money';
       default:
         return 'Transaction';
+    }
+  };
+
+  const getStatusStyleClass = (status: string) => {
+    const initial = 'inline-flex px-2 py-1 text-xs font-semibold rounded-full';
+
+    switch (status) {
+      case 'COMPLETED':
+        return `${initial} bg-green-100 text-green-800`
+      case 'PENDING':
+        return `${initial} bg-yellow-100 text-yellow-800`
+      default:
+        return `${initial} bg-red-100 text-red-800`;
     }
   };
 
@@ -179,31 +195,28 @@ const FriendDetails: React.FC = () => {
               <nav className="-mb-px flex">
                 <button
                   onClick={() => setActiveTab('overview')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                    activeTab === 'overview'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`py-4 px-6 text-sm font-medium border-b-2 ${activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   Overview
                 </button>
                 <button
                   onClick={() => setActiveTab('transactions')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                    activeTab === 'transactions'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`py-4 px-6 text-sm font-medium border-b-2 ${activeTab === 'transactions'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   Transactions ({transactions.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('stats')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                    activeTab === 'stats'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`py-4 px-6 text-sm font-medium border-b-2 ${activeTab === 'stats'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   Statistics
                 </button>
@@ -265,16 +278,15 @@ const FriendDetails: React.FC = () => {
                               </div>
                               <div>
                                 <p className="font-medium text-gray-900">
-                                  {getActionDescription(transaction.action, transaction.type)}
+                                  {getActionDescription(transaction.action)}
                                 </p>
                                 <p className="text-sm text-gray-500">{transaction.description}</p>
                                 <p className="text-xs text-gray-400">{transaction.transferMethod}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className={`font-semibold ${
-                                transaction.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
-                              }`}>
+                              <div className={`font-semibold ${transaction.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
+                                }`}>
                                 {transaction.type === 'CREDIT' ? '+' : '-'}{formatCurrency(transaction.amount)}
                               </div>
                               <div className="text-xs text-gray-500">
@@ -309,7 +321,7 @@ const FriendDetails: React.FC = () => {
                       </select>
                     </div>
                   </div>
-                  
+
                   {transactions.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">No transactions found</p>
                   ) : (
@@ -325,7 +337,7 @@ const FriendDetails: React.FC = () => {
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">
-                                {getActionDescription(transaction.action, transaction.type)}
+                                {getActionDescription(transaction.action)}
                               </p>
                               <p className="text-sm text-gray-500">{transaction.description}</p>
                               <p className="text-xs text-gray-400">
@@ -334,18 +346,11 @@ const FriendDetails: React.FC = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className={`font-semibold ${
-                              transaction.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
-                            }`}>
+                            <div className={`font-semibold ${transaction.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
+                              }`}>
                               {transaction.type === 'CREDIT' ? '+' : '-'}{formatCurrency(transaction.amount)}
                             </div>
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              transaction.status === 'COMPLETED'
-                                ? 'bg-green-100 text-green-800'
-                                : transaction.status === 'PENDING'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={getStatusStyleClass(transaction.status)}>
                               {transaction.status}
                             </span>
                           </div>
@@ -360,28 +365,28 @@ const FriendDetails: React.FC = () => {
               {activeTab === 'stats' && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-medium text-gray-900">Statistics</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600">{stats.totalTransactions}</div>
                       <div className="text-sm text-blue-800">Total Transactions</div>
                     </div>
-                    
+
                     <div className="bg-green-50 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
                         {formatCurrency(stats.averageTransactionAmount)}
                       </div>
                       <div className="text-sm text-green-800">Average Amount</div>
                     </div>
-                    
+
                     <div className="bg-purple-50 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600">{stats.mostUsedTransferMethod}</div>
                       <div className="text-sm text-purple-800">Most Used Method</div>
                     </div>
-                    
+
                     <div className="bg-orange-50 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-orange-600">
-                        {stats.firstTransactionDate ? 
+                        {stats.firstTransactionDate ?
                           Math.ceil((new Date().getTime() - new Date(stats.firstTransactionDate).getTime()) / (1000 * 60 * 60 * 24))
                           : 0
                         }

@@ -3,7 +3,12 @@
 export interface ApiResponse<T> {
   message: string;
   data: T;
-  error: any;
+  error: unknown;
+}
+
+export interface ApiError {
+  message: string;
+  code?: string;
 }
 
 export interface RegisterRequest {
@@ -74,7 +79,59 @@ export interface DebtTransactionResponse {
   deletedAt?: string;
 }
 
-export interface ApiError {
-  message: string;
-  code?: string;
+export interface NewGroupExpenseRequest {
+  payerProfileId?: string;
+  totalAmount: string;
+  description?: string;
+  items: NewExpenseitemRequest[];
+  otherFees?: NewOtherFeeRequest[];
+}
+
+export interface NewExpenseitemRequest {
+  name: string;
+  amount: string;
+  quantity: number;
+}
+
+export interface NewOtherFeeRequest {
+  name: string;
+  amount: string;
+}
+
+export interface GroupExpenseResponse {
+  id: string;
+  payerProfileId?: string;
+  payerName?: string;
+  paidByUser: boolean;
+  totalAmount: string;
+  description?: string;
+  items: ExpenseItemResponse[];
+  otherFees?: OtherFeeResponse[];
+  creatorProfileId: string;
+  creatorName?: string;
+  createdByUser: boolean;
+  confirmed: boolean;
+  participantsConfirmed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface ExpenseItemResponse {
+  id: string;
+  name: string;
+  amount: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface OtherFeeResponse {
+  id: string;
+  name: string;
+  amount: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
 }

@@ -10,6 +10,8 @@ import type {
   TransferMethodResponse,
   NewDebtTransactionRequest,
   DebtTransactionResponse,
+  NewGroupExpenseRequest,
+  GroupExpenseResponse,
 } from '../types/api';
 import type { FriendDetailsResponse } from '../types/friend';
 
@@ -97,6 +99,21 @@ class ApiClient {
 
   async getDebtTransactions(): Promise<DebtTransactionResponse[]> {
     const response: AxiosResponse<DebtTransactionResponse[]> = await this.client.get('/debts');
+    return response.data;
+  }
+
+  // Group expense endpoints
+  async createDraftGroupExpense(data: NewGroupExpenseRequest): Promise<void> {
+    await this.client.post('/group-expenses', data);
+  }
+
+  async getCreatedGroupExpenses(): Promise<GroupExpenseResponse[]> {
+    const response: AxiosResponse<GroupExpenseResponse[]> = await this.client.get('/group-expenses');
+    return response.data;
+  }
+
+  async getGroupExpenseDetails(expenseId: string): Promise<GroupExpenseResponse> {
+    const response: AxiosResponse<GroupExpenseResponse> = await this.client.get(`/group-expenses/${expenseId}`);
     return response.data;
   }
 

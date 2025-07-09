@@ -8,6 +8,9 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NewTransaction from './pages/NewTransaction';
 import FriendDetails from './pages/FriendDetails';
+import GroupExpenses from './pages/GroupExpenses';
+import NewGroupExpense from './pages/NewGroupExpense';
+import GroupExpenseDetails from './pages/GroupExpenseDetails';
 import './App.css';
 
 function App() {
@@ -39,6 +42,30 @@ function App() {
               element={
                 <ProtectedRoute>
                   <FriendDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/group-expenses"
+              element={
+                <ProtectedRoute>
+                  <GroupExpenses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/group-expenses/new"
+              element={
+                <ProtectedRoute>
+                  <NewGroupExpense />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/group-expenses/:expenseId"
+              element={
+                <ProtectedRoute>
+                  <GroupExpenseDetails />
                 </ProtectedRoute>
               }
             />

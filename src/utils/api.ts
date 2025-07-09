@@ -2,10 +2,28 @@
  * API-related utility functions
  */
 
+import type { ApiError } from '../types/api';
+
 /**
- * Handle API errors consistently
+ * Type guard to check if an error is an ApiError
  */
-export const handleApiError = (error: any): string => {
+export const isApiError = (error: unknown): error is ApiError => {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as any).message === 'string'
+  );
+};
+
+/**
+ * Handle API errors consistently with proper typing
+ */
+export const handleApiError = (error: unknown): string => {
+  // Ensure we're working with a proper error object
+  if (!isApiError(error)) {
+    return 'An unexpected error occurred';
+  }
   if (error?.response?.data?.message) {
     return error.response.data.message;
   }
@@ -45,28 +63,68 @@ export const handleApiError = (error: any): string => {
     }
   }
   
-  return 'An unexpected error occurred. Please try again.';
+  return 'An unexpected error occurred';
 };
 
 /**
- * Check if an error is a network error
+ * Check if an error is a network error (no response received)
+ * Network errors occur when the request was made but no response was received
  */
-export const isNetworkError = (error: any): boolean => {
-  return !error?.response && error?.request;
+export const isNetworkError = (error: unknown): error is ApiError => {
+  return isApiError(error) && !error.response && !!error.request;
 };
 
 /**
- * Check if an error is an authentication error
+ * Check if an error is an authentication error (401 Unauthorized)
+ * Authentication errors indicate invalid or expired credentials
  */
-export const isAuthError = (error: any): boolean => {
-  return error?.response?.status === 401;
+export const isAuthError = (error: unknown): error is ApiError => {
+  return isApiError(error) && error.response?.status === 401;
 };
 
 /**
- * Check if an error is a validation error
+ * Check if an error is a validation error (400 Bad Request or 422 Unprocessable Entity)
+ * Validation errors indicate invalid input data or business rule violations
  */
-export const isValidationError = (error: any): boolean => {
-  return error?.response?.status === 422 || error?.response?.status === 400;
+export const isValidationError = (error: unknown): error is ApiError => {
+  return (
+    isApiError(error) && 
+    (error.response?.status === 422 || error.response?.status === 400)
+  );
+};
+
+/**
+ * Check if an error is a client error (4xx status codes)
+ * Client errors indicate issues with the request that should not be retried
+ */
+export const isClientError = (error: unknown): error is ApiError => {
+  return (
+    isApiError(error) && 
+    error.response?.status !== undefined &&
+    error.response.status >= 400 && 
+    error.response.status < 500
+  );
+};
+
+/**
+ * Check if an error is a server error (5xx status codes)
+ * Server errors indicate issues on the server side that might be temporary
+ */
+export const isServerError = (error: unknown): error is ApiError => {
+  return (
+    isApiError(error) && 
+    error.response?.status !== undefined &&
+    error.response.status >= 500 && 
+    error.response.status < 600
+  );
+};
+
+/**
+ * Check if an error is retryable (network errors or server errors)
+ * Retryable errors are those that might succeed if attempted again
+ */
+export const isRetryableError = (error: unknown): error is ApiError => {
+  return isNetworkError(error) || isServerError(error);
 };
 
 /**
@@ -187,7 +245,7 @@ export const createDebouncedApiCall = <T extends any[], R>(
   apiCall: (...args: T) => Promise<R>,
   delay: number = 300
 ) => {
-  let timeoutId: number;
+  let timeoutId: ReturnType<typeof setTimeout>;
   let latestResolve: ((value: R) => void) | null = null;
   let latestReject: ((reason: any) => void) | null = null;
   

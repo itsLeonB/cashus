@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest } from '../types/api';
+import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ProfileResponse, FriendshipResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import {
   validateGroupExpense,
@@ -10,7 +10,8 @@ import {
   calculateGrandTotal,
   calculateItemsTotal,
   calculateFeesTotal,
-  formatItemsForSubmission
+  formatItemsForSubmission,
+  calculateItemAmount
 } from '../utils/groupExpense';
 import { handleApiError } from '../utils/api';
 import { sanitizeString } from '../utils/form';
@@ -19,12 +20,48 @@ const NewGroupExpense: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [friends, setFriends] = useState<FriendshipResponse[]>([]);
+  const [loadingInitialData, setLoadingInitialData] = useState(true);
 
   // Form state
   const [description, setDescription] = useState('');
+  const [selectedPayerId, setSelectedPayerId] = useState<string>('me'); // Default to 'me'
   const [items, setItems] = useState<NewExpenseitemRequest[]>([createEmptyExpenseItem()]);
   const [otherFees, setOtherFees] = useState<NewOtherFeeRequest[]>([]);
   const [showOtherFees, setShowOtherFees] = useState(false);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      setLoadingInitialData(true);
+      const [profileData, friendsData] = await Promise.all([
+        apiClient.getProfile(),
+        apiClient.getFriendships().catch(() => []) // Fallback to empty array if fails
+      ]);
+      setProfile(profileData);
+      setFriends(friendsData);
+    } catch (err) {
+      console.error('Error fetching initial data:', err);
+      // Don't set error here as it's not critical for form functionality
+    } finally {
+      setLoadingInitialData(false);
+    }
+  };
+
+  const getSelectedPayerName = () => {
+    if (selectedPayerId === 'me') {
+      return profile?.name ? `Me (${profile.name})` : 'Me';
+    }
+    if (selectedPayerId === '') {
+      return 'No one selected';
+    }
+    const selectedFriend = friends.find(friend => friend.profileId === selectedPayerId);
+    return selectedFriend ? selectedFriend.profileName : 'Unknown';
+  };
 
   const addItem = () => {
     setItems([...items, createEmptyExpenseItem()]);
@@ -74,6 +111,12 @@ const NewGroupExpense: React.FC = () => {
       return;
     }
 
+    // Additional validation for payer selection
+    if (selectedPayerId !== 'me' && selectedPayerId !== '' && !friends.find(f => f.profileId === selectedPayerId)) {
+      setError('Selected payer is not valid. Please select a valid friend or "Me".');
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -83,6 +126,10 @@ const NewGroupExpense: React.FC = () => {
         items: formatItemsForSubmission(items),
         otherFees: otherFees.length > 0 ? otherFees : undefined
       };
+
+      if (selectedPayerId !== 'me' && selectedPayerId !== '') {
+        groupExpenseData.payerProfileId = selectedPayerId;
+      }
 
       await apiClient.createDraftGroupExpense(groupExpenseData);
       navigate('/group-expenses');
@@ -119,19 +166,90 @@ const NewGroupExpense: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
 
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                Description *
-              </label>
-              <input
-                type="text"
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Dinner at Restaurant, Grocery Shopping"
-                required
-              />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <input
+                  type="text"
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g., Dinner at Restaurant, Grocery Shopping"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="payer" className="block text-sm font-medium text-gray-700 mb-2">
+                  Who paid for this expense?
+                </label>
+                <div className="relative">
+                  <select
+                    id="payer"
+                    value={selectedPayerId}
+                    onChange={(e) => setSelectedPayerId(e.target.value)}
+                    disabled={loadingInitialData}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-500"
+                  >
+                    {loadingInitialData ? (
+                      <option value="me">Loading...</option>
+                    ) : (
+                      <>
+                        <option value="me">
+                          {profile?.name ? `Me (${profile.name})` : 'Me'}
+                        </option>
+                        <option value="" disabled>
+                          -- Select a friend --
+                        </option>
+                        {friends.length === 0 ? (
+                          <option value="" disabled>
+                            No friends available
+                          </option>
+                        ) : (
+                          friends.map((friend) => (
+                            <option key={friend.id} value={friend.profileId}>
+                              {friend.profileName}
+                              {friend.type === 'ANON' ? ' (Anonymous)' : ''}
+                            </option>
+                          ))
+                        )}
+                      </>
+                    )}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    {loadingInitialData ? (
+                      <svg className="w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-start mt-2">
+                  <div className="flex items-center h-5">
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-2">
+                    <p className="text-sm text-gray-500">
+                      Select who actually paid for this expense. This helps track who owes money to whom.
+                      {friends.length === 0 && (
+                        <span className="block text-amber-600 mt-1">
+                          💡 Add friends to select them as payers for shared expenses.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -166,10 +284,11 @@ const NewGroupExpense: React.FC = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="item-name">
                         Item Name *
                       </label>
                       <input
+                        name="item-name"
                         type="text"
                         value={item.name}
                         onChange={(e) => updateItem(index, 'name', e.target.value)}
@@ -180,24 +299,26 @@ const NewGroupExpense: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="item-quantity">
                         Quantity *
                       </label>
                       <input
+                        name="item-quantity"
                         type="number"
                         min="1"
                         value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value, 10) || 1)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         required
                       />
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="item-amount">
                         Price per Item *
                       </label>
                       <input
+                        name="item-amount"
                         type="number"
                         min="0"
                         step="0.01"
@@ -213,7 +334,7 @@ const NewGroupExpense: React.FC = () => {
                       <div className="text-sm text-gray-600">
                         <span className="block">Subtotal:</span>
                         <span className="font-medium text-gray-900">
-                          {formatCurrencyDisplay((parseFloat(item.amount) || 0) * item.quantity)}
+                          {formatCurrencyDisplay(calculateItemAmount(item))}
                         </span>
                       </div>
                     </div>
@@ -269,10 +390,11 @@ const NewGroupExpense: React.FC = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fee-name">
                             Fee Name *
                           </label>
                           <input
+                            name="fee-name"
                             type="text"
                             value={fee.name}
                             onChange={(e) => updateOtherFee(index, 'name', e.target.value)}
@@ -283,10 +405,11 @@ const NewGroupExpense: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fee-amount">
                             Amount *
                           </label>
                           <input
+                            name="fee-amount"
                             type="number"
                             min="0"
                             step="0.01"
@@ -309,6 +432,12 @@ const NewGroupExpense: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Summary</h2>
             <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Paid by:</span>
+                <span className="font-medium text-gray-900">
+                  {getSelectedPayerName()}
+                </span>
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Items Total:</span>
                 <span className="font-medium">

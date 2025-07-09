@@ -135,3 +135,40 @@ export interface OtherFeeResponse {
   updatedAt: string;
   deletedAt?: string;
 }
+
+// Error handling types
+export interface ApiErrorResponse {
+  status: number;
+  statusText?: string;
+  data?: {
+    message?: string;
+    error?: string;
+    errors?: Record<string, string[]>;
+    [key: string]: any;
+  };
+  headers?: Record<string, string>;
+}
+
+export interface ApiErrorRequest {
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  data?: any;
+}
+
+export interface ApiError extends Error {
+  name: string;
+  message: string;
+  response?: ApiErrorResponse;
+  request?: ApiErrorRequest;
+  code?: string;
+  config?: {
+    url?: string;
+    method?: string;
+    baseURL?: string;
+    timeout?: number;
+    [key: string]: any;
+  };
+  isAxiosError?: boolean;
+  toJSON?: () => object;
+}

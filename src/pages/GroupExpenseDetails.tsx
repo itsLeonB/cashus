@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { ExpenseItemResponse, GroupExpenseResponse } from '../types/api';
+import type { GroupExpenseResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { handleApiError } from '../utils/api';
+import { calculateItemAmount } from '../utils/groupExpense';
 
 const GroupExpenseDetails: React.FC = () => {
   const { expenseId } = useParams<{ expenseId: string }>();
@@ -33,15 +34,10 @@ const GroupExpenseDetails: React.FC = () => {
     }
   };
 
-  const calculateItemAmount = (item: ExpenseItemResponse) => {
-    const amount = parseFloat(item.amount) || 0;
-    return amount * item.quantity;
-  };
-
   const calculateItemsTotal = () => {
     if (!expense) return 0;
     return expense.items.reduce((total, item) => {
-      return total + (calculateItemAmount(item) || 0);
+      return total + calculateItemAmount(item);
     }, 0);
   };
 
@@ -115,8 +111,8 @@ const GroupExpenseDetails: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Items</h2>
               <div className="space-y-3">
-                {expense.items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                {expense.items.map(item => (
+                  <div key={item.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{item.name}</h3>
                       <div className="text-sm text-gray-600 mt-1">
@@ -145,8 +141,8 @@ const GroupExpenseDetails: React.FC = () => {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Additional Fees</h2>
                 <div className="space-y-3">
-                  {expense.otherFees.map((fee, index) => (
-                    <div key={index} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                  {expense.otherFees.map(fee => (
+                    <div key={fee.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{fee.name}</h3>
                       </div>
@@ -175,6 +171,13 @@ const GroupExpenseDetails: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Summary</h2>
               <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Paid by:</span>
+                  <span className="font-medium text-gray-900">
+                    {expense.paidByUser ? 'You' : (expense.payerName || 'Unknown')}
+                  </span>
+                </div>
+
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Items Total:</span>
                   <span className="font-medium text-gray-900">

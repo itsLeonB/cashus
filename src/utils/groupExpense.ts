@@ -1,4 +1,54 @@
-import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest } from '../types/api';
+import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ExpenseItemResponse } from '../types/api';
+
+/**
+ * Calculate the total amount for a single expense item with proper validation
+ * Handles edge cases like invalid amounts, negative values, and missing data
+ * 
+ * @param item - The expense item to calculate amount for
+ * @returns The total amount (price * quantity) or 0 if invalid
+ * 
+ * @example
+ * calculateItemAmount({ name: 'Coffee', amount: '5.50', quantity: 2 }) // returns 11
+ * calculateItemAmount({ name: 'Invalid', amount: 'abc', quantity: 1 }) // returns 0
+ * calculateItemAmount({ name: 'Negative', amount: '-10', quantity: 1 }) // returns 0
+ */
+export const calculateItemAmount = (item: ExpenseItemResponse | NewExpenseitemRequest): number => {
+  // Validate item exists
+  if (!item) {
+    return 0;
+  }
+
+  // Parse and validate amount
+  const amount = typeof item.amount === 'string' ? parseFloat(item.amount) : Number(item.amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return 0;
+  }
+
+  // Validate quantity
+  const quantity = Number(item.quantity);
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    return 0;
+  }
+
+  // Calculate total with precision handling
+  const total = amount * quantity;
+  
+  // Ensure result is finite and non-negative
+  return Number.isFinite(total) && total >= 0 ? total : 0;
+};
+
+/**
+ * Safely parse a numeric string value with validation
+ * Used internally for consistent number parsing across utilities
+ * 
+ * @param value - String or number to parse
+ * @param defaultValue - Default value if parsing fails
+ * @returns Parsed number or default value
+ */
+export const safeParseNumber = (value: string | number, defaultValue: number = 0): number => {
+  const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
+};
 
 /**
  * Calculate the total quantity of all items in a group expense
@@ -10,26 +60,25 @@ export const calculateTotalItems = (expense: NewGroupExpenseRequest): number => 
 /**
  * Calculate the total amount of all items in a group expense
  */
-export const calculateItemsTotal = (items: NewExpenseitemRequest[]): number => {
+export const calculateItemsTotal = (items: (NewExpenseitemRequest | ExpenseItemResponse)[]): number => {
   return items.reduce((total, item) => {
-    const itemAmount = parseFloat(item.amount) || 0;
-    return total + (itemAmount * item.quantity);
+    return total + calculateItemAmount(item);
   }, 0);
 };
 
 /**
- * Calculate the total amount of all other fees
+ * Calculate the total amount of all other fees with proper validation
  */
 export const calculateFeesTotal = (fees: NewOtherFeeRequest[]): number => {
   return fees.reduce((total, fee) => {
-    return total + (parseFloat(fee.amount) || 0);
+    return total + safeParseNumber(fee.amount);
   }, 0);
 };
 
 /**
  * Calculate the grand total of a group expense (items + fees)
  */
-export const calculateGrandTotal = (items: NewExpenseitemRequest[], fees: NewOtherFeeRequest[] = []): number => {
+export const calculateGrandTotal = (items: (NewExpenseitemRequest | ExpenseItemResponse)[], fees: NewOtherFeeRequest[] = []): number => {
   const itemsTotal = calculateItemsTotal(items);
   const feesTotal = calculateFeesTotal(fees);
   return itemsTotal + feesTotal;

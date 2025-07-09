@@ -38,7 +38,21 @@ import { formatCurrency, validateRequired } from '../utils';
 - `getCurrencySymbol()` - Get configured currency symbol
 - `getCurrencyCode()` - Get configured currency code
 
+### 🌐 API Utilities (`api.ts`)
+- `handleApiError(error)` - Extract user-friendly error messages with proper typing
+- `isApiError(error)` - **NEW** Type guard for API errors
+- `isNetworkError(error)` - **IMPROVED** Check for network connectivity issues
+- `isAuthError(error)` - **IMPROVED** Check for authentication errors (401)
+- `isValidationError(error)` - **IMPROVED** Check for validation errors (400/422)
+- `isClientError(error)` - **NEW** Check for client errors (4xx)
+- `isServerError(error)` - **NEW** Check for server errors (5xx)
+- `isRetryableError(error)` - **NEW** Check if error should be retried
+- `retryWithBackoff(fn, options)` - Retry failed requests with exponential backoff
+- `createTimeoutPromise(ms)` - Create timeout promises for request cancellation
+- `createDebouncedApiCall(apiCall, delay)` - Debounce API calls to prevent spam
+
 ### 🧾 Group Expense (`groupExpense.ts`)
+- `calculateItemAmount(item)` - **NEW** Calculate total amount for single item with validation
 - `calculateTotalItems(expense)` - Calculate total item quantity
 - `calculateItemsTotal(items)` - Calculate total amount of items
 - `calculateFeesTotal(fees)` - Calculate total amount of fees
@@ -50,6 +64,7 @@ import { formatCurrency, validateRequired } from '../utils';
 - `createEmptyOtherFee()` - Create new empty fee
 - `formatItemsForSubmission(items)` - Format items for API submission
 - `getExpenseSummaryText(expense)` - Generate summary text
+- `safeParseNumber(value, defaultValue)` - **NEW** Safely parse numeric values
 
 ### 📝 Form (`form.ts`)
 - `isEmpty(value)` - Check if string is empty
@@ -121,12 +136,62 @@ const amountError = validateNumeric(amount, 'Amount', { min: 0 });
 const cleanDescription = sanitizeString(description);
 ```
 
+### API Error Handling
+```typescript
+import { 
+  handleApiError, 
+  isApiError, 
+  isNetworkError, 
+  isAuthError, 
+  isValidationError,
+  isRetryableError 
+} from '../utils/api';
+
+try {
+  await apiCall();
+} catch (error) {
+  // Type-safe error handling
+  if (isApiError(error)) {
+    console.log('API Error:', error.response?.status);
+    
+    if (isAuthError(error)) {
+      // Handle authentication errors
+      redirectToLogin();
+    } else if (isValidationError(error)) {
+      // Handle validation errors
+      showValidationErrors(error.response?.data?.errors);
+    } else if (isNetworkError(error)) {
+      // Handle network errors
+      showNetworkErrorMessage();
+    } else if (isRetryableError(error)) {
+      // Retry server errors
+      retryRequest();
+    }
+  }
+  
+  // Get user-friendly error message
+  const message = handleApiError(error);
+  showErrorToast(message);
+}
+```
+
 ### Group Expense Calculations
 ```typescript
-import { calculateGrandTotal, validateGroupExpense } from '../utils/groupExpense';
+import { calculateItemAmount, calculateGrandTotal, safeParseNumber } from '../utils/groupExpense';
+
+// Safe item amount calculation with validation
+const item = { name: 'Coffee', amount: '5.50', quantity: 2 };
+const itemTotal = calculateItemAmount(item); // 11.00
+
+// Handles edge cases gracefully
+const invalidItem = { name: 'Invalid', amount: 'abc', quantity: 1 };
+const safeTotal = calculateItemAmount(invalidItem); // 0
+
+// Safe number parsing
+const validAmount = safeParseNumber('123.45'); // 123.45
+const invalidAmount = safeParseNumber('abc', 0); // 0
 
 const total = calculateGrandTotal(items, fees);
-const error = validateGroupExpense(description, items, fees);
 ```
 
 ### API Error Handling

@@ -47,9 +47,9 @@ import { formatCurrency, validateRequired } from '../utils';
 - `isClientError(error)` - **NEW** Check for client errors (4xx)
 - `isServerError(error)` - **NEW** Check for server errors (5xx)
 - `isRetryableError(error)` - **NEW** Check if error should be retried
-- `retryWithBackoff(fn, options)` - Retry failed requests with exponential backoff
+- `retryWithBackoff(fn, options)` - **IMPROVED** Retry failed requests with exponential backoff and type safety
 - `createTimeoutPromise(ms)` - Create timeout promises for request cancellation
-- `createDebouncedApiCall(apiCall, delay)` - Debounce API calls to prevent spam
+- `createDebouncedApiCall(apiCall, delay)` - **IMPROVED** Debounce API calls with type safety
 
 ### 🧾 Group Expense (`groupExpense.ts`)
 - `calculateItemAmount(item)` - **NEW** Calculate total amount for single item with validation

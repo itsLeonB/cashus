@@ -130,12 +130,30 @@ export const isRetryableError = (error: unknown): error is ApiError => {
 /**
  * Retry an async function with exponential backoff
  */
+/**
+ * Retry a function with exponential backoff strategy
+ * Automatically skips retry for client errors (4xx) that shouldn't be retried
+ * 
+ * @param fn - The async function to retry
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
+ * @returns Promise that resolves with the function result or rejects with the last error
+ * 
+ * @example
+ * ```typescript
+ * const result = await retryWithBackoff(
+ *   () => fetch('/api/data').then(r => r.json()),
+ *   3,
+ *   1000
+ * );
+ * ```
+ */
 export const retryWithBackoff = async <T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
   baseDelay: number = 1000
 ): Promise<T> => {
-  let lastError: any;
+  let lastError: unknown;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -143,8 +161,9 @@ export const retryWithBackoff = async <T>(
     } catch (error) {
       lastError = error;
       
-      // Don't retry on authentication or validation errors
-      if (isAuthError(error) || isValidationError(error)) {
+      // Don't retry on client errors (4xx) - these indicate issues with the request
+      // that won't be resolved by retrying
+      if (isClientError(error)) {
         throw error;
       }
       
@@ -153,13 +172,27 @@ export const retryWithBackoff = async <T>(
         break;
       }
       
-      // Calculate delay with exponential backoff
-      const delay = baseDelay * Math.pow(2, attempt);
+      // Only retry on network errors or server errors (5xx)
+      if (!isRetryableError(error)) {
+        throw error;
+      }
+      
+      // Calculate delay with exponential backoff and jitter
+      const jitter = Math.random() * 0.1 * baseDelay; // Add up to 10% jitter
+      const delay = baseDelay * Math.pow(2, attempt) + jitter;
+      
+      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms delay`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   
-  throw lastError;
+  // Ensure we always throw an error if we reach this point
+  if (lastError !== undefined) {
+    throw lastError;
+  }
+  
+  // This should never happen, but provides a fallback
+  throw new Error('Retry failed: No error captured');
 };
 
 /**
@@ -247,7 +280,7 @@ export const createDebouncedApiCall = <T extends any[], R>(
 ) => {
   let timeoutId: ReturnType<typeof setTimeout>;
   let latestResolve: ((value: R) => void) | null = null;
-  let latestReject: ((reason: any) => void) | null = null;
+  let latestReject: ((reason: unknown) => void) | null = null;
   
   return (...args: T): Promise<R> => {
     return new Promise<R>((resolve, reject) => {

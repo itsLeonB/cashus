@@ -6,7 +6,8 @@ import type {
   UpdateExpenseItemRequest,
   ProfileResponse,
   FriendshipResponse,
-  ItemParticipant
+  ItemParticipant,
+  GroupExpenseResponse
 } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { handleApiError } from '../utils/api';
@@ -25,6 +26,7 @@ const UpdateExpenseItem: React.FC = () => {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [friends, setFriends] = useState<FriendshipResponse[]>([]);
   const [expenseItem, setExpenseItem] = useState<ExpenseItemResponse | null>(null);
+  const [groupExpense, setGroupExpense] = useState<GroupExpenseResponse | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -45,15 +47,17 @@ const UpdateExpenseItem: React.FC = () => {
       setLoadingInitialData(true);
       setError(null);
 
-      const [profileData, friendsData, expenseItemData] = await Promise.all([
+      const [profileData, friendsData, expenseItemData, groupExpenseData] = await Promise.all([
         apiClient.getProfile(),
         apiClient.getFriendships().catch(() => []),
-        apiClient.getExpenseItemDetails(groupExpenseId, expenseItemId)
+        apiClient.getExpenseItemDetails(groupExpenseId, expenseItemId),
+        apiClient.getGroupExpenseDetails(groupExpenseId)
       ]);
 
       setProfile(profileData);
       setFriends(friendsData);
       setExpenseItem(expenseItemData);
+      setGroupExpense(groupExpenseData);
 
       // Populate form with existing data
       setName(expenseItemData.name);
@@ -69,8 +73,17 @@ const UpdateExpenseItem: React.FC = () => {
     }
   };
 
+  const canEditExpense = () => {
+    return groupExpense && !groupExpense.participantsConfirmed;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canEditExpense()) {
+      setError('Cannot edit expense - participants have been confirmed');
+      return;
+    }
 
     if (!groupExpenseId || !expenseItemId) {
       setError('Missing required parameters');
@@ -238,6 +251,23 @@ const UpdateExpenseItem: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {!canEditExpense() && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-amber-800">
+                      This expense item cannot be edited because the participants have been confirmed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
                 <div className="flex">
@@ -263,7 +293,10 @@ const UpdateExpenseItem: React.FC = () => {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                disabled={!canEditExpense()}
+                className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                  !canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                }`}
                 placeholder="Enter item name"
                 required
               />
@@ -284,7 +317,10 @@ const UpdateExpenseItem: React.FC = () => {
                     id="amount"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="block w-full pl-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    disabled={!canEditExpense()}
+                    className={`block w-full pl-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                      !canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                     placeholder="0"
                     min="0"
                     step="0.01"
@@ -305,7 +341,10 @@ const UpdateExpenseItem: React.FC = () => {
                   id="quantity"
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!canEditExpense()}
+                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                    !canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
                   min="1"
                   required
                 />
@@ -447,8 +486,10 @@ const UpdateExpenseItem: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !canEditExpense()}
+                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                  canEditExpense() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {loading ? 'Updating...' : 'Update Item'}
               </button>

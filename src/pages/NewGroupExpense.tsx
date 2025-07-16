@@ -132,7 +132,11 @@ const NewGroupExpense: React.FC = () => {
       }
 
       await apiClient.createDraftGroupExpense(groupExpenseData);
-      navigate('/group-expenses');
+      navigate('/group-expenses', { 
+        state: { 
+          message: 'Draft group expense created successfully. You can now assign participants to each item.' 
+        } 
+      });
     } catch (err) {
       setError(handleApiError(err));
       console.error('Error creating group expense:', err);
@@ -150,8 +154,10 @@ const NewGroupExpense: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create Group Expense</h1>
-          <p className="text-gray-600 mt-2">Add items and split expenses with your group</p>
+          <h1 className="text-3xl font-bold text-gray-900">Create Draft Group Expense</h1>
+          <p className="text-gray-600 mt-2">
+            Create a draft expense first, then assign participants to each item
+          </p>
         </div>
 
         {/* Error Message */}

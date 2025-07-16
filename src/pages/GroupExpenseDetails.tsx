@@ -116,13 +116,24 @@ const GroupExpenseDetails: React.FC = () => {
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{item.name}</h3>
                       <div className="text-sm text-gray-600 mt-1">
-                        Quantity: {item.quantity} × {formatCurrency(item.amount)}
+                        {item.quantity} × {formatCurrency(item.amount)} each
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">
-                        {formatCurrency(calculateItemAmount(item).toString())}
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <div className="font-semibold text-gray-900">
+                          {formatCurrency(calculateItemAmount(item).toString())}
+                        </div>
                       </div>
+                      <Link
+                        to={`/group-expenses/${expense.id}/items/${item.id}/edit`}
+                        className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </Link>
                     </div>
                   </div>
                 ))}

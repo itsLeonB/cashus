@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { GroupExpenseResponse } from '../types/api';
 import GroupExpenseCard from '../components/GroupExpenseCard';
 import { handleApiError } from '../utils/api';
+import type { GroupExpenseResponse } from '../types/groupExpense';
 
 const GroupExpenses: React.FC = () => {
   const location = useLocation();
@@ -16,13 +16,13 @@ const GroupExpenses: React.FC = () => {
 
   useEffect(() => {
     fetchGroupExpenses();
-    
+
     // Clear the success message after 5 seconds
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage(null);
       }, 5000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
@@ -77,7 +77,7 @@ const GroupExpenses: React.FC = () => {
               </svg>
               <span>{successMessage}</span>
             </div>
-            <button 
+            <button
               onClick={() => setSuccessMessage(null)}
               className="text-green-700 hover:text-green-900"
             >

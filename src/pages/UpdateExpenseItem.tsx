@@ -2,16 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiClient } from '../services/api';
 import type {
-  ExpenseItemResponse,
-  UpdateExpenseItemRequest,
   ProfileResponse,
   FriendshipResponse,
-  ItemParticipant,
-  GroupExpenseResponse
 } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { handleApiError } from '../utils/api';
 import { sanitizeString } from '../utils/form';
+import type { ExpenseItemResponse, GroupExpenseResponse, ItemParticipantRequest, UpdateExpenseItemRequest } from '../types/groupExpense';
 
 const UpdateExpenseItem: React.FC = () => {
   const navigate = useNavigate();
@@ -32,7 +29,7 @@ const UpdateExpenseItem: React.FC = () => {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [participants, setParticipants] = useState<ItemParticipant[]>([]);
+  const [participants, setParticipants] = useState<ItemParticipantRequest[]>([]);
 
   useEffect(() => {
     if (groupExpenseId && expenseItemId) {
@@ -294,9 +291,8 @@ const UpdateExpenseItem: React.FC = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={!canEditExpense()}
-                className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                  !canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                }`}
+                className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${!canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
                 placeholder="Enter item name"
                 required
               />
@@ -318,9 +314,8 @@ const UpdateExpenseItem: React.FC = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     disabled={!canEditExpense()}
-                    className={`block w-full pl-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                      !canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                    }`}
+                    className={`block w-full pl-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${!canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                      }`}
                     placeholder="0"
                     min="0"
                     step="0.01"
@@ -342,9 +337,8 @@ const UpdateExpenseItem: React.FC = () => {
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   disabled={!canEditExpense()}
-                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                    !canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                  }`}
+                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${!canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                   min="1"
                   required
                 />
@@ -487,9 +481,8 @@ const UpdateExpenseItem: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || !canEditExpense()}
-                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  canEditExpense() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${canEditExpense() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {loading ? 'Updating...' : 'Update Item'}
               </button>

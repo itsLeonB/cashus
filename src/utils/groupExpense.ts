@@ -1,4 +1,4 @@
-import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ExpenseItemResponse } from '../types/api';
+import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ExpenseItemResponse } from '../types/groupExpense';
 
 /**
  * Calculate the total amount for a single expense item with proper validation
@@ -32,7 +32,7 @@ export const calculateItemAmount = (item: ExpenseItemResponse | NewExpenseitemRe
 
   // Calculate total with precision handling
   const total = amount * quantity;
-  
+
   // Ensure result is finite and non-negative
   return Number.isFinite(total) && total >= 0 ? total : 0;
 };

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { GroupExpenseResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { handleApiError } from '../utils/api';
 import { calculateItemAmount } from '../utils/groupExpense';
+import type { GroupExpenseResponse } from '../types/groupExpense';
 
 const GroupExpenseDetails: React.FC = () => {
   const { expenseId } = useParams<{ expenseId: string }>();
@@ -147,7 +147,7 @@ const GroupExpenseDetails: React.FC = () => {
                 <p className="text-gray-600 mt-1">Expense Details</p>
               </div>
             </div>
-            
+
             {/* Confirm Button */}
             {!expense.confirmed && (
               <div className="flex items-center space-x-3">
@@ -164,11 +164,10 @@ const GroupExpenseDetails: React.FC = () => {
                 <button
                   onClick={handleConfirmExpense}
                   disabled={!canConfirmExpense() || confirmingExpense}
-                  className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
-                    canConfirmExpense() && !confirmingExpense
+                  className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${canConfirmExpense() && !confirmingExpense
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   {confirmingExpense ? (
                     <>

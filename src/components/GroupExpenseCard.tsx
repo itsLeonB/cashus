@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import type { GroupExpenseResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { truncateText } from '../utils/ui';
 import { calculateItemAmount } from '../utils/groupExpense';
+import type { GroupExpenseResponse } from '../types/groupExpense';
 
 interface GroupExpenseCardProps {
   expense: GroupExpenseResponse;

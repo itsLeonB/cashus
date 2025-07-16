@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CreateFriendModal } from '../components/CreateFriendModal';
 import { formatCurrency } from '../utils/currency';
-import type { FriendshipResponse, DebtTransactionResponse, GroupExpenseResponse } from '../types/api';
+import type { FriendshipResponse, DebtTransactionResponse } from '../types/api';
 import apiClient from '../services/api';
 import { format } from 'date-fns';
+import type { GroupExpenseResponse } from '../types/groupExpense';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();

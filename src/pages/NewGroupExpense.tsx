@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ProfileResponse, FriendshipResponse } from '../types/api';
+import type { ProfileResponse, FriendshipResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import {
   validateGroupExpense,
@@ -15,6 +15,7 @@ import {
 } from '../utils/groupExpense';
 import { handleApiError } from '../utils/api';
 import { sanitizeString } from '../utils/form';
+import type { NewExpenseitemRequest, NewGroupExpenseRequest, NewOtherFeeRequest } from '../types/groupExpense';
 
 const NewGroupExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -132,10 +133,10 @@ const NewGroupExpense: React.FC = () => {
       }
 
       await apiClient.createDraftGroupExpense(groupExpenseData);
-      navigate('/group-expenses', { 
-        state: { 
-          message: 'Draft group expense created successfully. You can now assign participants to each item.' 
-        } 
+      navigate('/group-expenses', {
+        state: {
+          message: 'Draft group expense created successfully. You can now assign participants to each item.'
+        }
       });
     } catch (err) {
       setError(handleApiError(err));

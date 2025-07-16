@@ -56,7 +56,10 @@ const GroupExpenseDetails: React.FC = () => {
 
   const canConfirmExpense = () => {
     if (!expense) return false;
-    return !expense.confirmed && !expense.participantsConfirmed && !hasItemsWithoutParticipants();
+    return !expense.confirmed &&
+      !expense.participantsConfirmed &&
+      !hasItemsWithoutParticipants() &&
+      expense.createdByUser;
   };
 
   const canEditExpense = () => {
@@ -165,8 +168,8 @@ const GroupExpenseDetails: React.FC = () => {
                   onClick={handleConfirmExpense}
                   disabled={!canConfirmExpense() || confirmingExpense}
                   className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${canConfirmExpense() && !confirmingExpense
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                 >
                   {confirmingExpense ? (

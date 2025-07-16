@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { GroupExpenseResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { handleApiError } from '../utils/api';
 import { calculateItemAmount } from '../utils/groupExpense';
+import type { GroupExpenseResponse } from '../types/groupExpense';
 
 const GroupExpenseDetails: React.FC = () => {
   const { expenseId } = useParams<{ expenseId: string }>();
@@ -12,6 +12,7 @@ const GroupExpenseDetails: React.FC = () => {
   const [expense, setExpense] = useState<GroupExpenseResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingExpense, setConfirmingExpense] = useState(false);
 
   useEffect(() => {
     if (expenseId) {
@@ -46,6 +47,40 @@ const GroupExpenseDetails: React.FC = () => {
     return expense.otherFees.reduce((total, fee) => {
       return total + (parseFloat(fee.amount) || 0);
     }, 0);
+  };
+
+  const hasItemsWithoutParticipants = () => {
+    if (!expense) return false;
+    return expense.items.some(item => !item.participants || item.participants.length === 0);
+  };
+
+  const canConfirmExpense = () => {
+    if (!expense) return false;
+    return !expense.confirmed &&
+      !expense.participantsConfirmed &&
+      !hasItemsWithoutParticipants() &&
+      expense.createdByUser;
+  };
+
+  const canEditExpense = () => {
+    if (!expense) return false;
+    return !expense.participantsConfirmed;
+  };
+
+  const handleConfirmExpense = async () => {
+    if (!expense || !canConfirmExpense()) return;
+
+    try {
+      setConfirmingExpense(true);
+      setError(null);
+      const updatedExpense = await apiClient.confirmDraftGroupExpense(expense.id);
+      setExpense(updatedExpense);
+    } catch (err) {
+      setError(handleApiError(err));
+      console.error('Error confirming expense:', err);
+    } finally {
+      setConfirmingExpense(false);
+    }
   };
 
   if (loading) {
@@ -86,21 +121,73 @@ const GroupExpenseDetails: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-4">
-            <button
-              onClick={() => navigate('/group-expenses')}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {expense.description || 'Group Expense'}
-              </h1>
-              <p className="text-gray-600 mt-1">Expense Details</p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/group-expenses')}
+                className="text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+              <div>
+                <div className="flex items-center space-x-3">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {expense.description || 'Group Expense'}
+                  </h1>
+                  {expense.confirmed && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Confirmed
+                    </span>
+                  )}
+                  {!expense.confirmed && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Draft
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-600 mt-1">Expense Details</p>
+              </div>
             </div>
+
+            {/* Confirm Button */}
+            {!expense.confirmed && (
+              <div className="flex items-center space-x-3">
+                {hasItemsWithoutParticipants() && (
+                  <div className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <span>Some items need participants</span>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={handleConfirmExpense}
+                  disabled={!canConfirmExpense() || confirmingExpense}
+                  className={`inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${canConfirmExpense() && !confirmingExpense
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                >
+                  {confirmingExpense ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Confirming...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Confirm Expense
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -114,15 +201,47 @@ const GroupExpenseDetails: React.FC = () => {
                 {expense.items.map(item => (
                   <div key={item.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{item.name}</h3>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-medium text-gray-900">{item.name}</h3>
+                        {(!item.participants || item.participants.length === 0) && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            No participants
+                          </span>
+                        )}
+                      </div>
                       <div className="text-sm text-gray-600 mt-1">
-                        Quantity: {item.quantity} × {formatCurrency(item.amount)}
+                        {item.quantity} × {formatCurrency(item.amount)} each
                       </div>
+                      {item.participants && item.participants.length > 0 && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          Participants: {item.participants.map(p => p.profileName).join(', ')}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">
-                        {formatCurrency(calculateItemAmount(item).toString())}
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <div className="font-semibold text-gray-900">
+                          {formatCurrency(calculateItemAmount(item).toString())}
+                        </div>
                       </div>
+                      {canEditExpense() ? (
+                        <Link
+                          to={`/group-expenses/${expense.id}/items/${item.id}/edit`}
+                          className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 border border-gray-200 rounded-md text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Locked
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -210,9 +329,42 @@ const GroupExpenseDetails: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Expense Info</h2>
               <div className="space-y-3">
                 <div>
+                  <span className="text-sm text-gray-600 block">Status:</span>
+                  <div className="flex items-center space-x-2 mt-1">
+                    {expense.confirmed ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Confirmed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Draft
+                      </span>
+                    )}
+                    {expense.participantsConfirmed && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Participants Confirmed
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
                   <span className="text-sm text-gray-600 block">Total Items:</span>
                   <span className="font-medium text-gray-900">
                     {expense.items.length} items ({expense.items.reduce((total, item) => total + item.quantity, 0)} total quantity)
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-sm text-gray-600 block">Items with Participants:</span>
+                  <span className="font-medium text-gray-900">
+                    {expense.items.filter(item => item.participants && item.participants.length > 0).length} / {expense.items.length}
                   </span>
                 </div>
 

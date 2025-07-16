@@ -11,6 +11,7 @@ import FriendDetails from './pages/FriendDetails';
 import GroupExpenses from './pages/GroupExpenses';
 import NewGroupExpense from './pages/NewGroupExpense';
 import GroupExpenseDetails from './pages/GroupExpenseDetails';
+import UpdateExpenseItem from './pages/UpdateExpenseItem';
 import './App.css';
 
 function App() {
@@ -66,6 +67,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GroupExpenseDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/group-expenses/:groupExpenseId/items/:expenseItemId/edit"
+              element={
+                <ProtectedRoute>
+                  <UpdateExpenseItem />
                 </ProtectedRoute>
               }
             />

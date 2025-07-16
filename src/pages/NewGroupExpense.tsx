@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
-import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ProfileResponse, FriendshipResponse } from '../types/api';
+import type { ProfileResponse, FriendshipResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import {
   validateGroupExpense,
@@ -15,6 +15,7 @@ import {
 } from '../utils/groupExpense';
 import { handleApiError } from '../utils/api';
 import { sanitizeString } from '../utils/form';
+import type { NewExpenseItemRequest, NewGroupExpenseRequest, NewOtherFeeRequest } from '../types/groupExpense';
 
 const NewGroupExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ const NewGroupExpense: React.FC = () => {
   // Form state
   const [description, setDescription] = useState('');
   const [selectedPayerId, setSelectedPayerId] = useState<string>('me'); // Default to 'me'
-  const [items, setItems] = useState<NewExpenseitemRequest[]>([createEmptyExpenseItem()]);
+  const [items, setItems] = useState<NewExpenseItemRequest[]>([createEmptyExpenseItem()]);
   const [otherFees, setOtherFees] = useState<NewOtherFeeRequest[]>([]);
   const [showOtherFees, setShowOtherFees] = useState(false);
 
@@ -73,7 +74,7 @@ const NewGroupExpense: React.FC = () => {
     }
   };
 
-  const updateItem = (index: number, field: keyof NewExpenseitemRequest, value: string | number) => {
+  const updateItem = (index: number, field: keyof NewExpenseItemRequest, value: string | number) => {
     const updatedItems = [...items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     setItems(updatedItems);
@@ -132,7 +133,11 @@ const NewGroupExpense: React.FC = () => {
       }
 
       await apiClient.createDraftGroupExpense(groupExpenseData);
-      navigate('/group-expenses');
+      navigate('/group-expenses', {
+        state: {
+          message: 'Draft group expense created successfully. You can now assign participants to each item.'
+        }
+      });
     } catch (err) {
       setError(handleApiError(err));
       console.error('Error creating group expense:', err);
@@ -150,8 +155,10 @@ const NewGroupExpense: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create Group Expense</h1>
-          <p className="text-gray-600 mt-2">Add items and split expenses with your group</p>
+          <h1 className="text-3xl font-bold text-gray-900">Create Draft Group Expense</h1>
+          <p className="text-gray-600 mt-2">
+            Create a draft expense first, then assign participants to each item
+          </p>
         </div>
 
         {/* Error Message */}

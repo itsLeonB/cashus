@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import type { GroupExpenseResponse } from '../types/api';
 import { formatCurrency } from '../utils/currency';
 import { truncateText } from '../utils/ui';
 import { calculateItemAmount } from '../utils/groupExpense';
+import type { GroupExpenseResponse } from '../types/groupExpense';
 
 interface GroupExpenseCardProps {
   expense: GroupExpenseResponse;
@@ -32,6 +32,22 @@ const GroupExpenseCard: React.FC<GroupExpenseCardProps> = ({ expense }) => {
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               {truncateText(expense.description || 'Group Expense', 50)}
+              <div className="inline-flex ml-2">
+                {expense.confirmed ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Confirmed
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    Draft
+                  </span>
+                )}
+                {expense.participantsConfirmed && (
+                  <span className="inline-flex items-center ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Participants Confirmed
+                  </span>
+                )}
+              </div>
             </h3>
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <span className="flex items-center">

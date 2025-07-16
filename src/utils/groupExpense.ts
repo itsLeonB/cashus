@@ -1,4 +1,4 @@
-import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest, ExpenseItemResponse } from '../types/api';
+import type { NewGroupExpenseRequest, NewExpenseItemRequest, NewOtherFeeRequest, ExpenseItemResponse } from '../types/groupExpense';
 
 /**
  * Calculate the total amount for a single expense item with proper validation
@@ -12,7 +12,7 @@ import type { NewGroupExpenseRequest, NewExpenseitemRequest, NewOtherFeeRequest,
  * calculateItemAmount({ name: 'Invalid', amount: 'abc', quantity: 1 }) // returns 0
  * calculateItemAmount({ name: 'Negative', amount: '-10', quantity: 1 }) // returns 0
  */
-export const calculateItemAmount = (item: ExpenseItemResponse | NewExpenseitemRequest): number => {
+export const calculateItemAmount = (item: ExpenseItemResponse | NewExpenseItemRequest): number => {
   // Validate item exists
   if (!item) {
     return 0;
@@ -32,7 +32,7 @@ export const calculateItemAmount = (item: ExpenseItemResponse | NewExpenseitemRe
 
   // Calculate total with precision handling
   const total = amount * quantity;
-  
+
   // Ensure result is finite and non-negative
   return Number.isFinite(total) && total >= 0 ? total : 0;
 };
@@ -60,7 +60,7 @@ export const calculateTotalItems = (expense: NewGroupExpenseRequest): number => 
 /**
  * Calculate the total amount of all items in a group expense
  */
-export const calculateItemsTotal = (items: (NewExpenseitemRequest | ExpenseItemResponse)[]): number => {
+export const calculateItemsTotal = (items: (NewExpenseItemRequest | ExpenseItemResponse)[]): number => {
   return items.reduce((total, item) => {
     return total + calculateItemAmount(item);
   }, 0);
@@ -78,7 +78,7 @@ export const calculateFeesTotal = (fees: NewOtherFeeRequest[]): number => {
 /**
  * Calculate the grand total of a group expense (items + fees)
  */
-export const calculateGrandTotal = (items: (NewExpenseitemRequest | ExpenseItemResponse)[], fees: NewOtherFeeRequest[] = []): number => {
+export const calculateGrandTotal = (items: (NewExpenseItemRequest | ExpenseItemResponse)[], fees: NewOtherFeeRequest[] = []): number => {
   const itemsTotal = calculateItemsTotal(items);
   const feesTotal = calculateFeesTotal(fees);
   return itemsTotal + feesTotal;
@@ -87,7 +87,7 @@ export const calculateGrandTotal = (items: (NewExpenseitemRequest | ExpenseItemR
 /**
  * Validate a group expense item
  */
-export const validateExpenseItem = (item: NewExpenseitemRequest): string | null => {
+export const validateExpenseItem = (item: NewExpenseItemRequest): string | null => {
   if (!item.name.trim()) {
     return 'Item name is required';
   }
@@ -118,7 +118,7 @@ export const validateOtherFee = (fee: NewOtherFeeRequest): string | null => {
  */
 export const validateGroupExpense = (
   description: string,
-  items: NewExpenseitemRequest[],
+  items: NewExpenseItemRequest[],
   otherFees: NewOtherFeeRequest[]
 ): string | null => {
   if (!description.trim()) {
@@ -156,7 +156,7 @@ export const validateGroupExpense = (
 /**
  * Create a new empty expense item
  */
-export const createEmptyExpenseItem = (): NewExpenseitemRequest => ({
+export const createEmptyExpenseItem = (): NewExpenseItemRequest => ({
   name: '',
   amount: '',
   quantity: 1
@@ -173,7 +173,7 @@ export const createEmptyOtherFee = (): NewOtherFeeRequest => ({
 /**
  * Format items for API submission (calculate total amount per item)
  */
-export const formatItemsForSubmission = (items: NewExpenseitemRequest[]): NewExpenseitemRequest[] => {
+export const formatItemsForSubmission = (items: NewExpenseItemRequest[]): NewExpenseItemRequest[] => {
   return items.map(item => ({
     ...item,
     amount: item.amount.toString()

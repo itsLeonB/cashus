@@ -15,7 +15,12 @@ import {
 } from '../utils/groupExpense';
 import { handleApiError } from '../utils/api';
 import { sanitizeString } from '../utils/form';
-import type { NewExpenseItemRequest, NewGroupExpenseRequest, NewOtherFeeRequest } from '../types/groupExpense';
+import type {
+  FeeCalculationMethodInfo,
+  NewExpenseItemRequest,
+  NewGroupExpenseRequest,
+  NewOtherFeeRequest,
+} from '../types/groupExpense';
 
 const NewGroupExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +29,7 @@ const NewGroupExpense: React.FC = () => {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [friends, setFriends] = useState<FriendshipResponse[]>([]);
   const [loadingInitialData, setLoadingInitialData] = useState(true);
+  const [feeCalculationMethods, setFeeCalculationMethods] = useState<FeeCalculationMethodInfo[]>([]);
 
   // Form state
   const [description, setDescription] = useState('');
@@ -39,12 +45,14 @@ const NewGroupExpense: React.FC = () => {
   const fetchInitialData = async () => {
     try {
       setLoadingInitialData(true);
-      const [profileData, friendsData] = await Promise.all([
+      const [profileData, friendsData, feeMethodsData] = await Promise.all([
         apiClient.getProfile(),
-        apiClient.getFriendships().catch(() => []) // Fallback to empty array if fails
+        apiClient.getFriendships().catch(() => []), // Fallback to empty array if fails
+        apiClient.getFeeCalculationMethods().catch(() => []) // Fallback to empty array if fails
       ]);
       setProfile(profileData);
       setFriends(friendsData);
+      setFeeCalculationMethods(Array.isArray(feeMethodsData) ? feeMethodsData : []);
     } catch (err) {
       console.error('Error fetching initial data:', err);
       // Don't set error here as it's not critical for form functionality
@@ -90,7 +98,12 @@ const NewGroupExpense: React.FC = () => {
 
   const updateOtherFee = (index: number, field: keyof NewOtherFeeRequest, value: string) => {
     const updatedFees = [...otherFees];
-    updatedFees[index] = { ...updatedFees[index], [field]: value };
+    // Ensure we're creating a new object reference for the updated fee
+    updatedFees[index] = {
+      ...updatedFees[index],
+      [field]: value
+    };
+    console.log('Updating fee:', { index, field, value, updatedFee: updatedFees[index] }); // Debug log
     setOtherFees(updatedFees);
   };
 
@@ -131,6 +144,9 @@ const NewGroupExpense: React.FC = () => {
       if (selectedPayerId !== 'me' && selectedPayerId !== '') {
         groupExpenseData.payerProfileId = selectedPayerId;
       }
+
+      // Debug log
+      console.log('Submitting group expense data:', JSON.stringify(groupExpenseData, null, 2));
 
       await apiClient.createDraftGroupExpense(groupExpenseData);
       navigate('/group-expenses', {
@@ -395,7 +411,7 @@ const NewGroupExpense: React.FC = () => {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fee-name">
                             Fee Name *
@@ -426,6 +442,31 @@ const NewGroupExpense: React.FC = () => {
                             placeholder="0.00"
                             required
                           />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={`fee-calculation-${index}`}>
+                            Calculation Method *
+                          </label>
+                          <select
+                            id={`fee-calculation-${index}`}
+                            value={fee.calculationMethod}
+                            onChange={(e) => updateOtherFee(index, 'calculationMethod', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            required
+                          >
+                            <option value="">Select calculation method</option>
+                            {feeCalculationMethods.map((method) => (
+                              <option key={method.name} value={method.name}>
+                                {method.display}
+                              </option>
+                            ))}
+                          </select>
+                          {fee.calculationMethod && feeCalculationMethods.find(m => m.name === fee.calculationMethod)?.description && (
+                            <p className="mt-1 text-sm text-gray-500">
+                              {feeCalculationMethods.find(m => m.name === fee.calculationMethod)?.description}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -15,6 +15,7 @@ export interface NewExpenseItemRequest {
 export interface NewOtherFeeRequest {
   name: string;
   amount: string;
+  calculationMethod: string;
 }
 
 export interface GroupExpenseResponse {
@@ -74,6 +75,7 @@ export interface OtherFeeResponse {
   id: string;
   name: string;
   amount: string;
+  calculationMethod: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -84,4 +86,10 @@ export interface ExpenseParticipantResponse {
   profileId: string;
   shareAmount: string;
   isUser: boolean;
+}
+
+export interface FeeCalculationMethodInfo {
+  name: string;
+  display: string;
+  description: string;
 }

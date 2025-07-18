@@ -151,6 +151,14 @@ class ApiClient {
     return response.data;
   }
 
+  async removeExpenseItem(groupExpenseId: string, expenseItemId: string): Promise<void> {
+    await this.client.delete(`/group-expenses/${groupExpenseId}/items/${expenseItemId}`);
+  }
+
+  async removeOtherFee(groupExpenseId: string, otherFeeId: string): Promise<void> {
+    await this.client.delete(`/group-expenses/${groupExpenseId}/fees/${otherFeeId}`);
+  }
+
   // Auth helpers
   setAuthToken(token: string): void {
     localStorage.setItem('authToken', token);

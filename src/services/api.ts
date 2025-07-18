@@ -12,7 +12,7 @@ import type {
   DebtTransactionResponse,
 } from '../types/api';
 import type { FriendDetailsResponse } from '../types/friend';
-import type { ExpenseItemResponse, FeeCalculationMethodInfo, GroupExpenseResponse, NewGroupExpenseRequest, OtherFeeResponse, UpdateExpenseItemRequest, UpdateOtherFeeRequest } from '../types/groupExpense';
+import type { ExpenseItemResponse, FeeCalculationMethodInfo, GroupExpenseResponse, NewExpenseItemRequest, NewGroupExpenseRequest, NewOtherFeeRequest, OtherFeeResponse, UpdateExpenseItemRequest, UpdateOtherFeeRequest } from '../types/groupExpense';
 
 class ApiClient {
   private readonly client: AxiosInstance;
@@ -138,6 +138,16 @@ class ApiClient {
 
   async updateOtherFee(request: UpdateOtherFeeRequest): Promise<OtherFeeResponse> {
     const response = await this.client.put(`/group-expenses/${request.groupExpenseId}/fees/${request.id}`, request);
+    return response.data;
+  }
+
+  async addExpenseItem(request: NewExpenseItemRequest): Promise<ExpenseItemResponse> {
+    const response = await this.client.post(`/group-expenses/${request.groupExpenseId}/items`, request);
+    return response.data;
+  }
+
+  async addOtherFee(request: NewOtherFeeRequest): Promise<OtherFeeResponse> {
+    const response = await this.client.post(`/group-expenses/${request.groupExpenseId}/fees`, request);
     return response.data;
   }
 

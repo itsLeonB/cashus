@@ -1,12 +1,14 @@
 import type { NewExpenseItemRequest, NewOtherFeeRequest } from '../types/groupExpense';
 
 export const createEmptyExpenseItem = (): NewExpenseItemRequest => ({
+  groupExpenseId: '',
   name: '',
   amount: '',
   quantity: 1
 });
 
 export const createEmptyOtherFee = (): NewOtherFeeRequest => ({
+  groupExpenseId: '',
   name: '',
   amount: '',
   calculationMethod: '',

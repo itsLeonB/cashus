@@ -8,12 +8,14 @@ export interface NewGroupExpenseRequest {
 }
 
 export interface NewExpenseItemRequest {
+  groupExpenseId: string;
   name: string;
   amount: string;
   quantity: number;
 }
 
 export interface NewOtherFeeRequest {
+  groupExpenseId: string;
   name: string;
   amount: string;
   calculationMethod: string;

@@ -111,6 +111,10 @@ const NewGroupExpense: React.FC = () => {
     return calculateGrandTotal(items, otherFees);
   };
 
+  const calculateSubtotal = () => {
+    return calculateItemsTotal(items);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -136,6 +140,7 @@ const NewGroupExpense: React.FC = () => {
 
       const groupExpenseData: NewGroupExpenseRequest = {
         totalAmount: calculateTotal().toString(),
+        subtotal: calculateSubtotal().toString(),
         description: sanitizedDescription,
         items: formatItemsForSubmission(items),
         otherFees: otherFees.length > 0 ? otherFees : undefined

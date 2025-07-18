@@ -131,7 +131,7 @@ class ApiClient {
     return response.data;
   }
 
-  async getFeeCalculationMethods(): Promise<FeeCalculationMethodInfo> {
+  async getFeeCalculationMethods(): Promise<FeeCalculationMethodInfo[]> {
     const response = await this.client.get('/group-expenses/fee-calculation-methods');
     return response.data;
   }

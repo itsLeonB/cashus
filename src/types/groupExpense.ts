@@ -1,6 +1,7 @@
 export interface NewGroupExpenseRequest {
   payerProfileId?: string;
   totalAmount: string;
+  subtotal: string;
   description?: string;
   items: NewExpenseItemRequest[];
   otherFees?: NewOtherFeeRequest[];

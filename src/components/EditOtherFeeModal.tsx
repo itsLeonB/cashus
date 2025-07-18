@@ -113,15 +113,19 @@ const EditOtherFeeModal: React.FC<EditOtherFeeModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="calculation-method">
               Calculation Method
             </label>
             <select
+              name="calculation-method"
               value={calculationMethod}
               onChange={(e) => setCalculationMethod(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
+              {feeCalculationMethods.length === 0 && (
+                <option value="">No calculation methods available</option>
+              )}
               {feeCalculationMethods.map((method) => (
                 <option key={method.name} value={method.name}>
                   {method.display}
@@ -137,6 +141,7 @@ const EditOtherFeeModal: React.FC<EditOtherFeeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={loading}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               Cancel

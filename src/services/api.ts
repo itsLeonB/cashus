@@ -12,7 +12,7 @@ import type {
   DebtTransactionResponse,
 } from '../types/api';
 import type { FriendDetailsResponse } from '../types/friend';
-import type { ExpenseItemResponse, GroupExpenseResponse, NewGroupExpenseRequest, UpdateExpenseItemRequest } from '../types/groupExpense';
+import type { ExpenseItemResponse, FeeCalculationMethodInfo, GroupExpenseResponse, NewExpenseItemRequest, NewGroupExpenseRequest, NewOtherFeeRequest, OtherFeeResponse, UpdateExpenseItemRequest, UpdateOtherFeeRequest } from '../types/groupExpense';
 
 class ApiClient {
   private readonly client: AxiosInstance;
@@ -129,6 +129,34 @@ class ApiClient {
   async confirmDraftGroupExpense(groupExpenseId: string): Promise<GroupExpenseResponse> {
     const response = await this.client.patch(`/group-expenses/${groupExpenseId}/confirmed`);
     return response.data;
+  }
+
+  async getFeeCalculationMethods(): Promise<FeeCalculationMethodInfo[]> {
+    const response = await this.client.get('/group-expenses/fee-calculation-methods');
+    return response.data;
+  }
+
+  async updateOtherFee(request: UpdateOtherFeeRequest): Promise<OtherFeeResponse> {
+    const response = await this.client.put(`/group-expenses/${request.groupExpenseId}/fees/${request.id}`, request);
+    return response.data;
+  }
+
+  async addExpenseItem(request: NewExpenseItemRequest): Promise<ExpenseItemResponse> {
+    const response = await this.client.post(`/group-expenses/${request.groupExpenseId}/items`, request);
+    return response.data;
+  }
+
+  async addOtherFee(request: NewOtherFeeRequest): Promise<OtherFeeResponse> {
+    const response = await this.client.post(`/group-expenses/${request.groupExpenseId}/fees`, request);
+    return response.data;
+  }
+
+  async removeExpenseItem(groupExpenseId: string, expenseItemId: string): Promise<void> {
+    await this.client.delete(`/group-expenses/${groupExpenseId}/items/${expenseItemId}`);
+  }
+
+  async removeOtherFee(groupExpenseId: string, otherFeeId: string): Promise<void> {
+    await this.client.delete(`/group-expenses/${groupExpenseId}/fees/${otherFeeId}`);
   }
 
   // Auth helpers

@@ -1,20 +1,32 @@
 export interface NewGroupExpenseRequest {
   payerProfileId?: string;
   totalAmount: string;
+  subtotal: string;
   description?: string;
   items: NewExpenseItemRequest[];
   otherFees?: NewOtherFeeRequest[];
 }
 
 export interface NewExpenseItemRequest {
+  groupExpenseId: string;
   name: string;
   amount: string;
   quantity: number;
 }
 
 export interface NewOtherFeeRequest {
+  groupExpenseId: string;
   name: string;
   amount: string;
+  calculationMethod: string;
+}
+
+export interface UpdateOtherFeeRequest {
+  id: string;
+  groupExpenseId: string;
+  name: string;
+  amount: string;
+  calculationMethod: string;
 }
 
 export interface GroupExpenseResponse {
@@ -74,6 +86,7 @@ export interface OtherFeeResponse {
   id: string;
   name: string;
   amount: string;
+  calculationMethod: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -84,4 +97,10 @@ export interface ExpenseParticipantResponse {
   profileId: string;
   shareAmount: string;
   isUser: boolean;
+}
+
+export interface FeeCalculationMethodInfo {
+  name: string;
+  display: string;
+  description: string;
 }

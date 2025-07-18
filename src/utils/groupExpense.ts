@@ -1,125 +1,23 @@
-import type { NewGroupExpenseRequest, NewExpenseItemRequest, NewOtherFeeRequest, ExpenseItemResponse } from '../types/groupExpense';
+import type { NewExpenseItemRequest, NewOtherFeeRequest } from '../types/groupExpense';
 
-/**
- * Calculate the total amount for a single expense item with proper validation
- * Handles edge cases like invalid amounts, negative values, and missing data
- * 
- * @param item - The expense item to calculate amount for
- * @returns The total amount (price * quantity) or 0 if invalid
- * 
- * @example
- * calculateItemAmount({ name: 'Coffee', amount: '5.50', quantity: 2 }) // returns 11
- * calculateItemAmount({ name: 'Invalid', amount: 'abc', quantity: 1 }) // returns 0
- * calculateItemAmount({ name: 'Negative', amount: '-10', quantity: 1 }) // returns 0
- */
-export const calculateItemAmount = (item: ExpenseItemResponse | NewExpenseItemRequest): number => {
-  // Validate item exists
-  if (!item) {
-    return 0;
-  }
+export const createEmptyExpenseItem = (): NewExpenseItemRequest => ({
+  groupExpenseId: '',
+  name: '',
+  amount: '',
+  quantity: 1
+});
 
-  // Parse and validate amount
-  const amount = typeof item.amount === 'string' ? parseFloat(item.amount) : Number(item.amount);
-  if (!Number.isFinite(amount) || amount < 0) {
-    return 0;
-  }
+export const createEmptyOtherFee = (): NewOtherFeeRequest => ({
+  groupExpenseId: '',
+  name: '',
+  amount: '',
+  calculationMethod: '',
+});
 
-  // Validate quantity
-  const quantity = Number(item.quantity);
-  if (!Number.isInteger(quantity) || quantity < 0) {
-    return 0;
-  }
-
-  // Calculate total with precision handling
-  const total = amount * quantity;
-
-  // Ensure result is finite and non-negative
-  return Number.isFinite(total) && total >= 0 ? total : 0;
-};
-
-/**
- * Safely parse a numeric string value with validation
- * Used internally for consistent number parsing across utilities
- * 
- * @param value - String or number to parse
- * @param defaultValue - Default value if parsing fails
- * @returns Parsed number or default value
- */
-export const safeParseNumber = (value: string | number, defaultValue: number = 0): number => {
-  const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
-};
-
-/**
- * Calculate the total quantity of all items in a group expense
- */
-export const calculateTotalItems = (expense: NewGroupExpenseRequest): number => {
-  return expense.items.reduce((total, item) => total + item.quantity, 0);
-};
-
-/**
- * Calculate the total amount of all items in a group expense
- */
-export const calculateItemsTotal = (items: (NewExpenseItemRequest | ExpenseItemResponse)[]): number => {
-  return items.reduce((total, item) => {
-    return total + calculateItemAmount(item);
-  }, 0);
-};
-
-/**
- * Calculate the total amount of all other fees with proper validation
- */
-export const calculateFeesTotal = (fees: NewOtherFeeRequest[]): number => {
-  return fees.reduce((total, fee) => {
-    return total + safeParseNumber(fee.amount);
-  }, 0);
-};
-
-/**
- * Calculate the grand total of a group expense (items + fees)
- */
-export const calculateGrandTotal = (items: (NewExpenseItemRequest | ExpenseItemResponse)[], fees: NewOtherFeeRequest[] = []): number => {
-  const itemsTotal = calculateItemsTotal(items);
-  const feesTotal = calculateFeesTotal(fees);
-  return itemsTotal + feesTotal;
-};
-
-/**
- * Validate a group expense item
- */
-export const validateExpenseItem = (item: NewExpenseItemRequest): string | null => {
-  if (!item.name.trim()) {
-    return 'Item name is required';
-  }
-  if (!item.amount || parseFloat(item.amount) <= 0) {
-    return 'Item amount must be greater than 0';
-  }
-  if (item.quantity < 1) {
-    return 'Item quantity must be at least 1';
-  }
-  return null;
-};
-
-/**
- * Validate an other fee
- */
-export const validateOtherFee = (fee: NewOtherFeeRequest): string | null => {
-  if (!fee.name.trim()) {
-    return 'Fee name is required';
-  }
-  if (!fee.amount || parseFloat(fee.amount) <= 0) {
-    return 'Fee amount must be greater than 0';
-  }
-  return null;
-};
-
-/**
- * Validate a complete group expense
- */
 export const validateGroupExpense = (
   description: string,
   items: NewExpenseItemRequest[],
-  otherFees: NewOtherFeeRequest[]
+  otherFees: NewOtherFeeRequest[],
 ): string | null => {
   if (!description.trim()) {
     return 'Description is required';
@@ -129,67 +27,58 @@ export const validateGroupExpense = (
     return 'At least one item is required';
   }
 
-  // Validate all items
-  for (let i = 0; i < items.length; i++) {
-    const itemError = validateExpenseItem(items[i]);
-    if (itemError) {
-      return `Item ${i + 1}: ${itemError}`;
+  for (const item of items) {
+    if (!item.name.trim()) {
+      return 'Item name is required';
+    }
+    if (!item.amount || parseFloat(item.amount) <= 0) {
+      return 'Item amount must be greater than 0';
+    }
+    if (!item.quantity || item.quantity <= 0) {
+      return 'Item quantity must be greater than 0';
     }
   }
 
-  // Validate all fees
-  for (let i = 0; i < otherFees.length; i++) {
-    const feeError = validateOtherFee(otherFees[i]);
-    if (feeError) {
-      return `Fee ${i + 1}: ${feeError}`;
+  for (const fee of otherFees) {
+    if (!fee.name.trim()) {
+      return 'Fee name is required';
     }
-  }
-
-  const totalAmount = calculateGrandTotal(items, otherFees);
-  if (totalAmount <= 0) {
-    return 'Total amount must be greater than 0';
+    if (!fee.amount || parseFloat(fee.amount) <= 0) {
+      return 'Fee amount must be greater than 0';
+    }
+    if (!fee.calculationMethod) {
+      return 'Fee calculation method is required';
+    }
   }
 
   return null;
 };
 
-/**
- * Create a new empty expense item
- */
-export const createEmptyExpenseItem = (): NewExpenseItemRequest => ({
-  name: '',
-  amount: '',
-  quantity: 1
-});
+export const calculateItemAmount = (item: NewExpenseItemRequest): number => {
+  const amount = parseFloat(item.amount) || 0;
+  return amount * item.quantity;
+};
 
-/**
- * Create a new empty other fee
- */
-export const createEmptyOtherFee = (): NewOtherFeeRequest => ({
-  name: '',
-  amount: ''
-});
+export const calculateItemsTotal = (items: NewExpenseItemRequest[]): number => {
+  return items.reduce((total, item) => total + calculateItemAmount(item), 0);
+};
 
-/**
- * Format items for API submission (calculate total amount per item)
- */
-export const formatItemsForSubmission = (items: NewExpenseItemRequest[]): NewExpenseItemRequest[] => {
+export const calculateFeesTotal = (fees: NewOtherFeeRequest[]): number => {
+  return fees.reduce((total, fee) => total + (parseFloat(fee.amount) || 0), 0);
+};
+
+export const calculateGrandTotal = (
+  items: NewExpenseItemRequest[],
+  fees: NewOtherFeeRequest[]
+): number => {
+  return calculateItemsTotal(items) + calculateFeesTotal(fees);
+};
+
+export const formatItemsForSubmission = (
+  items: NewExpenseItemRequest[]
+): NewExpenseItemRequest[] => {
   return items.map(item => ({
     ...item,
     amount: item.amount.toString()
   }));
-};
-
-/**
- * Get expense summary text
- */
-export const getExpenseSummaryText = (expense: NewGroupExpenseRequest): string => {
-  const itemCount = expense.items.length;
-  const totalQuantity = calculateTotalItems(expense);
-
-  if (itemCount === 1) {
-    return `1 item (${totalQuantity} total)`;
-  }
-
-  return `${itemCount} items (${totalQuantity} total)`;
 };

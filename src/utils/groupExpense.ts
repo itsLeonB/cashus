@@ -9,13 +9,13 @@ export const createEmptyExpenseItem = (): NewExpenseItemRequest => ({
 export const createEmptyOtherFee = (): NewOtherFeeRequest => ({
   name: '',
   amount: '',
-  calculationMethod: '' // Empty string to force selection
+  calculationMethod: '',
 });
 
 export const validateGroupExpense = (
   description: string,
   items: NewExpenseItemRequest[],
-  otherFees: NewOtherFeeRequest[]
+  otherFees: NewOtherFeeRequest[],
 ): string | null => {
   if (!description.trim()) {
     return 'Description is required';

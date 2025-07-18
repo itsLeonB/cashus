@@ -413,11 +413,11 @@ const NewGroupExpense: React.FC = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fee-name">
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={`fee-name-${index}`}>
                             Fee Name *
                           </label>
                           <input
-                            name="fee-name"
+                            id={`fee-name-${index}`}
                             type="text"
                             value={fee.name}
                             onChange={(e) => updateOtherFee(index, 'name', e.target.value)}
@@ -428,11 +428,11 @@ const NewGroupExpense: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fee-amount">
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={`fee-amount-${index}`}>
                             Amount *
                           </label>
                           <input
-                            name="fee-amount"
+                            id={`fee-amount-${index}`}
                             type="number"
                             min="0"
                             step="0.01"

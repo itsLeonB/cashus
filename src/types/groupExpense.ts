@@ -18,6 +18,14 @@ export interface NewOtherFeeRequest {
   calculationMethod: string;
 }
 
+export interface UpdateOtherFeeRequest {
+  id: string;
+  groupExpenseId: string;
+  name: string;
+  amount: string;
+  calculationMethod: string;
+}
+
 export interface GroupExpenseResponse {
   id: string;
   payerProfileId?: string;

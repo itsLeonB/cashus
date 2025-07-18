@@ -4,7 +4,8 @@ import { apiClient } from '../services/api';
 import { formatCurrency } from '../utils/currency';
 import { handleApiError } from '../utils/api';
 import { calculateItemAmount } from '../utils/groupExpense';
-import type { GroupExpenseResponse } from '../types/groupExpense';
+import type { FeeCalculationMethodInfo, GroupExpenseResponse, OtherFeeResponse } from '../types/groupExpense';
+import EditOtherFeeModal from '../components/EditOtherFeeModal';
 
 const GroupExpenseDetails: React.FC = () => {
   const { expenseId } = useParams<{ expenseId: string }>();
@@ -13,6 +14,8 @@ const GroupExpenseDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirmingExpense, setConfirmingExpense] = useState(false);
+  const [feeCalculationMethods, setFeeCalculationMethods] = useState<FeeCalculationMethodInfo[]>([]);
+  const [editingFee, setEditingFee] = useState<OtherFeeResponse | null>(null);
 
   useEffect(() => {
     if (expenseId) {
@@ -25,14 +28,23 @@ const GroupExpenseDetails: React.FC = () => {
 
     try {
       setLoading(true);
-      const expenseData = await apiClient.getGroupExpenseDetails(expenseId);
+      const [expenseData, feeMethodsData] = await Promise.all([
+        apiClient.getGroupExpenseDetails(expenseId),
+        apiClient.getFeeCalculationMethods()
+      ]);
       setExpense(expenseData);
+      setFeeCalculationMethods(Array.isArray(feeMethodsData) ? feeMethodsData : []);
     } catch (err) {
       setError(handleApiError(err));
       console.error('Error fetching expense details:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCalculationMethodDisplay = (methodName: string): string => {
+    const method = feeCalculationMethods.find(m => m.name === methodName);
+    return method ? method.display : methodName;
   };
 
   const calculateItemsTotal = () => {
@@ -264,11 +276,27 @@ const GroupExpenseDetails: React.FC = () => {
                     <div key={fee.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{fee.name}</h3>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-gray-900">
-                          {formatCurrency(fee.amount)}
+                        <div className="text-sm text-gray-600 mt-1">
+                          Calculation method: {getCalculationMethodDisplay(fee.calculationMethod)}
                         </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <div className="font-semibold text-gray-900">
+                            {formatCurrency(fee.amount)}
+                          </div>
+                        </div>
+                        {canEditExpense() && (
+                          <button
+                            onClick={() => setEditingFee(fee)}
+                            className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -369,12 +397,25 @@ const GroupExpenseDetails: React.FC = () => {
                 </div>
 
                 {expense.otherFees && expense.otherFees.length > 0 && (
-                  <div>
-                    <span className="text-sm text-gray-600 block">Additional Fees:</span>
-                    <span className="font-medium text-gray-900">
-                      {expense.otherFees.length} fees
-                    </span>
-                  </div>
+                  <>
+                    <div>
+                      <span className="text-sm text-gray-600 block">Additional Fees:</span>
+                      <span className="font-medium text-gray-900">
+                        {expense.otherFees.length} fees
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600 block">Fee Details:</span>
+                      <div className="mt-1 space-y-1">
+                        {expense.otherFees.map(fee => (
+                          <div key={fee.id} className="text-sm">
+                            <span className="font-medium text-gray-900">{fee.name}</span>
+                            <span className="text-gray-600"> - {getCalculationMethodDisplay(fee.calculationMethod)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {expense.payerProfileId && (
@@ -409,6 +450,25 @@ const GroupExpenseDetails: React.FC = () => {
           </div>
         </div>
       </div>
+      {editingFee && expense && (
+        <EditOtherFeeModal
+          fee={editingFee}
+          groupExpenseId={expense.id}
+          onClose={() => setEditingFee(null)}
+          onUpdate={(updatedFee) => {
+            if (expense.otherFees) {
+              const updatedFees = expense.otherFees.map(f =>
+                f.id === updatedFee.id ? updatedFee : f
+              );
+              setExpense({
+                ...expense,
+                otherFees: updatedFees
+              });
+            }
+            setEditingFee(null);
+          }}
+        />
+      )}
     </div>
   );
 };

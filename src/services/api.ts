@@ -159,6 +159,19 @@ class ApiClient {
     await this.client.delete(`/group-expenses/${groupExpenseId}/fees/${otherFeeId}`);
   }
 
+  async uploadBill(payerProfileId: string, billFile: File): Promise<void> {
+    const formData = new FormData();
+    formData.append('payerProfileId', payerProfileId);
+    formData.append('bill', billFile);
+
+    // Create a separate request config for multipart/form-data
+    await this.client.post('/group-expenses/bills', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
   // Auth helpers
   setAuthToken(token: string): void {
     localStorage.setItem('authToken', token);

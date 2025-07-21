@@ -7,6 +7,7 @@ import type { FriendshipResponse, DebtTransactionResponse } from '../types/api';
 import apiClient from '../services/api';
 import { format } from 'date-fns';
 import type { GroupExpenseResponse } from '../types/groupExpense';
+import BillUploadForm from '../components/BillUploadForm';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const Dashboard: React.FC = () => {
   const [groupExpenses, setGroupExpenses] = useState<GroupExpenseResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateFriendModalOpen, setIsCreateFriendModalOpen] = useState(false);
+  const [isBillUploadModalOpen, setIsBillUploadModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -45,6 +47,17 @@ const Dashboard: React.FC = () => {
   const handleCreateFriendSuccess = () => {
     // Refresh the friendships data after successful creation
     fetchData();
+  };
+
+  const handleBillUploadSuccess = (payerProfileId: string) => {
+    console.log(`Bill uploaded successfully for payer: ${payerProfileId}`);
+    // Optionally refresh data or show success message
+    setIsBillUploadModalOpen(false);
+  };
+
+  const handleBillUploadError = (error: string) => {
+    console.error('Bill upload error:', error);
+    // Handle error - maybe show a toast notification
   };
 
   const handleNewTransaction = () => {
@@ -112,6 +125,15 @@ const Dashboard: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
             <span>Add Friend</span>
+          </button>
+          <button
+            onClick={() => setIsBillUploadModalOpen(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span>Upload Bill</span>
           </button>
         </div>
       </div>
@@ -371,6 +393,29 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsCreateFriendModalOpen(false)}
         onSuccess={handleCreateFriendSuccess}
       />
+
+      {/* Bill Upload Modal */}
+      {isBillUploadModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 xl:w-2/5 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Upload Bill</h3>
+              <button
+                onClick={() => setIsBillUploadModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <BillUploadForm
+              onUploadSuccess={handleBillUploadSuccess}
+              onUploadError={handleBillUploadError}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

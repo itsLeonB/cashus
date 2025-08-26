@@ -444,7 +444,7 @@ const GroupExpenseDetails: React.FC = () => {
                 )}
               </div>
 
-              {expense.items && expense.items.length === 0 ? (
+              {!expense.items || expense.items.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <svg
                     className="w-12 h-12 mx-auto mb-4"

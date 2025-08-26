@@ -1,36 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { CreateFriendModal } from '../components/CreateFriendModal';
-import { formatCurrency } from '../utils/currency';
-import type { FriendshipResponse, DebtTransactionResponse } from '../types/api';
-import apiClient from '../services/api';
-import { format } from 'date-fns';
-import type { GroupExpenseResponse } from '../types/groupExpense';
-import BillUploadForm from '../components/BillUploadForm';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { CreateFriendModal } from "../components/CreateFriendModal";
+import { formatCurrency } from "../utils/currency";
+import type { FriendshipResponse, DebtTransactionResponse } from "../types/api";
+import apiClient from "../services/api";
+import { format } from "date-fns";
+import type { GroupExpenseResponse } from "../types/groupExpense";
+import BillUploadForm from "../components/BillUploadForm";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [friendships, setFriendships] = useState<FriendshipResponse[]>([]);
-  const [transactions, setTransactions] = useState<DebtTransactionResponse[]>([]);
-  const [groupExpenses, setGroupExpenses] = useState<GroupExpenseResponse[]>([]);
+  const [transactions, setTransactions] = useState<DebtTransactionResponse[]>(
+    []
+  );
+  const [groupExpenses, setGroupExpenses] = useState<GroupExpenseResponse[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateFriendModalOpen, setIsCreateFriendModalOpen] = useState(false);
   const [isBillUploadModalOpen, setIsBillUploadModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [friendshipsData, transactionsData, groupExpensesData] = await Promise.all([
-        apiClient.getFriendships(),
-        apiClient.getDebtTransactions(),
-        apiClient.getCreatedGroupExpenses().catch(() => []), // Fallback to empty array if fails
-      ]);
+      const [friendshipsData, transactionsData, groupExpensesData] =
+        await Promise.all([
+          apiClient.getFriendships(),
+          apiClient.getDebtTransactions(),
+          apiClient.getCreatedGroupExpenses().catch(() => []), // Fallback to empty array if fails
+        ]);
       setFriendships(friendshipsData);
       setTransactions(transactionsData);
       setGroupExpenses(groupExpensesData);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error("Failed to fetch data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -56,12 +61,12 @@ const Dashboard: React.FC = () => {
   };
 
   const handleBillUploadError = (error: string) => {
-    console.error('Bill upload error:', error);
+    console.error("Bill upload error:", error);
     // Handle error - maybe show a toast notification
   };
 
   const handleNewTransaction = () => {
-    navigate('/transactions/new');
+    navigate("/transactions/new");
   };
 
   const handleFriendClick = (friendshipId: string) => {
@@ -103,17 +108,37 @@ const Dashboard: React.FC = () => {
             onClick={handleNewTransaction}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
             </svg>
             <span>New Transaction</span>
           </button>
           <button
-            onClick={() => navigate('/group-expenses')}
+            onClick={() => navigate("/group-expenses")}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
             </svg>
             <span>Group Expenses</span>
           </button>
@@ -121,8 +146,18 @@ const Dashboard: React.FC = () => {
             onClick={() => setIsCreateFriendModalOpen(true)}
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+              />
             </svg>
             <span>Add Friend</span>
           </button>
@@ -130,8 +165,18 @@ const Dashboard: React.FC = () => {
             onClick={() => setIsBillUploadModalOpen(true)}
             className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
             </svg>
             <span>Upload Bill</span>
           </button>
@@ -156,7 +201,9 @@ const Dashboard: React.FC = () => {
                   </button>
                 </div>
                 {friendships.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No friends added yet</p>
+                  <p className="text-gray-500 text-center py-4">
+                    No friends added yet
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {friendships.map((friendship) => (
@@ -166,11 +213,18 @@ const Dashboard: React.FC = () => {
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
                       >
                         <div>
-                          <p className="font-medium text-gray-900">{friendship.profileName}</p>
-                          <p className="text-sm text-gray-500 capitalize">{friendship.type.toLowerCase()}</p>
+                          <p className="font-medium text-gray-900">
+                            {friendship.profileName}
+                          </p>
+                          <p className="text-sm text-gray-500 capitalize">
+                            {friendship.type.toLowerCase()}
+                          </p>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {format(new Date(friendship.createdAt), 'MMM dd, yyyy')}
+                          {format(
+                            new Date(friendship.createdAt),
+                            "MMM dd, yyyy"
+                          )}
                         </div>
                       </div>
                     ))}
@@ -188,7 +242,9 @@ const Dashboard: React.FC = () => {
                   </h3>
                 </div>
                 {transactions.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No transactions yet</p>
+                  <p className="text-gray-500 text-center py-4">
+                    No transactions yet
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {transactions.slice(0, 5).map((transaction) => (
@@ -200,20 +256,25 @@ const Dashboard: React.FC = () => {
                           <p className="font-medium text-gray-900">
                             {formatCurrency(transaction.amount)}
                           </p>
-                          <p className="text-sm text-gray-500">{transaction.description}</p>
-                          <p className="text-xs text-gray-400">{transaction.transferMethod}</p>
+                          <p className="text-sm text-gray-500">
+                            {transaction.description}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {transaction.transferMethod}
+                          </p>
                         </div>
                         <div className="text-right">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${transaction.type === 'CREDIT'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                              }`}
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              transaction.type === "CREDIT"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                           >
                             {transaction.type}
                           </span>
                           <p className="text-xs text-gray-500 mt-1">
-                            {format(new Date(transaction.createdAt), 'MMM dd')}
+                            {format(new Date(transaction.createdAt), "MMM dd")}
                           </p>
                         </div>
                       </div>
@@ -231,7 +292,7 @@ const Dashboard: React.FC = () => {
                     Group Expenses
                   </h3>
                   <button
-                    onClick={() => navigate('/group-expenses')}
+                    onClick={() => navigate("/group-expenses")}
                     className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   >
                     View All
@@ -241,7 +302,7 @@ const Dashboard: React.FC = () => {
                   <div className="text-center py-4">
                     <p className="text-gray-500 mb-3">No group expenses yet</p>
                     <button
-                      onClick={() => navigate('/group-expenses/new')}
+                      onClick={() => navigate("/group-expenses/new")}
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                     >
                       Create your first group expense
@@ -249,18 +310,21 @@ const Dashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {groupExpenses.slice(0, 3).map(expense => (
+                    {groupExpenses.slice(0, 3).map((expense) => (
                       <div
                         key={expense.id}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => navigate(`/group-expenses/${expense.id}`)}
+                        onClick={() =>
+                          navigate(`/group-expenses/${expense.id}`)
+                        }
                       >
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">
-                            {expense.description || 'Group Expense'}
+                            {expense.description || "Group Expense"}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {expense.items.length} items • {formatCurrency(expense.totalAmount)}
+                            {expense.items ? expense.items.length : 0} items •{" "}
+                            {formatCurrency(expense.totalAmount)}
                           </p>
                         </div>
                         <div className="text-right">
@@ -273,7 +337,7 @@ const Dashboard: React.FC = () => {
                     {groupExpenses.length > 3 && (
                       <div className="text-center pt-2">
                         <button
-                          onClick={() => navigate('/group-expenses')}
+                          onClick={() => navigate("/group-expenses")}
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
                           View {groupExpenses.length - 3} more expenses
@@ -304,7 +368,7 @@ const Dashboard: React.FC = () => {
                       <dd className="text-lg font-medium text-gray-900">
                         {formatCurrency(
                           transactions
-                            .filter((t) => t.type === 'CREDIT')
+                            .filter((t) => t.type === "CREDIT")
                             .reduce((sum, t) => sum + parseInt(t.amount), 0)
                         )}
                       </dd>
@@ -330,7 +394,7 @@ const Dashboard: React.FC = () => {
                       <dd className="text-lg font-medium text-gray-900">
                         {formatCurrency(
                           transactions
-                            .filter((t) => t.type === 'DEBT')
+                            .filter((t) => t.type === "DEBT")
                             .reduce((sum, t) => sum + parseInt(t.amount), 0)
                         )}
                       </dd>
@@ -404,8 +468,18 @@ const Dashboard: React.FC = () => {
                 onClick={() => setIsBillUploadModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>

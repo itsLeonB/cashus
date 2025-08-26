@@ -28,8 +28,8 @@ export interface LoginResponse {
 }
 
 export interface ProfileResponse {
+  id: string;
   userId: string;
-  profileId: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -42,7 +42,7 @@ export interface NewAnonymousFriendshipRequest {
 
 export interface FriendshipResponse {
   id: string;
-  type: 'ANON' | 'REAL';
+  type: "ANON" | "REAL";
   profileId: string;
   profileName: string;
   createdAt: string;
@@ -61,7 +61,7 @@ export interface TransferMethodResponse {
 
 export interface NewDebtTransactionRequest {
   friendProfileId: string;
-  action: 'LEND' | 'BORROW' | 'RECEIVE' | 'RETURN';
+  action: "LEND" | "BORROW" | "RECEIVE" | "RETURN";
   amount: number;
   transferMethodId: string;
   description?: string;
@@ -70,7 +70,7 @@ export interface NewDebtTransactionRequest {
 export interface DebtTransactionResponse {
   id: string;
   profileId: string;
-  type: 'DEBT' | 'CREDIT';
+  type: "DEBT" | "CREDIT";
   amount: string;
   transferMethod: string;
   description: string;

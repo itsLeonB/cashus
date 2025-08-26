@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { apiClient } from '../services/api';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { apiClient } from "../services/api";
+import type { ProfileResponse, FriendshipResponse } from "../types/api";
+import { formatCurrency } from "../utils/currency";
+import { handleApiError } from "../utils/api";
+import { sanitizeString } from "../utils/form";
 import type {
-  ProfileResponse,
-  FriendshipResponse,
-} from '../types/api';
-import { formatCurrency } from '../utils/currency';
-import { handleApiError } from '../utils/api';
-import { sanitizeString } from '../utils/form';
-import type { ExpenseItemResponse, GroupExpenseResponse, ItemParticipantRequest, UpdateExpenseItemRequest } from '../types/groupExpense';
+  ExpenseItemResponse,
+  GroupExpenseResponse,
+  ItemParticipantRequest,
+  UpdateExpenseItemRequest,
+} from "../types/groupExpense";
 
 const UpdateExpenseItem: React.FC = () => {
   const navigate = useNavigate();
@@ -22,14 +24,20 @@ const UpdateExpenseItem: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [friends, setFriends] = useState<FriendshipResponse[]>([]);
-  const [expenseItem, setExpenseItem] = useState<ExpenseItemResponse | null>(null);
-  const [groupExpense, setGroupExpense] = useState<GroupExpenseResponse | null>(null);
+  const [expenseItem, setExpenseItem] = useState<ExpenseItemResponse | null>(
+    null
+  );
+  const [groupExpense, setGroupExpense] = useState<GroupExpenseResponse | null>(
+    null
+  );
 
   // Form state
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [participants, setParticipants] = useState<ItemParticipantRequest[]>([]);
+  const [participants, setParticipants] = useState<ItemParticipantRequest[]>(
+    []
+  );
 
   useEffect(() => {
     if (groupExpenseId && expenseItemId) {
@@ -44,12 +52,13 @@ const UpdateExpenseItem: React.FC = () => {
       setLoadingInitialData(true);
       setError(null);
 
-      const [profileData, friendsData, expenseItemData, groupExpenseData] = await Promise.all([
-        apiClient.getProfile(),
-        apiClient.getFriendships().catch(() => []),
-        apiClient.getExpenseItemDetails(groupExpenseId, expenseItemId),
-        apiClient.getGroupExpenseDetails(groupExpenseId)
-      ]);
+      const [profileData, friendsData, expenseItemData, groupExpenseData] =
+        await Promise.all([
+          apiClient.getProfile(),
+          apiClient.getFriendships().catch(() => []),
+          apiClient.getExpenseItemDetails(groupExpenseId, expenseItemId),
+          apiClient.getGroupExpenseDetails(groupExpenseId),
+        ]);
 
       setProfile(profileData);
       setFriends(friendsData);
@@ -61,9 +70,8 @@ const UpdateExpenseItem: React.FC = () => {
       setAmount(expenseItemData.amount);
       setQuantity(expenseItemData.quantity);
       setParticipants(expenseItemData.participants || []);
-
     } catch (err) {
-      console.error('Error fetching initial data:', err);
+      console.error("Error fetching initial data:", err);
       setError(handleApiError(err));
     } finally {
       setLoadingInitialData(false);
@@ -78,39 +86,44 @@ const UpdateExpenseItem: React.FC = () => {
     e.preventDefault();
 
     if (!canEditExpense()) {
-      setError('Cannot edit expense - participants have been confirmed');
+      setError("Cannot edit expense - participants have been confirmed");
       return;
     }
 
     if (!groupExpenseId || !expenseItemId) {
-      setError('Missing required parameters');
+      setError("Missing required parameters");
       return;
     }
 
     if (!name.trim()) {
-      setError('Item name is required');
+      setError("Item name is required");
       return;
     }
 
     if (!amount || parseFloat(amount) <= 0) {
-      setError('Amount must be greater than 0');
+      setError("Amount must be greater than 0");
       return;
     }
 
     if (quantity <= 0) {
-      setError('Quantity must be greater than 0');
+      setError("Quantity must be greater than 0");
       return;
     }
 
     if (participants.length === 0) {
-      setError('At least one participant is required');
+      setError("At least one participant is required");
       return;
     }
 
     // Validate that shares add up to 1 (100%)
-    const totalShares = participants.reduce((sum, p) => sum + parseFloat(p.share || '0'), 0);
+    const totalShares = participants.reduce(
+      (sum, p) => sum + parseFloat(p.share || "0"),
+      0
+    );
     if (Math.abs(totalShares - 1) > 0.01) {
-      setError(`Total shares (${(totalShares * 100).toFixed(1)}%) must equal 100%`);
+      setError(
+        `Total shares (${(totalShares * 100).toFixed(1)}%) must equal 100%`
+      );
       return;
     }
 
@@ -124,7 +137,7 @@ const UpdateExpenseItem: React.FC = () => {
         name: sanitizeString(name),
         amount: amount.toString(),
         quantity,
-        participants
+        participants,
       };
 
       await apiClient.updateExpenseItem(updateRequest);
@@ -132,7 +145,7 @@ const UpdateExpenseItem: React.FC = () => {
       // Navigate back to group expense details
       navigate(`/group-expenses/${groupExpenseId}`);
     } catch (err) {
-      console.error('Error updating expense item:', err);
+      console.error("Error updating expense item:", err);
       setError(handleApiError(err));
     } finally {
       setLoading(false);
@@ -143,33 +156,31 @@ const UpdateExpenseItem: React.FC = () => {
     // Round to 2 decimal places and convert to string
     const roundedShare = Math.max(0, share);
     const shareString = (Math.round(roundedShare * 100) / 100).toFixed(2);
-    setParticipants(prev =>
-      prev.map(p =>
-        p.profileId === profileId
-          ? { ...p, share: shareString }
-          : p
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.profileId === profileId ? { ...p, share: shareString } : p
       )
     );
   };
 
   const addParticipant = (profileId: string) => {
-    if (participants.some(p => p.profileId === profileId)) {
+    if (participants.some((p) => p.profileId === profileId)) {
       return; // Already added
     }
 
-    setParticipants(prev => [...prev, { profileId, share: "0.10" }]); // Default to 10%
+    setParticipants((prev) => [...prev, { profileId, share: "0.10" }]); // Default to 10%
   };
 
   const removeParticipant = (profileId: string) => {
-    setParticipants(prev => prev.filter(p => p.profileId !== profileId));
+    setParticipants((prev) => prev.filter((p) => p.profileId !== profileId));
   };
 
   const getParticipantName = (profileId: string) => {
-    if (profileId === profile?.profileId) {
-      return 'You';
+    if (profileId === profile?.id) {
+      return "You";
     }
-    const friend = friends.find(f => f.profileId === profileId);
-    return friend?.profileName || 'Unknown';
+    const friend = friends.find((f) => f.profileId === profileId);
+    return friend?.profileName || "Unknown";
   };
 
   const getAllPossibleParticipants = () => {
@@ -177,12 +188,12 @@ const UpdateExpenseItem: React.FC = () => {
 
     if (profile) {
       allParticipants.push({
-        id: profile.profileId,
-        name: 'You'
+        id: profile.id,
+        name: "You",
       });
     }
 
-    friends.forEach(friend => {
+    friends.forEach((friend) => {
       allParticipants.push({
         id: friend.profileId,
         name: friend.profileName,
@@ -193,7 +204,7 @@ const UpdateExpenseItem: React.FC = () => {
   };
 
   const calculateTotalShares = () => {
-    return participants.reduce((sum, p) => sum + parseFloat(p.share || '0'), 0);
+    return participants.reduce((sum, p) => sum + parseFloat(p.share || "0"), 0);
   };
 
   const calculateTotalSharesPercentage = () => {
@@ -240,8 +251,18 @@ const UpdateExpenseItem: React.FC = () => {
                 onClick={() => navigate(-1)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -252,13 +273,22 @@ const UpdateExpenseItem: React.FC = () => {
               <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5 text-amber-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-amber-800">
-                      This expense item cannot be edited because the participants have been confirmed.
+                      This expense item cannot be edited because the
+                      participants have been confirmed.
                     </p>
                   </div>
                 </div>
@@ -269,8 +299,16 @@ const UpdateExpenseItem: React.FC = () => {
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5 text-red-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">
@@ -282,7 +320,10 @@ const UpdateExpenseItem: React.FC = () => {
 
             {/* Item Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Item Name *
               </label>
               <input
@@ -291,8 +332,11 @@ const UpdateExpenseItem: React.FC = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={!canEditExpense()}
-                className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${!canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                  }`}
+                className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                  !canEditExpense()
+                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                    : ""
+                }`}
                 placeholder="Enter item name"
                 required
               />
@@ -301,7 +345,10 @@ const UpdateExpenseItem: React.FC = () => {
             {/* Amount and Quantity */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="amount"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Individual Item Amount *
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
@@ -314,8 +361,11 @@ const UpdateExpenseItem: React.FC = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     disabled={!canEditExpense()}
-                    className={`block w-full pl-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${!canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                      }`}
+                    className={`block w-full pl-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                      !canEditExpense()
+                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                        : ""
+                    }`}
                     placeholder="0"
                     min="0"
                     step="0.01"
@@ -328,7 +378,10 @@ const UpdateExpenseItem: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="quantity"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Quantity *
                 </label>
                 <input
@@ -337,8 +390,11 @@ const UpdateExpenseItem: React.FC = () => {
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   disabled={!canEditExpense()}
-                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${!canEditExpense() ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                    }`}
+                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                    !canEditExpense()
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : ""
+                  }`}
                   min="1"
                   required
                 />
@@ -350,10 +406,13 @@ const UpdateExpenseItem: React.FC = () => {
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-gray-700">
                   Participants *
-                  <span className={`ml-2 text-sm ${Math.abs(calculateTotalShares() - 1) < 0.01
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                    }`}>
+                  <span
+                    className={`ml-2 text-sm ${
+                      Math.abs(calculateTotalShares() - 1) < 0.01
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
                     (Total: {calculateTotalSharesPercentage()}%)
                   </span>
                 </label>
@@ -364,8 +423,8 @@ const UpdateExpenseItem: React.FC = () => {
                       if (participants.length > 0) {
                         const equalShare = 1 / participants.length;
                         const equalShareString = equalShare.toFixed(4);
-                        setParticipants(prev =>
-                          prev.map(p => ({ ...p, share: equalShareString }))
+                        setParticipants((prev) =>
+                          prev.map((p) => ({ ...p, share: equalShareString }))
                         );
                       }
                     }}
@@ -376,8 +435,8 @@ const UpdateExpenseItem: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setParticipants(prev =>
-                        prev.map(p => ({ ...p, share: "0.00" }))
+                      setParticipants((prev) =>
+                        prev.map((p) => ({ ...p, share: "0.00" }))
                       );
                     }}
                     className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
@@ -390,21 +449,30 @@ const UpdateExpenseItem: React.FC = () => {
               {/* Current Participants */}
               <div className="space-y-3 mb-4">
                 {participants.map((participant) => (
-                  <div key={participant.profileId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
+                  <div
+                    key={participant.profileId}
+                    className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md"
+                  >
                     <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900">
                         {getParticipantName(participant.profileId)}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <label className="text-sm text-gray-600">Share (%):</label>
+                      <label className="text-sm text-gray-600">
+                        Share (%):
+                      </label>
                       <input
                         type="number"
-                        value={(parseFloat(participant.share || '0') * 100).toFixed(2)}
-                        onChange={(e) => handleParticipantShareChange(
-                          participant.profileId,
-                          (parseFloat(e.target.value) || 0) / 100
-                        )}
+                        value={(
+                          parseFloat(participant.share || "0") * 100
+                        ).toFixed(2)}
+                        onChange={(e) =>
+                          handleParticipantShareChange(
+                            participant.profileId,
+                            (parseFloat(e.target.value) || 0) / 100
+                          )
+                        }
                         className="w-24 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
                         min="0"
                         max="100"
@@ -416,8 +484,18 @@ const UpdateExpenseItem: React.FC = () => {
                       onClick={() => removeParticipant(participant.profileId)}
                       className="text-red-600 hover:text-red-800"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -429,7 +507,10 @@ const UpdateExpenseItem: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-3">Add participants:</p>
                 <div className="flex flex-wrap gap-2">
                   {getAllPossibleParticipants()
-                    .filter(person => !participants.some(p => p.profileId === person.id))
+                    .filter(
+                      (person) =>
+                        !participants.some((p) => p.profileId === person.id)
+                    )
                     .map((person) => (
                       <button
                         key={person.id}
@@ -437,8 +518,18 @@ const UpdateExpenseItem: React.FC = () => {
                         onClick={() => addParticipant(person.id)}
                         className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-700 bg-white hover:bg-gray-50"
                       >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
                         </svg>
                         {person.name}
                       </button>
@@ -451,18 +542,29 @@ const UpdateExpenseItem: React.FC = () => {
             {quantity > 0 && amount && (
               <div className="bg-blue-50 p-4 rounded-md space-y-2">
                 <p className="text-sm text-blue-800">
-                  <strong>Individual item amount:</strong> {formatCurrency(parseFloat(amount || '0'))}
+                  <strong>Individual item amount:</strong>{" "}
+                  {formatCurrency(parseFloat(amount || "0"))}
                 </p>
                 <p className="text-sm text-blue-800">
-                  <strong>Total for {quantity} items:</strong> {formatCurrency(parseFloat(amount || '0') * quantity)}
+                  <strong>Total for {quantity} items:</strong>{" "}
+                  {formatCurrency(parseFloat(amount || "0") * quantity)}
                 </p>
                 <div className="border-t border-blue-200 pt-2 mt-2">
                   <p className="text-sm text-blue-800 font-medium">
                     Participant costs:
                   </p>
-                  {participants.map(participant => (
-                    <p key={participant.profileId} className="text-sm text-blue-700 ml-2">
-                      • {getParticipantName(participant.profileId)}: {formatCurrency(parseFloat(amount || '0') * quantity * parseFloat(participant.share))} ({(parseFloat(participant.share) * 100).toFixed(1)}%)
+                  {participants.map((participant) => (
+                    <p
+                      key={participant.profileId}
+                      className="text-sm text-blue-700 ml-2"
+                    >
+                      • {getParticipantName(participant.profileId)}:{" "}
+                      {formatCurrency(
+                        parseFloat(amount || "0") *
+                          quantity *
+                          parseFloat(participant.share)
+                      )}{" "}
+                      ({(parseFloat(participant.share) * 100).toFixed(1)}%)
                     </p>
                   ))}
                 </div>
@@ -481,10 +583,13 @@ const UpdateExpenseItem: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || !canEditExpense()}
-                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${canEditExpense() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
-                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                  canEditExpense()
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-400"
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {loading ? 'Updating...' : 'Update Item'}
+                {loading ? "Updating..." : "Update Item"}
               </button>
             </div>
           </form>

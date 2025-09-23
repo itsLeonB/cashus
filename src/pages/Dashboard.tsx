@@ -7,7 +7,6 @@ import type { FriendshipResponse, DebtTransactionResponse } from "../types/api";
 import apiClient from "../services/api";
 import { format } from "date-fns";
 import type { GroupExpenseResponse } from "../types/groupExpense";
-import BillUploadForm from "../components/BillUploadForm";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -21,7 +20,6 @@ const Dashboard: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateFriendModalOpen, setIsCreateFriendModalOpen] = useState(false);
-  const [isBillUploadModalOpen, setIsBillUploadModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -52,17 +50,6 @@ const Dashboard: React.FC = () => {
   const handleCreateFriendSuccess = () => {
     // Refresh the friendships data after successful creation
     fetchData();
-  };
-
-  const handleBillUploadSuccess = (payerProfileId: string) => {
-    console.log(`Bill uploaded successfully for payer: ${payerProfileId}`);
-    // Optionally refresh data or show success message
-    setIsBillUploadModalOpen(false);
-  };
-
-  const handleBillUploadError = (error: string) => {
-    console.error("Bill upload error:", error);
-    // Handle error - maybe show a toast notification
   };
 
   const handleNewTransaction = () => {
@@ -457,39 +444,6 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsCreateFriendModalOpen(false)}
         onSuccess={handleCreateFriendSuccess}
       />
-
-      {/* Bill Upload Modal */}
-      {isBillUploadModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 xl:w-2/5 shadow-lg rounded-md bg-white">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Upload Bill</h3>
-              <button
-                onClick={() => setIsBillUploadModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <BillUploadForm
-              onUploadSuccess={handleBillUploadSuccess}
-              onUploadError={handleBillUploadError}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

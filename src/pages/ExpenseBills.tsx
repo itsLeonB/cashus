@@ -3,28 +3,41 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { apiClient } from '../services/api';
 import type { ExpenseBillResponse } from '../types/expenseBill';
+import BillUploadForm from '../components/BillUploadForm';
+import Modal from '../components/Modal';
 
 export default function ExpenseBills() {
   const [bills, setBills] = useState<ExpenseBillResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBillUploadModalOpen, setIsBillUploadModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchBills = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.getAllCreatedBills();
-        setBills(data);
-      } catch (err) {
-        setError('Failed to fetch bills');
-        console.error('Failed to fetch bills:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchBills();
   }, []);
+
+  const fetchBills = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getAllCreatedBills();
+      setBills(data);
+    } catch (err) {
+      setError('Failed to fetch bills');
+      console.error('Failed to fetch bills:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBillUploadSuccess = (payerProfileId: string) => {
+    console.log(`Bill uploaded successfully for payer: ${payerProfileId}`);
+    setIsBillUploadModalOpen(false);
+    fetchBills(); // Refresh the bills list
+  };
+
+  const handleBillUploadError = (error: string) => {
+    console.error("Bill upload error:", error);
+  };
 
   if (loading) {
     return (
@@ -47,12 +60,20 @@ export default function ExpenseBills() {
               <h1 className="text-3xl font-bold text-gray-900">Expense Bills</h1>
               <p className="text-gray-600">Manage your uploaded bills</p>
             </div>
-            <Link
-              to="/dashboard"
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Back to Dashboard
-            </Link>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setIsBillUploadModalOpen(true)}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Upload Bill
+              </button>
+              <Link
+                to="/dashboard"
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -114,6 +135,17 @@ export default function ExpenseBills() {
           )}
         </div>
       </main>
+
+      <Modal
+        isOpen={isBillUploadModalOpen}
+        onClose={() => setIsBillUploadModalOpen(false)}
+        title="Upload Bill"
+      >
+        <BillUploadForm
+          onUploadSuccess={handleBillUploadSuccess}
+          onUploadError={handleBillUploadError}
+        />
+      </Modal>
     </div>
   );
 }

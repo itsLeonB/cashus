@@ -1,22 +1,27 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly title: string;
+  readonly children: ReactNode;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: ModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50" 
-      style={{backgroundColor: 'rgba(0,0,0,0.6)'}}
+    <div
+      className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative top-20 mx-auto p-5 w-11/12 md:w-3/4 lg:w-1/2 xl:w-2/5 shadow-lg rounded-md bg-white"
         onClick={(e) => e.stopPropagation()}
       >

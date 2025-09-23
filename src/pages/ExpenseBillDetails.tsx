@@ -153,7 +153,7 @@ export default function ExpenseBillDetails() {
                 </div>
 
                 {bill.imageUrl ? (
-                  <AsyncImage src={bill.imageUrl} alt="Bill" className="h-64" />
+                  <AsyncImage src={bill.imageUrl} alt="Bill" />
                 ) : null}
               </div>
             </div>

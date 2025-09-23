@@ -5,6 +5,7 @@ import { apiClient } from '../services/api';
 import type { ExpenseBillResponse } from '../types/expenseBill';
 import BillUploadForm from '../components/BillUploadForm';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function ExpenseBills() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export default function ExpenseBills() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBillUploadModalOpen, setIsBillUploadModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [billToDelete, setBillToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBills();
@@ -38,6 +41,25 @@ export default function ExpenseBills() {
 
   const handleBillUploadError = (error: string) => {
     console.error("Bill upload error:", error);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, billId: string) => {
+    e.stopPropagation();
+    setBillToDelete(billId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (billToDelete) {
+      try {
+        await apiClient.deleteBill(billToDelete);
+        fetchBills();
+      } catch (err) {
+        console.error('Failed to delete bill:', err);
+      }
+    }
+    setDeleteConfirmOpen(false);
+    setBillToDelete(null);
   };
 
   if (loading) {
@@ -121,13 +143,23 @@ export default function ExpenseBills() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">
-                          {format(new Date(bill.createdAt), 'MMM dd, yyyy')}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {format(new Date(bill.createdAt), 'HH:mm')}
-                        </p>
+                      <div className="flex items-center space-x-3">
+                        <div className="text-right">
+                          <p className="text-sm text-gray-500">
+                            {format(new Date(bill.createdAt), 'MMM dd, yyyy')}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {format(new Date(bill.createdAt), 'HH:mm')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteClick(e, bill.id)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -148,6 +180,14 @@ export default function ExpenseBills() {
           onUploadError={handleBillUploadError}
         />
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Bill"
+        message="Are you sure you want to delete this bill? This action cannot be undone."
+      />
     </div>
   );
 }

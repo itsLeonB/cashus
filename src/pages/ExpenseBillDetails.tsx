@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { apiClient } from "../services/api";
 import type { ExpenseBillResponse } from "../types/expenseBill";
 import AsyncImage from "../components/AsyncImage";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function ExpenseBillDetails() {
   const { billId } = useParams<{ billId: string }>();
+  const navigate = useNavigate();
   const [bill, setBill] = useState<ExpenseBillResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (billId) {
@@ -28,6 +31,16 @@ export default function ExpenseBillDetails() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await apiClient.deleteBill(billId!);
+      navigate('/expense-bills');
+    } catch (err) {
+      console.error('Failed to delete bill:', err);
+    }
+    setDeleteConfirmOpen(false);
   };
 
   if (loading) {
@@ -77,12 +90,20 @@ export default function ExpenseBillDetails() {
               <h1 className="text-3xl font-bold text-gray-900">Bill Details</h1>
               <p className="text-gray-600">View bill information</p>
             </div>
-            <Link
-              to="/expense-bills"
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Back to Bills
-            </Link>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Delete Bill
+              </button>
+              <Link
+                to="/expense-bills"
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Back to Bills
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -137,6 +158,14 @@ export default function ExpenseBillDetails() {
           </div>
         </div>
       </main>
+
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Bill"
+        message="Are you sure you want to delete this bill? This action cannot be undone."
+      />
     </div>
   );
 }

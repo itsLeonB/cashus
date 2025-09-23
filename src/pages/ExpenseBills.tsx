@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { apiClient } from '../services/api';
 import type { ExpenseBillResponse } from '../types/expenseBill';
@@ -7,6 +7,7 @@ import BillUploadForm from '../components/BillUploadForm';
 import Modal from '../components/Modal';
 
 export default function ExpenseBills() {
+  const navigate = useNavigate();
   const [bills, setBills] = useState<ExpenseBillResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +106,8 @@ export default function ExpenseBills() {
                   {bills.map((bill) => (
                     <div
                       key={bill.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      onClick={() => navigate(`/expense-bills/${bill.id}`)}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">

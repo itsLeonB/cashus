@@ -34,9 +34,7 @@ class ApiClient {
   ) {
     this.client = axios.create({
       baseURL: `${baseURL}/api/v1`,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: {},
     });
 
     // Add request interceptor to include auth token
@@ -241,13 +239,7 @@ class ApiClient {
     const formData = new FormData();
     formData.append("payerProfileId", payerProfileId);
     formData.append("bill", billFile);
-
-    // Create a separate request config for multipart/form-data
-    await this.client.post("/group-expenses/bills", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    await this.client.post("/group-expenses/bills", formData);
   }
 
   async getAllCreatedBills(): Promise<ExpenseBillResponse[]> {

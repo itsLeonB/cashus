@@ -36,9 +36,9 @@ export default function ExpenseBillDetails() {
   const handleDeleteConfirm = async () => {
     try {
       await apiClient.deleteBill(billId!);
-      navigate('/expense-bills');
+      navigate("/expense-bills");
     } catch (err) {
-      console.error('Failed to delete bill:', err);
+      console.error("Failed to delete bill:", err);
     }
     setDeleteConfirmOpen(false);
   };
@@ -152,7 +152,9 @@ export default function ExpenseBillDetails() {
                   </div>
                 </div>
 
-                {bill.imageUrl && <AsyncImage src={bill.imageUrl} alt="Bill" />}
+                {bill.imageUrl ? (
+                  <AsyncImage src={bill.imageUrl} alt="Bill" className="h-64" />
+                ) : null}
               </div>
             </div>
           </div>

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { apiClient } from '../services/api';
-import type { ExpenseBillResponse } from '../types/expenseBill';
-import BillUploadForm from '../components/BillUploadForm';
-import Modal from '../components/Modal';
-import ConfirmModal from '../components/ConfirmModal';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { apiClient } from "../services/api";
+import type { ExpenseBillResponse } from "../types/expenseBill";
+import BillUploadForm from "../components/BillUploadForm";
+import Modal from "../components/Modal";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function ExpenseBills() {
   const navigate = useNavigate();
@@ -22,12 +22,13 @@ export default function ExpenseBills() {
 
   const fetchBills = async () => {
     try {
+      setError(null);
       setLoading(true);
       const data = await apiClient.getAllCreatedBills();
       setBills(data);
     } catch (err) {
-      setError('Failed to fetch bills');
-      console.error('Failed to fetch bills:', err);
+      setError("Failed to fetch bills");
+      console.error("Failed to fetch bills:", err);
     } finally {
       setLoading(false);
     }
@@ -55,7 +56,7 @@ export default function ExpenseBills() {
         await apiClient.deleteBill(billToDelete);
         fetchBills();
       } catch (err) {
-        console.error('Failed to delete bill:', err);
+        console.error("Failed to delete bill:", err);
       }
     }
     setDeleteConfirmOpen(false);
@@ -80,7 +81,9 @@ export default function ExpenseBills() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Expense Bills</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Expense Bills
+              </h1>
               <p className="text-gray-600">Manage your uploaded bills</p>
             </div>
             <div className="flex space-x-3">
@@ -135,10 +138,16 @@ export default function ExpenseBills() {
                         <div className="flex items-center space-x-4">
                           <div className="flex-1">
                             <p className="font-medium text-gray-900">
-                              Creator: {bill.isCreatedByUser ? 'You' : bill.creatorProfileName}
+                              Creator:{" "}
+                              {bill.isCreatedByUser
+                                ? "You"
+                                : bill.creatorProfileName}
                             </p>
                             <p className="text-sm text-gray-600">
-                              Payer: {bill.isPaidByUser ? 'You' : bill.payerProfileName}
+                              Payer:{" "}
+                              {bill.isPaidByUser
+                                ? "You"
+                                : bill.payerProfileName}
                             </p>
                           </div>
                         </div>
@@ -146,18 +155,28 @@ export default function ExpenseBills() {
                       <div className="flex items-center space-x-3">
                         <div className="text-right">
                           <p className="text-sm text-gray-500">
-                            {format(new Date(bill.createdAt), 'MMM dd, yyyy')}
+                            {format(new Date(bill.createdAt), "MMM dd, yyyy")}
                           </p>
                           <p className="text-xs text-gray-400">
-                            {format(new Date(bill.createdAt), 'HH:mm')}
+                            {format(new Date(bill.createdAt), "HH:mm")}
                           </p>
                         </div>
                         <button
                           onClick={(e) => handleDeleteClick(e, bill.id)}
                           className="text-red-600 hover:text-red-800 p-1"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
                           </svg>
                         </button>
                       </div>

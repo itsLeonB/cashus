@@ -12,6 +12,8 @@ import GroupExpenses from './pages/GroupExpenses';
 import NewGroupExpense from './pages/NewGroupExpense';
 import GroupExpenseDetails from './pages/GroupExpenseDetails';
 import UpdateExpenseItem from './pages/UpdateExpenseItem';
+import ExpenseBills from './pages/ExpenseBills';
+import ExpenseBillDetails from './pages/ExpenseBillDetails';
 import './App.css';
 
 function App() {
@@ -75,6 +77,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <UpdateExpenseItem />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expense-bills"
+              element={
+                <ProtectedRoute>
+                  <ExpenseBills />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expense-bills/:billId"
+              element={
+                <ProtectedRoute>
+                  <ExpenseBillDetails />
                 </ProtectedRoute>
               }
             />

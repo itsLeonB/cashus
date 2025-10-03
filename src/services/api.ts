@@ -95,6 +95,14 @@ class ApiClient {
     return response.data;
   }
 
+  async updateName(name: string): Promise<ProfileResponse> {
+    const response: AxiosResponse<ProfileResponse> = await this.client.patch(
+      "/profile",
+      { name }
+    );
+    return response.data;
+  }
+
   // Friendship endpoints
   async createAnonymousFriendship(
     data: NewAnonymousFriendshipRequest

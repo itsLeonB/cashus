@@ -1,22 +1,23 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import apiClient from '../services/api';
-import type { RegisterRequest } from '../types/api';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import apiClient from "../services/api";
+import GoogleButton from "../components/GoogleButton";
+import type { RegisterRequest } from "../types/api";
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState<RegisterRequest>({
-    email: '',
-    password: '',
-    passwordConfirmation: '',
+    email: "",
+    password: "",
+    passwordConfirmation: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -24,10 +25,10 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (formData.password !== formData.passwordConfirmation) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
@@ -35,15 +36,13 @@ const Register: React.FC = () => {
 
     try {
       await apiClient.register(formData);
-      navigate('/login', {
-        state: { message: 'Registration successful! Please log in.' }
+      navigate("/login", {
+        state: { message: "Registration successful! Please log in." },
       });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error
-        ? err.message
-        : '';
+      const errorMessage = err instanceof Error ? err.message : "";
 
-      setError(errorMessage || 'Registration failed. Please try again.');
+      setError(errorMessage || "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +64,10 @@ const Register: React.FC = () => {
           )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <input
@@ -81,7 +83,10 @@ const Register: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <input
@@ -97,7 +102,10 @@ const Register: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="passwordConfirmation" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="passwordConfirmation"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Confirm Password
               </label>
               <input
@@ -120,18 +128,23 @@ const Register: React.FC = () => {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? "Creating account..." : "Create account"}
             </button>
           </div>
 
           <div className="text-center">
             <span className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Already have an account?{" "}
+              <Link
+                to="/login"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
                 Sign in
               </Link>
             </span>
           </div>
+
+          <GoogleButton />
         </form>
       </div>
     </div>

@@ -1,21 +1,30 @@
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import OAuthCallback from './pages/OAuthCallback';
-import Dashboard from './pages/Dashboard';
-import NewTransaction from './pages/NewTransaction';
-import FriendDetails from './pages/FriendDetails';
-import GroupExpenses from './pages/GroupExpenses';
-import NewGroupExpense from './pages/NewGroupExpense';
-import GroupExpenseDetails from './pages/GroupExpenseDetails';
-import UpdateExpenseItem from './pages/UpdateExpenseItem';
-import ExpenseBills from './pages/ExpenseBills';
-import ExpenseBillDetails from './pages/ExpenseBillDetails';
-import './App.css';
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
+
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import ExpenseBills from "./pages/ExpenseBills";
+import OAuthCallback from "./pages/OAuthCallback";
+import FriendDetails from "./pages/FriendDetails";
+import GroupExpenses from "./pages/GroupExpenses";
+import NewTransaction from "./pages/NewTransaction";
+import { AuthProvider } from "./contexts/AuthContext";
+import NewGroupExpense from "./pages/NewGroupExpense";
+import ProtectedRoute from "./components/ProtectedRoute";
+import UpdateExpenseItem from "./pages/UpdateExpenseItem";
+import ExpenseBillDetails from "./pages/ExpenseBillDetails";
+import GroupExpenseDetails from "./pages/GroupExpenseDetails";
+import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
+
+import "./App.css";
 
 function App() {
   return (
@@ -23,8 +32,22 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route
+              path="/login"
+              element={
+                <UnauthenticatedRoute>
+                  <Login />
+                </UnauthenticatedRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <UnauthenticatedRoute>
+                  <Register />
+                </UnauthenticatedRoute>
+              }
+            />
             <Route path="/auth/google/callback" element={<OAuthCallback />} />
             <Route
               path="/dashboard"

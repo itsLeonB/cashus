@@ -92,6 +92,18 @@ class ApiClient {
     return `${baseURI}/auth/${provider}`;
   }
 
+  async handleOAuthCallback(
+    provider: string,
+    code: string,
+    state: string
+  ): Promise<LoginResponse> {
+    const response: AxiosResponse<LoginResponse> = await this.client.get(
+      `/auth/${provider}/callback`,
+      { params: { code, state } }
+    );
+    return response.data;
+  }
+
   // Profile endpoints
   async getProfile(): Promise<ProfileResponse> {
     const response: AxiosResponse<ProfileResponse> = await this.client.get(

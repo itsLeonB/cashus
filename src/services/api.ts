@@ -87,6 +87,11 @@ class ApiClient {
     return response.data;
   }
 
+  getOAuthUrl(provider: string): string {
+    const baseURI = this.client.getUri();
+    return `${baseURI}/auth/${provider}`;
+  }
+
   // Profile endpoints
   async getProfile(): Promise<ProfileResponse> {
     const response: AxiosResponse<ProfileResponse> = await this.client.get(

@@ -7,11 +7,11 @@ const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuth();
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
 
   useEffect(() => {
     const handleCallback = async () => {
-      const code = searchParams.get("code");
-      const state = searchParams.get("state");
       if (!code || !state) {
         navigate("/login");
         return;
@@ -32,7 +32,7 @@ const OAuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, login]);
+  }, [code, state, navigate, login]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

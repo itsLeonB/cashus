@@ -19,6 +19,7 @@ import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
 import "./App.css";
 
 const Register = lazy(() => import("./pages/Register"));
+const VerifyRegistration = lazy(() => import("./pages/VerifyRegistration"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const NewTransaction = lazy(() => import("./pages/NewTransaction"));
 const FriendDetails = lazy(() => import("./pages/FriendDetails"));
@@ -53,6 +54,7 @@ function App() {
                 }
               />
               <Route path="/auth/google/callback" element={<OAuthCallback />} />
+              <Route path="/auth/verify-registration" element={<VerifyRegistration />} />
               <Route
                 path="/dashboard"
                 element={

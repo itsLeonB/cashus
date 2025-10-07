@@ -10,6 +10,7 @@ import type {
   TransferMethodResponse,
   NewDebtTransactionRequest,
   DebtTransactionResponse,
+  RegisterResponse,
 } from "../types/api";
 import type { FriendDetailsResponse } from "../types/friend";
 import type {
@@ -75,8 +76,20 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async register(data: RegisterRequest): Promise<void> {
-    await this.client.post("/auth/register", data);
+  async register(data: RegisterRequest): Promise<string> {
+    const response: AxiosResponse<RegisterResponse> = await this.client.post(
+      "/auth/register",
+      data
+    );
+    return response.data.message;
+  }
+
+  async verifyRegistration(token: string): Promise<LoginResponse> {
+    const response: AxiosResponse<LoginResponse> = await this.client.get(
+      "/auth/verify-registration",
+      { params: { token } }
+    );
+    return response.data;
   }
 
   async login(data: LoginRequest): Promise<LoginResponse> {
@@ -106,9 +119,8 @@ class ApiClient {
 
   // Profile endpoints
   async getProfile(): Promise<ProfileResponse> {
-    const response: AxiosResponse<ProfileResponse> = await this.client.get(
-      "/profile"
-    );
+    const response: AxiosResponse<ProfileResponse> =
+      await this.client.get("/profile");
     return response.data;
   }
 
@@ -128,9 +140,8 @@ class ApiClient {
   }
 
   async getFriendships(): Promise<FriendshipResponse[]> {
-    const response: AxiosResponse<FriendshipResponse[]> = await this.client.get(
-      "/friendships"
-    );
+    const response: AxiosResponse<FriendshipResponse[]> =
+      await this.client.get("/friendships");
     return response.data;
   }
 

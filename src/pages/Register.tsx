@@ -35,9 +35,9 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await apiClient.register(formData);
+      const msg = await apiClient.register(formData);
       navigate("/login", {
-        state: { message: "Registration successful! Please log in." },
+        state: { message: msg },
       });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "";

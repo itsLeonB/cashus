@@ -6,6 +6,8 @@ import type { FriendshipResponse, DebtTransactionResponse } from "../types/api";
 import apiClient from "../services/api";
 import { format } from "date-fns";
 import type { GroupExpenseResponse } from "../types/groupExpense";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +33,7 @@ const Dashboard: React.FC = () => {
       setTransactions(transactionsData);
       setGroupExpenses(groupExpensesData);
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+      toast.error(`Failed to fetch dashboard data ${errToString(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +66,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       {/* Quick Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-wrap gap-3">

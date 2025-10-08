@@ -1,7 +1,9 @@
+import { toast } from "react-toastify";
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
+import { errToString } from "../utils";
 
 const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -26,7 +28,7 @@ const OAuthCallback: React.FC = () => {
         await login(response.token);
         navigate("/dashboard");
       } catch (err) {
-        console.error("OAuth callback error:", err);
+        toast.error(`OAuth callback error: ${errToString(err)}`);
         navigate("/login");
       }
     };

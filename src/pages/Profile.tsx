@@ -6,6 +6,7 @@ import { User, Mail, Edit, ArrowLeft } from "lucide-react";
 import Modal from "../components/Modal";
 import apiClient from "../services/api";
 import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 const Profile: React.FC = () => {
   const { profile, refreshProfile } = useAuth();
@@ -24,7 +25,7 @@ const Profile: React.FC = () => {
       await refreshProfile();
       setIsEditModalOpen(false);
     } catch (error) {
-      console.error("Failed to update name:", error);
+      toast.error(`Failed to update name: ${errToString(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -32,14 +33,13 @@ const Profile: React.FC = () => {
 
   const handleResetPassword = async () => {
     if (!profile?.email) return;
-    
+
     setResetLoading(true);
     try {
       await apiClient.sendPasswordReset(profile.email);
       toast.success("Password reset link sent to your email");
     } catch (error) {
-      console.error("Failed to send reset email:", error);
-      toast.error("Failed to send reset email");
+      toast.error(`Failed to send reset email: ${errToString(error)}`);
     } finally {
       setResetLoading(false);
     }
@@ -55,7 +55,7 @@ const Profile: React.FC = () => {
           <ArrowLeft className="h-5 w-5" />
           <span>Back</span>
         </button>
-        
+
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-32"></div>
           <div className="relative px-6 pb-6">
@@ -69,7 +69,7 @@ const Profile: React.FC = () => {
                 </AvatarFallback>
               </Avatar>
             </div>
-            
+
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center gap-2">
                 <h1 className="text-3xl font-bold text-gray-900">
@@ -85,7 +85,7 @@ const Profile: React.FC = () => {
                   <Edit className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="flex items-center justify-center text-gray-600 bg-gray-50 rounded-lg py-3 px-4">
                 <Mail className="h-5 w-5 mr-2" />
                 <span className="text-sm">{profile?.email}</span>
@@ -110,10 +110,14 @@ const Profile: React.FC = () => {
       >
         <form onSubmit={handleSaveName}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              className="block text-sm font-medium text-gray-700 mb-2"
+              htmlFor="name"
+            >
               Name
             </label>
             <input
+              name="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}

@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
@@ -16,15 +17,14 @@ const ResetPassword: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
     if (!token) {
-      setError("Invalid reset token");
+      toast.error("Invalid reset token");
       return;
     }
 
@@ -37,10 +37,10 @@ const ResetPassword: React.FC = () => {
         passwordConfirmation: confirmPassword,
       });
       await login(response.token);
+      toast.success("Password reset successful!");
       navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "";
-      setError(errorMessage || "Failed to reset password. Please try again.");
+      toast.error(`Password reset failed. ${errToString(err)}`);
     } finally {
       setIsLoading(false);
     }
@@ -56,12 +56,6 @@ const ResetPassword: React.FC = () => {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
           <div className="space-y-4">
             <div>
               <label htmlFor="password" className="sr-only">

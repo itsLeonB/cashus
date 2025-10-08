@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import apiClient from "../services/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -27,7 +29,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("Failed to update name:", error);
+      toast.error(`Failed to update name: ${errToString(error)}`);
     } finally {
       setIsLoading(false);
     }

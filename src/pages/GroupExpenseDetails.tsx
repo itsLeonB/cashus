@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiClient } from "../services/api";
@@ -13,6 +14,7 @@ import type {
 import EditOtherFeeModal from "../components/EditOtherFeeModal";
 import AddExpenseItemModal from "../components/AddExpenseItemModal";
 import AddOtherFeeModal from "../components/AddOtherFeeModal";
+import { errToString } from "../utils";
 
 // Confirmation Modal Component
 interface ConfirmationModalProps {
@@ -133,7 +135,7 @@ const GroupExpenseDetails: React.FC = () => {
       );
     } catch (err) {
       setError(handleApiError(err));
-      console.error("Error fetching expense details:", err);
+      toast.error(`Error fetching expense details: ${errToString(err)}`);
     } finally {
       setLoading(false);
     }
@@ -193,7 +195,7 @@ const GroupExpenseDetails: React.FC = () => {
       setExpense(updatedExpense);
     } catch (err) {
       setError(handleApiError(err));
-      console.error("Error confirming expense:", err);
+      toast.error(`Error confirming expense: ${errToString(err)}`);
     } finally {
       setConfirmingExpense(false);
     }
@@ -233,7 +235,7 @@ const GroupExpenseDetails: React.FC = () => {
       setDeletingItem(null);
     } catch (err) {
       setError(handleApiError(err));
-      console.error("Error deleting item:", err);
+      toast.error(`Error deleting item: ${errToString(err)}`);
       setDeletingItem({ ...deletingItem, isDeleting: false });
     }
   };
@@ -258,7 +260,7 @@ const GroupExpenseDetails: React.FC = () => {
       setDeletingFee(null);
     } catch (err) {
       setError(handleApiError(err));
-      console.error("Error deleting fee:", err);
+      toast.error(`Error deleting fee: ${errToString(err)}`);
       setDeletingFee({ ...deletingFee, isDeleting: false });
     }
   };

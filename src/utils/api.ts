@@ -2,6 +2,7 @@
  * API-related utility functions
  */
 
+import { toast } from "react-toastify";
 import type { ApiError } from '../types/api';
 
 /**
@@ -181,7 +182,7 @@ export const retryWithBackoff = async <T>(
       const jitter = Math.random() * 0.1 * baseDelay; // Add up to 10% jitter
       const delay = baseDelay * Math.pow(2, attempt) + jitter;
       
-      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms delay`);
+      toast.info(`Retrying request (${attempt + 1}/${maxRetries})...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { ProfileResponse } from "../types/api";
 import apiClient from "../services/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 interface AuthContextType {
   profile: ProfileResponse | null;
@@ -39,7 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile(profile);
       }
     } catch (error) {
-      console.error("Failed to fetch profile:", error);
+      toast.error(`Failed to fetch profile ${errToString(error)}`);
       apiClient.clearAuthToken();
       setProfile(null);
     } finally {

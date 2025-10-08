@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import apiClient from "../services/api";
 import GoogleButton from "../components/GoogleButton";
 import type { RegisterRequest } from "../types/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState<RegisterRequest>({
@@ -10,7 +12,6 @@ const Register: React.FC = () => {
     password: "",
     passwordConfirmation: "",
   });
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -25,10 +26,9 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (formData.password !== formData.passwordConfirmation) {
-      setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -40,9 +40,7 @@ const Register: React.FC = () => {
         state: { message: msg },
       });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "";
-
-      setError(errorMessage || "Registration failed. Please try again.");
+      toast.error(`Registration failed. ${errToString(err)}`);
     } finally {
       setIsLoading(false);
     }
@@ -57,11 +55,6 @@ const Register: React.FC = () => {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
           <div className="space-y-4">
             <div>
               <label

@@ -1,24 +1,23 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../services/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
 
     try {
       await apiClient.sendPasswordReset(email);
       setSuccess(true);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "";
-      setError(errorMessage || "Failed to send reset email. Please try again.");
+      toast.error(`Failed to send reset email. ${errToString(err)}`);
     } finally {
       setIsLoading(false);
     }
@@ -47,12 +46,6 @@ const ForgotPassword: React.FC = () => {
           </div>
         ) : (
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-
             <div>
               <label htmlFor="email" className="sr-only">
                 Email address

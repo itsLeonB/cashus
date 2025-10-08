@@ -19,6 +19,8 @@ import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
 import "./App.css";
 
 const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyRegistration = lazy(() => import("./pages/VerifyRegistration"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const NewTransaction = lazy(() => import("./pages/NewTransaction"));
@@ -53,6 +55,15 @@ function App() {
                   </UnauthenticatedRoute>
                 }
               />
+              <Route
+                path="/forgot-password"
+                element={
+                  <UnauthenticatedRoute>
+                    <ForgotPassword />
+                  </UnauthenticatedRoute>
+                }
+              />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/auth/google/callback" element={<OAuthCallback />} />
               <Route path="/auth/verify-registration" element={<VerifyRegistration />} />
               <Route

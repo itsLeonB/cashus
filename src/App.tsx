@@ -9,6 +9,8 @@ import {
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -29,6 +31,7 @@ const GroupExpenses = lazy(() => import("./pages/GroupExpenses"));
 const NewGroupExpense = lazy(() => import("./pages/NewGroupExpense"));
 const GroupExpenseDetails = lazy(() => import("./pages/GroupExpenseDetails"));
 const UpdateExpenseItem = lazy(() => import("./pages/UpdateExpenseItem"));
+const Profile = lazy(() => import("./pages/Profile"));
 const ExpenseBills = lazy(() => import("./pages/ExpenseBills"));
 const ExpenseBillDetails = lazy(() => import("./pages/ExpenseBillDetails"));
 
@@ -123,6 +126,14 @@ function App() {
                 }
               />
               <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/expense-bills"
                 element={
                   <ProtectedRoute>
@@ -143,6 +154,7 @@ function App() {
           </Suspense>
           <Analytics />
           <SpeedInsights />
+          <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </Router>
     </AuthProvider>

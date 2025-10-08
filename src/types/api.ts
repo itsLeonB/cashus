@@ -45,6 +45,8 @@ export interface ProfileResponse {
   id: string;
   userId: string;
   name: string;
+  avatar?: string;
+  email?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

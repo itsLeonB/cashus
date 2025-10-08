@@ -11,6 +11,7 @@ import type {
   NewDebtTransactionRequest,
   DebtTransactionResponse,
   RegisterResponse,
+  ResetPasswordRequest,
 } from "../types/api";
 import type { FriendDetailsResponse } from "../types/friend";
 import type {
@@ -103,6 +104,18 @@ class ApiClient {
   getOAuthUrl(provider: string): string {
     const baseURI = this.client.getUri();
     return `${baseURI}/auth/${provider}`;
+  }
+
+  async sendPasswordReset(email: string): Promise<void> {
+    await this.client.post("/auth/password-reset", { email });
+  }
+
+  async resetPassword(request: ResetPasswordRequest): Promise<LoginResponse> {
+    const response: AxiosResponse<LoginResponse> = await this.client.patch(
+      "/auth/reset-password",
+      request
+    );
+    return response.data;
   }
 
   async handleOAuthCallback(

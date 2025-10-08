@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -5,6 +6,7 @@ import { apiClient } from "../services/api";
 import type { ExpenseBillResponse } from "../types/expenseBill";
 import AsyncImage from "../components/AsyncImage";
 import ConfirmModal from "../components/ConfirmModal";
+import { errToString } from "../utils";
 
 export default function ExpenseBillDetails() {
   const { billId } = useParams<{ billId: string }>();
@@ -27,7 +29,7 @@ export default function ExpenseBillDetails() {
       setBill(data);
     } catch (err) {
       setError("Failed to fetch bill details");
-      console.error("Failed to fetch bill details:", err);
+      toast.error(`Failed to fetch bill details: ${errToString(err)}`);
     } finally {
       setLoading(false);
     }
@@ -38,7 +40,7 @@ export default function ExpenseBillDetails() {
       await apiClient.deleteBill(billId!);
       navigate("/expense-bills");
     } catch (err) {
-      console.error("Failed to delete bill:", err);
+      toast.error(`Failed to delete bill: ${errToString(err)}`);
     }
     setDeleteConfirmOpen(false);
   };

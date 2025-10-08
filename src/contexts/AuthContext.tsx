@@ -1,10 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
-import type { ProfileResponse } from '../types/api';
-import apiClient from '../services/api';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import type { ProfileResponse } from "../types/api";
+import apiClient from "../services/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 interface AuthContextType {
-  user: ProfileResponse | null;
+  profile: ProfileResponse | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (token: string) => Promise<void>;
@@ -17,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -27,21 +29,21 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<ProfileResponse | null>(null);
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isAuthenticated = !!user && apiClient.isAuthenticated();
+  const isAuthenticated = !!profile && apiClient.isAuthenticated();
 
   const fetchProfile = async () => {
     try {
       if (apiClient.isAuthenticated()) {
         const profile = await apiClient.getProfile();
-        setUser(profile);
+        setProfile(profile);
       }
     } catch (error) {
-      console.error('Failed to fetch profile:', error);
+      toast.error(`Failed to fetch profile ${errToString(error)}`);
       apiClient.clearAuthToken();
-      setUser(null);
+      setProfile(null);
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     apiClient.clearAuthToken();
-    setUser(null);
+    setProfile(null);
   };
 
   const refreshProfile = async () => {
@@ -66,7 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const value: AuthContextType = {
-    user,
+    profile,
     isAuthenticated,
     isLoading,
     login,

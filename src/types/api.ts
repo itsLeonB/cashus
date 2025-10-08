@@ -31,10 +31,22 @@ export interface RegisterResponse {
   message: string;
 }
 
+export interface SendPasswordResetRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
+  passwordConfirmation: string;
+}
+
 export interface ProfileResponse {
   id: string;
   userId: string;
   name: string;
+  avatar?: string;
+  email?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

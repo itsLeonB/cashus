@@ -9,6 +9,8 @@ import {
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -19,6 +21,8 @@ import UnauthenticatedRoute from "./components/UnauthenticatedRoute";
 import "./App.css";
 
 const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyRegistration = lazy(() => import("./pages/VerifyRegistration"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const NewTransaction = lazy(() => import("./pages/NewTransaction"));
@@ -27,6 +31,7 @@ const GroupExpenses = lazy(() => import("./pages/GroupExpenses"));
 const NewGroupExpense = lazy(() => import("./pages/NewGroupExpense"));
 const GroupExpenseDetails = lazy(() => import("./pages/GroupExpenseDetails"));
 const UpdateExpenseItem = lazy(() => import("./pages/UpdateExpenseItem"));
+const Profile = lazy(() => import("./pages/Profile"));
 const ExpenseBills = lazy(() => import("./pages/ExpenseBills"));
 const ExpenseBillDetails = lazy(() => import("./pages/ExpenseBillDetails"));
 
@@ -53,6 +58,15 @@ function App() {
                   </UnauthenticatedRoute>
                 }
               />
+              <Route
+                path="/forgot-password"
+                element={
+                  <UnauthenticatedRoute>
+                    <ForgotPassword />
+                  </UnauthenticatedRoute>
+                }
+              />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/auth/google/callback" element={<OAuthCallback />} />
               <Route path="/auth/verify-registration" element={<VerifyRegistration />} />
               <Route
@@ -112,6 +126,14 @@ function App() {
                 }
               />
               <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/expense-bills"
                 element={
                   <ProtectedRoute>
@@ -132,6 +154,20 @@ function App() {
           </Suspense>
           <Analytics />
           <SpeedInsights />
+          <ToastContainer 
+            position="top-right" 
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            toastClassName="!bg-white !text-gray-900 !rounded-lg !shadow-lg !border !border-gray-200"
+            progressClassName="!bg-indigo-500"
+          />
         </div>
       </Router>
     </AuthProvider>

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -6,6 +7,7 @@ import type { ExpenseBillResponse } from "../types/expenseBill";
 import BillUploadForm from "../components/BillUploadForm";
 import Modal from "../components/Modal";
 import ConfirmModal from "../components/ConfirmModal";
+import { errToString } from "../utils";
 
 export default function ExpenseBills() {
   const navigate = useNavigate();
@@ -28,20 +30,20 @@ export default function ExpenseBills() {
       setBills(data);
     } catch (err) {
       setError("Failed to fetch bills");
-      console.error("Failed to fetch bills:", err);
+      toast.error(`Failed to fetch bills: ${errToString(err)}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleBillUploadSuccess = (payerProfileId: string) => {
-    console.log(`Bill uploaded successfully for payer: ${payerProfileId}`);
+    toast.info(`Bill uploaded successfully for payer: ${payerProfileId}`);
     setIsBillUploadModalOpen(false);
     fetchBills(); // Refresh the bills list
   };
 
   const handleBillUploadError = (error: string) => {
-    console.error("Bill upload error:", error);
+    toast.error(`Bill upload error: ${errToString(error)}`);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, billId: string) => {
@@ -56,7 +58,7 @@ export default function ExpenseBills() {
         await apiClient.deleteBill(billToDelete);
         fetchBills();
       } catch (err) {
-        console.error("Failed to delete bill:", err);
+        toast.error(`Failed to delete bill: ${errToString(err)}`);
       }
     }
     setDeleteConfirmOpen(false);

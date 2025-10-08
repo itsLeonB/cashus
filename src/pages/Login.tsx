@@ -4,15 +4,15 @@ import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
 import GoogleButton from "../components/GoogleButton";
 import type { LoginRequest } from "../types/api";
+import { toast } from "react-toastify";
+import { errToString } from "../utils";
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState<LoginRequest>({
     email: "",
     password: "",
   });
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (location.state?.message) {
-      setSuccessMessage(location.state.message);
+      toast.success(location.state.message);
       navigate(location.pathname, { replace: true });
     }
   }, [location.state?.message, navigate, location.pathname]);
@@ -37,7 +37,6 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
 
     try {
@@ -45,9 +44,7 @@ const Login: React.FC = () => {
       await login(response.token);
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "";
-
-      setError(errorMessage || "Login failed. Please try again.");
+      toast.error(`Login failed. ${errToString(err)}`);
     } finally {
       setIsLoading(false);
     }
@@ -62,16 +59,6 @@ const Login: React.FC = () => {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {successMessage && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              {successMessage}
-            </div>
-          )}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -105,6 +92,15 @@ const Login: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-indigo-600 hover:text-indigo-500"
+            >
+              Forgot password?
+            </Link>
           </div>
 
           <div>

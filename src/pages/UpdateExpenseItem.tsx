@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../services/api";
@@ -11,6 +12,7 @@ import type {
   ItemParticipantRequest,
   UpdateExpenseItemRequest,
 } from "../types/groupExpense";
+import { errToString } from "../utils";
 
 const UpdateExpenseItem: React.FC = () => {
   const navigate = useNavigate();
@@ -71,7 +73,7 @@ const UpdateExpenseItem: React.FC = () => {
       setQuantity(expenseItemData.quantity);
       setParticipants(expenseItemData.participants || []);
     } catch (err) {
-      console.error("Error fetching initial data:", err);
+      toast.error(`Error fetching initial data: ${errToString(err)}`);
       setError(handleApiError(err));
     } finally {
       setLoadingInitialData(false);
@@ -145,7 +147,7 @@ const UpdateExpenseItem: React.FC = () => {
       // Navigate back to group expense details
       navigate(`/group-expenses/${groupExpenseId}`);
     } catch (err) {
-      console.error("Error updating expense item:", err);
+      toast.error(`Error updating expense item: ${errToString(err)}`);
       setError(handleApiError(err));
     } finally {
       setLoading(false);

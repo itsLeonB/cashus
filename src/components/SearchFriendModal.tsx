@@ -8,12 +8,14 @@ interface SearchFriendModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onError: (error: string) => void;
 }
 
 export default function SearchFriendModal({
   isOpen,
   onClose,
   onSuccess,
+  onError,
 }: SearchFriendModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProfileResponse[]>([]);
@@ -32,7 +34,7 @@ export default function SearchFriendModal({
         const profiles = await apiClient.searchProfiles(query);
         setResults(profiles);
       } catch (error) {
-        console.error("Search failed:", error);
+        onError(error instanceof Error ? error.message : "Search failed");
         setResults([]);
       } finally {
         setLoading(false);
@@ -49,7 +51,9 @@ export default function SearchFriendModal({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("Failed to send friend request:", error);
+      onError(
+        error instanceof Error ? error.message : "Failed to send friend request"
+      );
     } finally {
       setSendingRequest(null);
     }
@@ -89,9 +93,11 @@ export default function SearchFriendModal({
             >
               <div className="flex items-center">
                 <Avatar className="h-10 w-10 mr-3">
-                  {profile.avatar && (
-                    <AvatarImage src={profile.avatar} alt={profile.name} />
-                  )}
+                  <AvatarImage
+                    referrerPolicy="no-referrer"
+                    src={profile.avatar || undefined}
+                    alt={profile.name}
+                  />
                   <AvatarFallback>
                     {profile.name.charAt(0).toUpperCase()}
                   </AvatarFallback>

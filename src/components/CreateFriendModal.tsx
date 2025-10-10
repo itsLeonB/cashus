@@ -6,12 +6,14 @@ interface CreateFriendModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onError: (error: string) => void;
 }
 
 export const CreateFriendModal: React.FC<CreateFriendModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  onError,
 }) => {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +36,7 @@ export const CreateFriendModal: React.FC<CreateFriendModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create friend");
+      onError(err.response?.data?.message || "Failed to create friend");
     } finally {
       setIsLoading(false);
     }

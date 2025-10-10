@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { CreateFriendModal } from "../components/CreateFriendModal";
-import { formatCurrency } from "../utils/currency";
-import type { FriendshipResponse, DebtTransactionResponse } from "../types/api";
-import apiClient from "../services/api";
+import React, { useEffect, useState } from "react";
+
 import { format } from "date-fns";
-import type { GroupExpenseResponse } from "../types/groupExpense";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
+
 import { errToString } from "../utils";
+import apiClient from "../services/api";
+import { formatCurrency } from "../utils/currency";
+import type { GroupExpenseResponse } from "../types/groupExpense";
+import type { DebtTransactionResponse, FriendshipResponse } from "../types/api";
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
   const [friendships, setFriendships] = useState<FriendshipResponse[]>([]);
   const [transactions, setTransactions] = useState<DebtTransactionResponse[]>(
     []
@@ -19,7 +19,6 @@ const Dashboard: React.FC = () => {
     []
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreateFriendModalOpen, setIsCreateFriendModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -43,19 +42,6 @@ const Dashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleCreateFriendSuccess = () => {
-    // Refresh the friendships data after successful creation
-    fetchData();
-  };
-
-  const handleNewTransaction = () => {
-    navigate("/transactions/new");
-  };
-
-  const handleFriendClick = (friendshipId: string) => {
-    navigate(`/friends/${friendshipId}`);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -69,8 +55,8 @@ const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={handleNewTransaction}
+          <Link
+            to="/transactions/new"
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
             <svg
@@ -87,9 +73,9 @@ const Dashboard: React.FC = () => {
               />
             </svg>
             <span>New Transaction</span>
-          </button>
-          <button
-            onClick={() => navigate("/group-expenses")}
+          </Link>
+          <Link
+            to={"/group-expenses"}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
             <svg
@@ -106,9 +92,9 @@ const Dashboard: React.FC = () => {
               />
             </svg>
             <span>Group Expenses</span>
-          </button>
-          <button
-            onClick={() => setIsCreateFriendModalOpen(true)}
+          </Link>
+          <Link
+            to="/friends"
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
             <svg
@@ -121,13 +107,13 @@ const Dashboard: React.FC = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            <span>Add Friend</span>
-          </button>
-          <button
-            onClick={() => navigate("/expense-bills")}
+            <span>Friends</span>
+          </Link>
+          <Link
+            to={"expense-bills"}
             className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
             <svg
@@ -144,7 +130,7 @@ const Dashboard: React.FC = () => {
               />
             </svg>
             <span>Expense Bills</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -156,14 +142,8 @@ const Dashboard: React.FC = () => {
               <div className="px-4 py-5 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Friends
+                    Recent Friends
                   </h3>
-                  <button
-                    onClick={() => setIsCreateFriendModalOpen(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm font-medium"
-                  >
-                    Add Friend
-                  </button>
                 </div>
                 {friendships.length === 0 ? (
                   <p className="text-gray-500 text-center py-4">
@@ -172,9 +152,9 @@ const Dashboard: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     {friendships.map((friendship) => (
-                      <div
+                      <Link
                         key={friendship.id}
-                        onClick={() => handleFriendClick(friendship.id)}
+                        to={`/friends/${friendship.id}`}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
                       >
                         <div>
@@ -191,7 +171,7 @@ const Dashboard: React.FC = () => {
                             "MMM dd, yyyy"
                           )}
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -254,34 +234,26 @@ const Dashboard: React.FC = () => {
               <div className="px-4 py-5 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Group Expenses
+                    Recent Group Expenses
                   </h3>
-                  <button
-                    onClick={() => navigate("/group-expenses")}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    View All
-                  </button>
                 </div>
                 {groupExpenses.length === 0 ? (
                   <div className="text-center py-4">
                     <p className="text-gray-500 mb-3">No group expenses yet</p>
-                    <button
-                      onClick={() => navigate("/group-expenses/new")}
+                    <Link
+                      to="/group-expenses/new"
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                     >
                       Create your first group expense
-                    </button>
+                    </Link>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {groupExpenses.slice(0, 3).map((expense) => (
-                      <div
+                      <Link
                         key={expense.id}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() =>
-                          navigate(`/group-expenses/${expense.id}`)
-                        }
+                        to={`/group-expenses/${expense.id}`}
                       >
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">
@@ -292,23 +264,8 @@ const Dashboard: React.FC = () => {
                             {formatCurrency(expense.totalAmount)}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-medium text-blue-600">
-                            View Details
-                          </span>
-                        </div>
-                      </div>
+                      </Link>
                     ))}
-                    {groupExpenses.length > 3 && (
-                      <div className="text-center pt-2">
-                        <button
-                          onClick={() => navigate("/group-expenses")}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          View {groupExpenses.length - 3} more expenses
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -415,13 +372,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </main>
-
-      {/* Create Friend Modal */}
-      <CreateFriendModal
-        isOpen={isCreateFriendModalOpen}
-        onClose={() => setIsCreateFriendModalOpen(false)}
-        onSuccess={handleCreateFriendSuccess}
-      />
     </div>
   );
 };

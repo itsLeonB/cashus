@@ -61,6 +61,7 @@ export interface FriendshipResponse {
   type: "ANON" | "REAL";
   profileId: string;
   profileName: string;
+  profileAvatar?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

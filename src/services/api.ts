@@ -13,7 +13,7 @@ import type {
   RegisterResponse,
   ResetPasswordRequest,
 } from "../types/api";
-import type { FriendDetailsResponse } from "../types/friend";
+import type { FriendDetailsResponse, FriendRequest } from "../types/friend";
 import type {
   ExpenseItemResponse,
   FeeCalculationMethodInfo,
@@ -141,6 +141,63 @@ class ApiClient {
     const response: AxiosResponse<ProfileResponse> = await this.client.patch(
       "/profile",
       { name }
+    );
+    return response.data;
+  }
+
+  // Profiles endpoints
+  async searchProfiles(query: string): Promise<ProfileResponse[]> {
+    const response: AxiosResponse<ProfileResponse[]> = await this.client.get(
+      "/profiles",
+      { params: { query } }
+    );
+    return response.data;
+  }
+
+  async sendFriendRequest(profileId: string): Promise<void> {
+    await this.client.post(`/profiles/${profileId}/friend-requests`);
+  }
+
+  // Friend request endpoints
+  async getSentFriendRequests(): Promise<FriendRequest[]> {
+    const response: AxiosResponse<FriendRequest[]> = await this.client.get(
+      "/friend-requests/sent"
+    );
+    return response.data;
+  }
+
+  async getReceivedFriendRequests(): Promise<FriendRequest[]> {
+    const response: AxiosResponse<FriendRequest[]> = await this.client.get(
+      "/friend-requests/received"
+    );
+    return response.data;
+  }
+
+  async cancelSentFriendRequest(requestId: string): Promise<void> {
+    await this.client.delete(`/friend-requests/sent/${requestId}`);
+  }
+
+  async ignoreReceivedFriendRequest(requestId: string): Promise<void> {
+    await this.client.delete(`/friend-requests/received/${requestId}`);
+  }
+
+  async blockReceivedFriendRequest(requestId: string): Promise<void> {
+    await this.client.patch(`/friend-requests/received/${requestId}`, {
+      params: { command: "block" },
+    });
+  }
+
+  async unblockReceivedFriendRequest(requestId: string): Promise<void> {
+    await this.client.patch(`/friend-requests/received/${requestId}`, {
+      params: { command: "unblock" },
+    });
+  }
+
+  async acceptReceivedFriendRequest(
+    requestId: string
+  ): Promise<FriendshipResponse> {
+    const response: AxiosResponse<FriendshipResponse> = await this.client.post(
+      `/friend-requests/received/${requestId}`
     );
     return response.data;
   }

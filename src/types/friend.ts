@@ -4,7 +4,7 @@ export interface FriendDetails {
   id: string;
   profileId: string;
   name: string;
-  type: 'ANON' | 'REAL';
+  type: "ANON" | "REAL";
   email?: string; // Only for registered friends
   phone?: string;
   avatar?: string;
@@ -22,14 +22,14 @@ export interface FriendBalance {
 
 export interface FriendTransaction {
   id: string;
-  type: 'DEBT' | 'CREDIT';
-  action: 'LEND' | 'BORROW' | 'RECEIVE' | 'RETURN';
+  type: "DEBT" | "CREDIT";
+  action: "LEND" | "BORROW" | "RECEIVE" | "RETURN";
   amount: number;
   description: string;
   transferMethod: string;
   createdAt: string;
   updatedAt: string;
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  status: "PENDING" | "COMPLETED" | "CANCELLED";
 }
 
 export interface FriendStats {
@@ -55,11 +55,25 @@ export interface UpdateFriendRequest {
 }
 
 export interface FriendTransactionFilters {
-  type?: 'DEBT' | 'CREDIT';
-  action?: 'LEND' | 'BORROW' | 'RECEIVE' | 'RETURN';
+  type?: "DEBT" | "CREDIT";
+  action?: "LEND" | "BORROW" | "RECEIVE" | "RETURN";
   dateFrom?: string;
   dateTo?: string;
   minAmount?: number;
   maxAmount?: number;
-  status?: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  status?: "PENDING" | "COMPLETED" | "CANCELLED";
+}
+
+export interface FriendRequest {
+  id: string;
+  senderAvatar?: string;
+  senderName: string;
+  recipientAvatar?: string;
+  recipientName: string;
+  message?: string;
+  createdAt: string;
+  blockedAt: string;
+  isSentByUser: boolean;
+  isReceivedByUser: boolean;
+  isBlocked: boolean;
 }

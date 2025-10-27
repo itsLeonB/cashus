@@ -12,6 +12,7 @@ import type {
   DebtTransactionResponse,
   RegisterResponse,
   ResetPasswordRequest,
+  FriendProfileSyncRequest,
 } from "../types/api";
 import type { FriendDetailsResponse, FriendRequest } from "../types/friend";
 import type {
@@ -65,7 +66,7 @@ class ApiClient {
         if (error.response?.status === 401) {
           // Clear token and redirect to login
           localStorage.removeItem("authToken");
-          window.location.href = "/login";
+          globalThis.location.href = "/login";
         }
         return Promise.reject(
           error instanceof Error
@@ -219,6 +220,10 @@ class ApiClient {
     const response: AxiosResponse<FriendDetailsResponse> =
       await this.client.get(`/friendships/${friendId}`);
     return response.data;
+  }
+
+  async syncFriendProfiles(request: FriendProfileSyncRequest): Promise<void> {
+    await this.client.put("/friendships/profile-sync", request);
   }
 
   // Transfer method endpoints

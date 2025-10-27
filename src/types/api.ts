@@ -132,3 +132,8 @@ export interface ApiError extends Error {
   isAxiosError?: boolean;
   toJSON?: () => object;
 }
+
+export interface FriendProfileSyncRequest {
+  anonymousProfileId: string;
+  realProfileId: string;
+}

@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from "react";
 
 import { format } from "date-fns";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 import apiClient from "../services/api";
 import { formatCurrency } from "../utils/currency";
+import { errToString } from "../utils/error";
 import type { FriendDetailsResponse } from "../types/friend";
+import type { FriendshipResponse } from "../types/api";
+import Modal from "../components/Modal";
+import { Button } from "../components/ui/button";
 
 const FriendDetails: React.FC = () => {
   const { friendId } = useParams<{ friendId: string }>();
+  const navigate = useNavigate();
 
   const [friendData, setFriendData] = useState<FriendDetailsResponse | null>(
     null
@@ -18,6 +24,11 @@ const FriendDetails: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "transactions" | "stats"
   >("overview");
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [friends, setFriends] = useState<FriendshipResponse[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const fetchFriendDetails = async () => {
@@ -31,9 +42,7 @@ const FriendDetails: React.FC = () => {
         const data = await apiClient.getFriendDetails(friendId);
         setFriendData(data);
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "";
-
-        setError(errorMessage || "Failed to load friend details");
+        setError(errToString(err) || "Failed to load friend details");
       } finally {
         setIsLoading(false);
       }
@@ -41,6 +50,48 @@ const FriendDetails: React.FC = () => {
 
     fetchFriendDetails();
   }, [friendId]);
+
+  const handleSyncClick = async () => {
+    try {
+      const friendsList = await apiClient.getFriendships();
+      const realFriends = friendsList.filter(
+        (f) => f.type === "REAL" && f.profileId !== friendId
+      );
+      setFriends(realFriends);
+      setShowSyncModal(true);
+    } catch (err) {
+      toast.error(`Failed to load friends list: ${errToString(err)}`);
+    }
+  };
+
+  const handleFriendSelect = (profileId: string) => {
+    setSelectedFriend(profileId);
+    setShowConfirmation(true);
+  };
+
+  const handleSync = async () => {
+    if (!selectedFriend || !friendId) return;
+
+    setIsSyncing(true);
+    try {
+      await apiClient.syncFriendProfiles({
+        anonymousProfileId: friendData!.friend.profileId,
+        realProfileId: selectedFriend,
+      });
+      toast.success("Friend profiles synced successfully");
+      navigate("/friends");
+    } catch (err) {
+      toast.error(`Failed to sync friend profiles: ${errToString(err)}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const resetModal = () => {
+    setShowSyncModal(false);
+    setShowConfirmation(false);
+    setSelectedFriend(null);
+  };
 
   const getBalanceColor = (balance: number) => {
     if (balance > 0) return "text-green-600";
@@ -167,9 +218,17 @@ const FriendDetails: React.FC = () => {
                 New Transaction
               </Link>
               {friend.type === "ANON" && (
-                <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                  Edit Friend
-                </button>
+                <>
+                  <Button
+                    onClick={handleSyncClick}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Sync to Real Profile
+                  </Button>
+                  <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                    Edit Friend
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -524,6 +583,72 @@ const FriendDetails: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Sync Modal */}
+      <Modal
+        isOpen={showSyncModal}
+        onClose={resetModal}
+        title={showConfirmation ? "Confirm Sync" : "Select Real Profile"}
+      >
+        {!showConfirmation ? (
+          <div className="space-y-3">
+            {friends.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                No real friends available to sync with
+              </p>
+            ) : (
+              friends.map((friend) => (
+                <button
+                  key={friend.profileId}
+                  onClick={() => handleFriendSelect(friend.profileId)}
+                  className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <div className="font-medium">{friend.profileName}</div>
+                  <div className="text-sm text-gray-500">Real Profile</div>
+                </button>
+              ))
+            )}
+            <div className="mt-4">
+              <Button
+                onClick={resetModal}
+                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              This will move all transactions from{" "}
+              <strong>{friendData?.friend.name}</strong> to{" "}
+              <strong>
+                {
+                  friends.find((f) => f.profileId === selectedFriend)
+                    ?.profileName
+                }
+              </strong>
+              . The anonymous profile will be deleted upon success. Continue?
+            </p>
+            <div className="flex space-x-3">
+              <Button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSyncing ? "Syncing..." : "Sync"}
+              </Button>
+              <Button
+                onClick={resetModal}
+                disabled={isSyncing}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

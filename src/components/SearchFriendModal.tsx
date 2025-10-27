@@ -16,7 +16,7 @@ export default function SearchFriendModal({
   onClose,
   onSuccess,
   onError,
-}: SearchFriendModalProps) {
+}: Readonly<SearchFriendModalProps>) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProfileResponse[]>([]);
   const [loading, setLoading] = useState(false);

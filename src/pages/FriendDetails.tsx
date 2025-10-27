@@ -70,12 +70,12 @@ const FriendDetails: React.FC = () => {
   };
 
   const handleSync = async () => {
-    if (!selectedFriend || !friendId) return;
+    if (!selectedFriend || !friendId || !friendData) return;
 
     setIsSyncing(true);
     try {
       await apiClient.syncFriendProfiles({
-        anonymousProfileId: friendData!.friend.profileId,
+        anonymousProfileId: friendData.friend.profileId,
         realProfileId: selectedFriend,
       });
       toast.success("Friend profiles synced successfully");
@@ -538,7 +538,7 @@ const FriendDetails: React.FC = () => {
                       <div className="text-2xl font-bold text-orange-600">
                         {stats.firstTransactionDate
                           ? Math.ceil(
-                              (new Date().getTime() -
+                              (Date.now() -
                                 new Date(
                                   stats.firstTransactionDate
                                 ).getTime()) /
@@ -590,34 +590,7 @@ const FriendDetails: React.FC = () => {
         onClose={resetModal}
         title={showConfirmation ? "Confirm Sync" : "Select Real Profile"}
       >
-        {!showConfirmation ? (
-          <div className="space-y-3">
-            {friends.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                No real friends available to sync with
-              </p>
-            ) : (
-              friends.map((friend) => (
-                <button
-                  key={friend.profileId}
-                  onClick={() => handleFriendSelect(friend.profileId)}
-                  className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="font-medium">{friend.profileName}</div>
-                  <div className="text-sm text-gray-500">Real Profile</div>
-                </button>
-              ))
-            )}
-            <div className="mt-4">
-              <Button
-                onClick={resetModal}
-                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
+        {showConfirmation ? (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
               This will move all transactions from{" "}
@@ -642,6 +615,33 @@ const FriendDetails: React.FC = () => {
                 onClick={resetModal}
                 disabled={isSyncing}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {friends.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                No real friends available to sync with
+              </p>
+            ) : (
+              friends.map((friend) => (
+                <button
+                  key={friend.profileId}
+                  onClick={() => handleFriendSelect(friend.profileId)}
+                  className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <div className="font-medium">{friend.profileName}</div>
+                  <div className="text-sm text-gray-500">Real Profile</div>
+                </button>
+              ))
+            )}
+            <div className="mt-4">
+              <Button
+                onClick={resetModal}
+                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700"
               >
                 Cancel
               </Button>

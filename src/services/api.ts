@@ -183,15 +183,23 @@ class ApiClient {
   }
 
   async blockReceivedFriendRequest(requestId: string): Promise<void> {
-    await this.client.patch(`/friend-requests/received/${requestId}`, {
-      params: { command: "block" },
-    });
+    await this.client.patch(
+      `/friend-requests/received/${requestId}`,
+      {},
+      {
+        params: { command: "block" },
+      }
+    );
   }
 
   async unblockReceivedFriendRequest(requestId: string): Promise<void> {
-    await this.client.patch(`/friend-requests/received/${requestId}`, {
-      params: { command: "unblock" },
-    });
+    await this.client.patch(
+      `/friend-requests/received/${requestId}`,
+      {},
+      {
+        params: { command: "unblock" },
+      }
+    );
   }
 
   async acceptReceivedFriendRequest(

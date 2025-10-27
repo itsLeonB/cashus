@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
             <span>New Transaction</span>
           </Link>
           <Link
-            to={"/group-expenses"}
+            to="/group-expenses"
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
             <svg
@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
             <span>Friends</span>
           </Link>
           <Link
-            to={"expense-bills"}
+            to="/expense-bills"
             className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
           >
             <svg
@@ -291,7 +291,10 @@ const Dashboard: React.FC = () => {
                         {formatCurrency(
                           transactions
                             .filter((t) => t.type === "CREDIT")
-                            .reduce((sum, t) => sum + parseInt(t.amount), 0)
+                            .reduce(
+                              (sum, t) => sum + Number.parseFloat(t.amount),
+                              0
+                            )
                         )}
                       </dd>
                     </dl>
@@ -317,7 +320,10 @@ const Dashboard: React.FC = () => {
                         {formatCurrency(
                           transactions
                             .filter((t) => t.type === "DEBT")
-                            .reduce((sum, t) => sum + parseInt(t.amount), 0)
+                            .reduce(
+                              (sum, t) => sum + Number.parseFloat(t.amount),
+                              0
+                            )
                         )}
                       </dd>
                     </dl>

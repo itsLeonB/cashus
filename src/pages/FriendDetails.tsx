@@ -55,7 +55,7 @@ const FriendDetails: React.FC = () => {
     try {
       const friendsList = await apiClient.getFriendships();
       const realFriends = friendsList.filter(
-        (f) => f.type === "REAL" && f.profileId !== friendId
+        (f) => f.type === "REAL" && f.profileId !== friendData?.friend.profileId
       );
       setFriends(realFriends);
       setShowSyncModal(true);

@@ -24,11 +24,11 @@ const FriendDetails: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "transactions" | "stats"
   >("overview");
-  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showAssociateModal, setShowAssociateModal] = useState(false);
   const [friends, setFriends] = useState<FriendshipResponse[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isAssociating, setIsAssociating] = useState(false);
 
   useEffect(() => {
     const fetchFriendDetails = async () => {
@@ -51,14 +51,14 @@ const FriendDetails: React.FC = () => {
     fetchFriendDetails();
   }, [friendId]);
 
-  const handleSyncClick = async () => {
+  const handleAssociateClick = async () => {
     try {
       const friendsList = await apiClient.getFriendships();
       const realFriends = friendsList.filter(
         (f) => f.type === "REAL" && f.profileId !== friendData?.friend.profileId
       );
       setFriends(realFriends);
-      setShowSyncModal(true);
+      setShowAssociateModal(true);
     } catch (err) {
       toast.error(`Failed to load friends list: ${errToString(err)}`);
     }
@@ -69,26 +69,26 @@ const FriendDetails: React.FC = () => {
     setShowConfirmation(true);
   };
 
-  const handleSync = async () => {
+  const handleAssociate = async () => {
     if (!selectedFriend || !friendId || !friendData) return;
 
-    setIsSyncing(true);
+    setIsAssociating(true);
     try {
-      await apiClient.syncFriendProfiles({
-        anonymousProfileId: friendData.friend.profileId,
+      await apiClient.associateProfile({
+        anonProfileId: friendData.friend.profileId,
         realProfileId: selectedFriend,
       });
-      toast.success("Friend profiles synced successfully");
+      toast.success("Friend profile associated successfully");
       navigate("/friends");
     } catch (err) {
-      toast.error(`Failed to sync friend profiles: ${errToString(err)}`);
+      toast.error(`Failed to associate friend profile: ${errToString(err)}`);
     } finally {
-      setIsSyncing(false);
+      setIsAssociating(false);
     }
   };
 
   const resetModal = () => {
-    setShowSyncModal(false);
+    setShowAssociateModal(false);
     setShowConfirmation(false);
     setSelectedFriend(null);
   };
@@ -220,10 +220,10 @@ const FriendDetails: React.FC = () => {
               {friend.type === "ANON" && (
                 <>
                   <Button
-                    onClick={handleSyncClick}
+                    onClick={handleAssociateClick}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    Sync to Real Profile
+                    Associate with Real Profile
                   </Button>
                   <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                     Edit Friend
@@ -584,11 +584,11 @@ const FriendDetails: React.FC = () => {
         </div>
       </main>
 
-      {/* Sync Modal */}
+      {/* Associate Modal */}
       <Modal
-        isOpen={showSyncModal}
+        isOpen={showAssociateModal}
         onClose={resetModal}
-        title={showConfirmation ? "Confirm Sync" : "Select Real Profile"}
+        title={showConfirmation ? "Confirm Association" : "Select Real Profile"}
       >
         {showConfirmation ? (
           <div className="space-y-4">
@@ -605,15 +605,15 @@ const FriendDetails: React.FC = () => {
             </p>
             <div className="flex space-x-3">
               <Button
-                onClick={handleSync}
-                disabled={isSyncing}
+                onClick={handleAssociate}
+                disabled={isAssociating}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isSyncing ? "Syncing..." : "Sync"}
+                {isAssociating ? "Associating..." : "Associate"}
               </Button>
               <Button
                 onClick={resetModal}
-                disabled={isSyncing}
+                disabled={isAssociating}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 Cancel
@@ -624,7 +624,7 @@ const FriendDetails: React.FC = () => {
           <div className="space-y-3">
             {friends.length === 0 ? (
               <p className="text-gray-500 text-center py-4">
-                No real friends available to sync with
+                No real friends available to associate with
               </p>
             ) : (
               friends.map((friend) => (

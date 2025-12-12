@@ -12,7 +12,7 @@ import type {
   DebtTransactionResponse,
   RegisterResponse,
   ResetPasswordRequest,
-  FriendProfileSyncRequest,
+  AssociateProfileRequest,
 } from "../types/api";
 import type { FriendDetailsResponse, FriendRequest } from "../types/friend";
 import type {
@@ -230,8 +230,8 @@ class ApiClient {
     return response.data;
   }
 
-  async syncFriendProfiles(request: FriendProfileSyncRequest): Promise<void> {
-    await this.client.put("/friendships/profile-sync", request);
+  async associateProfile(request: AssociateProfileRequest): Promise<void> {
+    await this.client.post("/profile/associate", request);
   }
 
   // Transfer method endpoints

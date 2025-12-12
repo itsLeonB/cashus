@@ -133,7 +133,7 @@ export interface ApiError extends Error {
   toJSON?: () => object;
 }
 
-export interface FriendProfileSyncRequest {
-  anonymousProfileId: string;
+export interface AssociateProfileRequest {
   realProfileId: string;
+  anonProfileId: string;
 }

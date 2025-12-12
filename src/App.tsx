@@ -36,11 +36,14 @@ const Friends = lazy(() => import("./pages/Friends"));
 const ExpenseBills = lazy(() => import("./pages/ExpenseBills"));
 const ExpenseBillDetails = lazy(() => import("./pages/ExpenseBillDetails"));
 
+import { UserJotTracker } from "./components/UserJotTracker";
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="App">
+          <UserJotTracker />
           <Suspense fallback={<div>Loading...</div>}>
             <Routes>
               <Route
@@ -69,7 +72,10 @@ function App() {
               />
               <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/auth/google/callback" element={<OAuthCallback />} />
-              <Route path="/auth/verify-registration" element={<VerifyRegistration />} />
+              <Route
+                path="/auth/verify-registration"
+                element={<VerifyRegistration />}
+              />
               <Route
                 path="/dashboard"
                 element={
@@ -163,8 +169,8 @@ function App() {
           </Suspense>
           <Analytics />
           <SpeedInsights />
-          <ToastContainer 
-            position="top-right" 
+          <ToastContainer
+            position="top-right"
             autoClose={3000}
             hideProgressBar={false}
             newestOnTop={false}

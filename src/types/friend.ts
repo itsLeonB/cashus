@@ -45,6 +45,7 @@ export interface FriendDetailsResponse {
   balance: FriendBalance;
   transactions: FriendTransaction[];
   stats: FriendStats;
+  redirectToRealFriendship?: string;
 }
 
 // Request types for future API endpoints

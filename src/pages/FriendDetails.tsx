@@ -40,10 +40,16 @@ const FriendDetails: React.FC = () => {
 
       try {
         const data = await apiClient.getFriendDetails(friendId);
+        if (data.redirectToRealFriendship) {
+          navigate(`/friends/${data.redirectToRealFriendship}`, {
+            replace: true,
+          });
+          return;
+        }
         setFriendData(data);
+        setIsLoading(false);
       } catch (err: unknown) {
         setError(errToString(err) || "Failed to load friend details");
-      } finally {
         setIsLoading(false);
       }
     };

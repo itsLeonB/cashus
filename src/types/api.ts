@@ -61,6 +61,7 @@ export interface FriendshipResponse {
   type: "ANON" | "REAL";
   profileId: string;
   profileName: string;
+  profileAvatar?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -130,4 +131,9 @@ export interface ApiError extends Error {
   };
   isAxiosError?: boolean;
   toJSON?: () => object;
+}
+
+export interface AssociateProfileRequest {
+  realProfileId: string;
+  anonProfileId: string;
 }

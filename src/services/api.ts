@@ -12,8 +12,9 @@ import type {
   DebtTransactionResponse,
   RegisterResponse,
   ResetPasswordRequest,
+  AssociateProfileRequest,
 } from "../types/api";
-import type { FriendDetailsResponse } from "../types/friend";
+import type { FriendDetailsResponse, FriendRequest } from "../types/friend";
 import type {
   ExpenseItemResponse,
   FeeCalculationMethodInfo,
@@ -65,7 +66,7 @@ class ApiClient {
         if (error.response?.status === 401) {
           // Clear token and redirect to login
           localStorage.removeItem("authToken");
-          window.location.href = "/login";
+          globalThis.location.href = "/login";
         }
         return Promise.reject(
           error instanceof Error
@@ -145,6 +146,71 @@ class ApiClient {
     return response.data;
   }
 
+  // Profiles endpoints
+  async searchProfiles(query: string): Promise<ProfileResponse[]> {
+    const response: AxiosResponse<ProfileResponse[]> = await this.client.get(
+      "/profiles",
+      { params: { query } }
+    );
+    return response.data;
+  }
+
+  async sendFriendRequest(profileId: string): Promise<void> {
+    await this.client.post(`/profiles/${profileId}/friend-requests`);
+  }
+
+  // Friend request endpoints
+  async getSentFriendRequests(): Promise<FriendRequest[]> {
+    const response: AxiosResponse<FriendRequest[]> = await this.client.get(
+      "/friend-requests/sent"
+    );
+    return response.data;
+  }
+
+  async getReceivedFriendRequests(): Promise<FriendRequest[]> {
+    const response: AxiosResponse<FriendRequest[]> = await this.client.get(
+      "/friend-requests/received"
+    );
+    return response.data;
+  }
+
+  async cancelSentFriendRequest(requestId: string): Promise<void> {
+    await this.client.delete(`/friend-requests/sent/${requestId}`);
+  }
+
+  async ignoreReceivedFriendRequest(requestId: string): Promise<void> {
+    await this.client.delete(`/friend-requests/received/${requestId}`);
+  }
+
+  async blockReceivedFriendRequest(requestId: string): Promise<void> {
+    await this.client.patch(
+      `/friend-requests/received/${requestId}`,
+      {},
+      {
+        params: { command: "block" },
+      }
+    );
+  }
+
+  async unblockReceivedFriendRequest(requestId: string): Promise<void> {
+    await this.client.patch(
+      `/friend-requests/received/${requestId}`,
+      {},
+      {
+        params: { command: "unblock" },
+      }
+    );
+  }
+
+  async acceptReceivedFriendRequest(
+    requestId: string
+  ): Promise<FriendshipResponse> {
+    const response: AxiosResponse<FriendshipResponse> = await this.client.post(
+      `/friend-requests/received/${requestId}`
+    );
+    return response.data;
+  }
+
   // Friendship endpoints
   async createAnonymousFriendship(
     data: NewAnonymousFriendshipRequest
@@ -162,6 +228,10 @@ class ApiClient {
     const response: AxiosResponse<FriendDetailsResponse> =
       await this.client.get(`/friendships/${friendId}`);
     return response.data;
+  }
+
+  async associateProfile(request: AssociateProfileRequest): Promise<void> {
+    await this.client.post("/profile/associate", request);
   }
 
   // Transfer method endpoints

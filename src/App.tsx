@@ -32,6 +32,7 @@ const NewGroupExpense = lazy(() => import("./pages/NewGroupExpense"));
 const GroupExpenseDetails = lazy(() => import("./pages/GroupExpenseDetails"));
 const UpdateExpenseItem = lazy(() => import("./pages/UpdateExpenseItem"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Friends = lazy(() => import("./pages/Friends"));
 const ExpenseBills = lazy(() => import("./pages/ExpenseBills"));
 const ExpenseBillDetails = lazy(() => import("./pages/ExpenseBillDetails"));
 
@@ -130,6 +131,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/friends"
+                element={
+                  <ProtectedRoute>
+                    <Friends />
                   </ProtectedRoute>
                 }
               />

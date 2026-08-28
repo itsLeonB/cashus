@@ -1,0 +1,25 @@
+# Cashus
+
+> Cashus is a free web app for splitting bills and tracking debts with friends. Record shared expenses, see who owes whom at a glance, and settle up — without awkward money conversations.
+
+Cashus is a client-side web application. The public marketing surface lives at the site root; the expense-tracking app itself is behind authentication and is not indexable.
+
+## What Cashus does
+
+- **Expense splitting**: Record a bill once and split it across multiple friends, by equal share or custom amounts, including fees and individual line items.
+- **Debt tracking**: See a running net balance with each friend across multiple currencies — who owes what, always up to date.
+- **Friend management**: Add friends (including anonymous ones), associate profiles, and share a read-only summary of what you owe each other.
+- **Transfer methods**: Store how each friend prefers to be paid back to make settling up easy.
+- **Notifications**: Get real-time updates when new shared expenses or requests involve you.
+
+## Key pages
+
+- [Home / product overview](https://cashus.online/): Features, how it works, and getting started.
+- [Privacy Policy](https://cashus.online/privacy-policy): What data Cashus collects and how it is used and protected.
+- [Terms of Service](https://cashus.online/terms-of-service): The terms and conditions for using Cashus.
+
+## Notes for AI agents
+
+- Cashus is free to use.
+- The application dashboard, friends, expenses, profile, and shared-profile pages require an account and are intentionally excluded from indexing.
+- For support, contact ellionblessan@gmail.com.

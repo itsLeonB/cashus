@@ -1,0 +1,272 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
+	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
+	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/go-crud"
+	"github.com/itsLeonB/ungerr"
+	"gorm.io/datatypes"
+)
+
+type debtServiceImpl struct {
+	debtTransactionRepository repository.DebtTransactionRepository
+	transferMethodService     TransferMethodService
+	friendshipService         FriendshipService
+	profileService            ProfileService
+	expenseService            GroupExpenseService
+	taskQueue                 queue.TaskQueue
+	transactor                crud.Transactor
+	friendshipBalanceService  FriendshipBalanceService
+}
+
+func NewDebtService(
+	debtTransactionRepository repository.DebtTransactionRepository,
+	transferMethodService TransferMethodService,
+	friendshipService FriendshipService,
+	profileService ProfileService,
+	expenseService GroupExpenseService,
+	taskQueue queue.TaskQueue,
+	transactor crud.Transactor,
+	friendshipBalanceService FriendshipBalanceService,
+) DebtService {
+	return &debtServiceImpl{
+		debtTransactionRepository,
+		transferMethodService,
+		friendshipService,
+		profileService,
+		expenseService,
+		taskQueue,
+		transactor,
+		friendshipBalanceService,
+	}
+}
+
+func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordNewTransaction")
+	defer span.End()
+
+	if !req.Amount.IsPositive() {
+		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
+	}
+	if req.UserProfileID == req.FriendProfileID {
+		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
+	}
+
+	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
+	if err != nil {
+		return dto.DebtTransactionResponse{}, err
+	}
+	if !isFriends {
+		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
+	}
+
+	transferMethod, err := ds.transferMethodService.GetByID(ctx, req.TransferMethodID)
+	if err != nil {
+		return dto.DebtTransactionResponse{}, err
+	}
+
+	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
+	if req.Direction == dto.IncomingDebt {
+		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
+	}
+
+	currency := req.Currency
+	if currency == "" {
+		userProfile, err := ds.profileService.GetEntityByID(ctx, req.UserProfileID)
+		if err != nil {
+			return dto.DebtTransactionResponse{}, err
+		}
+		currency = userProfile.HomeCurrency
+	}
+
+	var insertedDebt debts.DebtTransaction
+	err = ds.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
+			LenderProfileID:   lenderID,
+			BorrowerProfileID: borrowerID,
+			Amount:            req.Amount,
+			TransferMethodID:  req.TransferMethodID,
+			Description:       req.Description,
+			Currency:          currency,
+		})
+		if err != nil {
+			return err
+		}
+
+		return ds.friendshipBalanceService.RecalculatePair(ctx, lenderID, borrowerID)
+	})
+	if err != nil {
+		return dto.DebtTransactionResponse{}, err
+	}
+
+	go ds.taskQueue.AsyncEnqueue(ctx, message.DebtCreated{
+		ID:               insertedDebt.ID,
+		CreatorProfileID: req.UserProfileID,
+	})
+
+	insertedDebt.TransferMethod = transferMethod
+	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
+}
+
+func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactions")
+	defer span.End()
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, -1, false)
+	if err != nil {
+		return nil, err
+	}
+
+	trxProfileIDs := mapset.NewSet[uuid.UUID]()
+	for _, transaction := range transactions {
+		trxProfileIDs.Add(transaction.LenderProfileID)
+		trxProfileIDs.Add(transaction.BorrowerProfileID)
+	}
+
+	profilesByID, err := ds.profileService.GetByIDs(ctx, trxProfileIDs.ToSlice())
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
+}
+
+func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (map[string]dto.FriendBalance, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactionSummary")
+	defer span.End()
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, -1, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.SummarizePerCurrency(transactions, []uuid.UUID{profileID}), nil
+}
+
+func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.ProcessConfirmedGroupExpense")
+	defer span.End()
+
+	transferMethod, err := ds.transferMethodService.GetByName(ctx, debts.GroupExpenseTransferMethod)
+	if err != nil {
+		return err
+	}
+
+	debtTransactions := mapper.GroupExpenseToDebtTransactions(groupExpense, transferMethod.ID)
+
+	if _, err = ds.debtTransactionRepository.InsertMany(ctx, debtTransactions); err != nil {
+		return err
+	}
+
+	// A proxy-profile chain can touch 2 distinct pairs (payer<->proxy, proxy<->participant) in
+	// one call - dedupe before recalculating so a pair isn't recomputed twice.
+	type pair struct{ a, b uuid.UUID }
+	seen := make(map[pair]struct{}, len(debtTransactions))
+	for _, tx := range debtTransactions {
+		p := pair{tx.LenderProfileID, tx.BorrowerProfileID}
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+
+		if err := ds.friendshipBalanceService.RecalculatePair(ctx, tx.LenderProfileID, tx.BorrowerProfileID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetAllByProfileIDs")
+	defer span.End()
+
+	userIDs := []uuid.UUID{userProfileID}
+	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, []uuid.UUID{friendProfileID})
+	return transactions, userIDs, err
+}
+
+func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetRecent")
+	defer span.End()
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, 5, true)
+	if err != nil {
+		return nil, err
+	}
+
+	trxProfileIDs := mapset.NewSet[uuid.UUID]()
+	for _, transaction := range transactions {
+		trxProfileIDs.Add(transaction.LenderProfileID)
+		trxProfileIDs.Add(transaction.BorrowerProfileID)
+	}
+
+	profilesByID, err := ds.profileService.GetByIDs(ctx, trxProfileIDs.ToSlice())
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
+}
+
+func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.ConstructNotification")
+	defer span.End()
+
+	spec := crud.Specification[debts.DebtTransaction]{}
+	spec.Model.ID = msg.ID
+	trx, err := ds.debtTransactionRepository.FindFirst(ctx, spec)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+	if trx.IsZero() {
+		return entity.Notification{}, ungerr.NotFoundError(fmt.Sprintf("debt transaction with ID: %s is not found", msg.ID))
+	}
+
+	toNotifyProfileID := trx.LenderProfileID
+	if trx.LenderProfileID == msg.CreatorProfileID {
+		toNotifyProfileID = trx.BorrowerProfileID
+	}
+
+	friendship, err := ds.friendshipService.GetByProfileIDs(ctx, trx.LenderProfileID, trx.BorrowerProfileID)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	otherParty := friendship.Profile2
+	if toNotifyProfileID == friendship.ProfileID2 {
+		otherParty = friendship.Profile1
+	}
+
+	msgMeta := message.DebtCreatedMetadata{
+		FriendshipID: friendship.ID,
+		FriendName:   otherParty.Name,
+	}
+
+	metadata, err := json.Marshal(msgMeta)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	return entity.Notification{
+		ProfileID:  toNotifyProfileID,
+		Type:       msg.Type(),
+		EntityType: "debt-transaction",
+		EntityID:   msg.ID,
+		Metadata:   datatypes.JSON(metadata),
+	}, nil
+}

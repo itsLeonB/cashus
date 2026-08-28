@@ -1,0 +1,7 @@
+{
+  "ignores": [
+    "autoprefixer",
+    "postcss",
+    "bun:test"
+  ]
+}

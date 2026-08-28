@@ -1,0 +1,261 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
+	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/go-crud"
+	"github.com/itsLeonB/ungerr"
+	"gorm.io/datatypes"
+)
+
+type friendshipServiceImpl struct {
+	transactor           crud.Transactor
+	friendshipRepository repository.FriendshipRepository
+	profileService       ProfileService
+}
+
+func NewFriendshipService(
+	transactor crud.Transactor,
+	friendshipRepository repository.FriendshipRepository,
+	profileService ProfileService,
+) FriendshipService {
+	return &friendshipServiceImpl{
+		transactor,
+		friendshipRepository,
+		profileService,
+	}
+}
+
+func (fs *friendshipServiceImpl) CreateAnonymous(ctx context.Context, req dto.NewAnonymousFriendshipRequest) (dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.CreateAnonymous")
+	defer span.End()
+
+	var response dto.FriendshipResponse
+	err := fs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		profile, err := fs.profileService.GetByID(ctx, req.ProfileID)
+		if err != nil {
+			return err
+		}
+
+		if err = fs.validateExistingAnonymousFriendship(ctx, profile.ID, req.Name); err != nil {
+			return err
+		}
+
+		response, err = fs.insertAnonymousFriendship(ctx, profile, req.Name)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	return response, err
+}
+
+func (fs *friendshipServiceImpl) validateExistingAnonymousFriendship(
+	ctx context.Context,
+	userProfileID uuid.UUID,
+	friendName string,
+) error {
+	friendshipSpec := users.FriendshipSpecification{}
+	friendshipSpec.Model.ProfileID1 = userProfileID
+	friendshipSpec.Name = friendName
+	friendshipSpec.Model.Type = users.Anonymous
+
+	existingFriendship, err := fs.friendshipRepository.FindFirstBySpec(ctx, friendshipSpec)
+	if err != nil {
+		return err
+	}
+	if !existingFriendship.IsZero() {
+		return ungerr.ConflictError(fmt.Sprintf("anonymous friend named %s already exists", friendName))
+	}
+
+	return nil
+}
+
+func (fs *friendshipServiceImpl) insertAnonymousFriendship(
+	ctx context.Context,
+	userProfile dto.ProfileResponse,
+	friendName string,
+) (dto.FriendshipResponse, error) {
+	newProfile := dto.NewProfileRequest{
+		Name:         friendName,
+		HomeCurrency: userProfile.HomeCurrency,
+		GenerateSlug: true,
+	}
+
+	insertedProfile, err := fs.profileService.Create(ctx, newProfile)
+	if err != nil {
+		return dto.FriendshipResponse{}, err
+	}
+
+	newFriendship, err := mapper.OrderProfilesToFriendship(userProfile, insertedProfile)
+	if err != nil {
+		return dto.FriendshipResponse{}, err
+	}
+
+	newFriendship.Type = users.Anonymous
+
+	insertedFriendship, err := fs.friendshipRepository.Insert(ctx, newFriendship)
+	if err != nil {
+		return dto.FriendshipResponse{}, err
+	}
+
+	spec := crud.Specification[users.Friendship]{}
+	spec.Model.ID = insertedFriendship.ID
+	spec.PreloadRelations = []string{"Profile1", "Profile2"}
+	friendship, err := fs.friendshipRepository.FindFirst(ctx, spec)
+	if err != nil {
+		return dto.FriendshipResponse{}, err
+	}
+	if friendship.IsZero() {
+		return dto.FriendshipResponse{}, ungerr.Unknownf("friendship cannot be queried inside tx")
+	}
+
+	return mapper.FriendshipToResponse(userProfile.ID, friendship)
+}
+
+func (fs *friendshipServiceImpl) GetAll(ctx context.Context, profileID uuid.UUID) ([]dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.GetAll")
+	defer span.End()
+
+	profile, err := fs.profileService.GetByID(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	spec := users.FriendshipSpecification{}
+	spec.Model.ProfileID1 = profile.ID
+	spec.PreloadRelations = []string{"Profile1", "Profile2"}
+
+	friendships, err := fs.friendshipRepository.FindAllBySpec(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	mapperFunc := func(friendship users.Friendship) (dto.FriendshipResponse, error) {
+		return mapper.FriendshipToResponse(profile.ID, friendship)
+	}
+
+	return ezutil.MapSliceWithError(friendships, mapperFunc)
+}
+
+func (fs *friendshipServiceImpl) GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetails, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.GetDetails")
+	defer span.End()
+
+	profile, err := fs.profileService.GetByID(ctx, profileID)
+	if err != nil {
+		return dto.FriendDetails{}, err
+	}
+
+	spec := users.FriendshipSpecification{}
+	spec.Model.ID = friendshipID
+	spec.PreloadRelations = []string{"Profile1", "Profile2"}
+	friendship, err := fs.friendshipRepository.FindFirstBySpec(ctx, spec)
+	if err != nil {
+		return dto.FriendDetails{}, err
+	}
+	if friendship.IsZero() {
+		return dto.FriendDetails{}, ungerr.NotFoundError("friendship not found")
+	}
+
+	return mapper.MapToFriendDetails(profile.ID, friendship)
+}
+
+func (fs *friendshipServiceImpl) IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.IsFriends")
+	defer span.End()
+
+	friendship, err := fs.friendshipRepository.FindByProfileIDs(ctx, profileID1, profileID2)
+	if err != nil {
+		return false, false, err
+	}
+
+	if friendship.IsZero() {
+		return false, false, nil
+	}
+
+	return true, friendship.Type == users.Anonymous, nil
+}
+
+func (fs *friendshipServiceImpl) GetByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.GetByProfileIDs")
+	defer span.End()
+
+	friendship, err := fs.friendshipRepository.FindByProfileIDs(ctx, profileID1, profileID2)
+	if err != nil {
+		return users.Friendship{}, err
+	}
+
+	if friendship.IsZero() {
+		return users.Friendship{}, ungerr.NotFoundError("friendship not found")
+	}
+
+	return friendship, nil
+}
+
+func (fs *friendshipServiceImpl) CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.CreateReal")
+	defer span.End()
+
+	var response dto.FriendshipResponse
+	err := fs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		profiles, err := fs.profileService.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID})
+		if err != nil {
+			return err
+		}
+
+		userProfile := profiles[userProfileID]
+		friendProfile := profiles[friendProfileID]
+
+		newFriendship, err := mapper.OrderProfilesToFriendship(userProfile, friendProfile)
+		if err != nil {
+			return err
+		}
+
+		newFriendship.Type = users.Real
+
+		insertedFriendship, err := fs.friendshipRepository.Insert(ctx, newFriendship)
+		if err != nil {
+			return err
+		}
+
+		response, err = mapper.FriendshipToResponse(userProfile.ID, insertedFriendship)
+		return err
+	})
+	return response, err
+}
+
+func (fs *friendshipServiceImpl) ConstructNotification(ctx context.Context, msg message.FriendRequestAccepted) (entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.ConstructNotification")
+	defer span.End()
+
+	friendDetail, err := fs.GetDetails(ctx, msg.SenderProfileID, msg.FriendshipID)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	metadata, err := json.Marshal(message.FriendRequestAcceptedMetadata{FriendName: friendDetail.Name})
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	return entity.Notification{
+		ProfileID:  msg.SenderProfileID,
+		Type:       "friendship-created",
+		EntityType: "friendship",
+		EntityID:   msg.FriendshipID,
+		Metadata:   datatypes.JSON(metadata),
+	}, nil
+}

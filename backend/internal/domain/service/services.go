@@ -1,0 +1,172 @@
+package service
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
+	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
+	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/shopspring/decimal"
+)
+
+type UserService interface {
+	CreateNew(ctx context.Context, request dto.NewUserRequest) (users.User, error)
+	FindByEmail(ctx context.Context, email string) (users.User, error)
+	Verify(ctx context.Context, id uuid.UUID, email string, name string, avatar string) (users.User, error)
+	GeneratePasswordResetToken(ctx context.Context, userID uuid.UUID) (string, error)
+	ResetPassword(ctx context.Context, userID uuid.UUID, email, resetToken, password string) (users.User, error)
+
+	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
+	SendSubscriptionNearingDueDateMail(ctx context.Context, msg message.SubscriptionNearingDue) error
+}
+
+type ProfileService interface {
+	Create(ctx context.Context, request dto.NewProfileRequest) (dto.ProfileResponse, error)
+	GetAll(ctx context.Context) ([]dto.ProfileResponse, error)
+	GetAllReal(ctx context.Context) ([]dto.ProfileResponse, error)
+	GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error)
+	GetProfileIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
+	Update(ctx context.Context, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
+	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.SearchProfileResponse, error)
+	MergeAnonymousProfile(ctx context.Context, ownerProfileID, realProfileID, anonProfileID uuid.UUID) error
+	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
+	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
+	FindBySlug(ctx context.Context, slug string) (users.UserProfile, error)
+}
+
+type FriendshipService interface {
+	CreateAnonymous(ctx context.Context, request dto.NewAnonymousFriendshipRequest) (dto.FriendshipResponse, error)
+	GetAll(ctx context.Context, profileID uuid.UUID) ([]dto.FriendshipResponse, error)
+	GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetails, error)
+	IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error)
+	CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error)
+	GetByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error)
+
+	ConstructNotification(ctx context.Context, msg message.FriendRequestAccepted) (entity.Notification, error)
+}
+
+type FriendshipRequestService interface {
+	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error
+	GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
+	Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
+	Ignore(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
+
+	ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error)
+}
+
+type FriendDetailsService interface {
+	GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetailsResponse, error)
+	GetDetailsBySlug(ctx context.Context, slug string) (dto.FriendDetailsResponse, error)
+}
+
+type DebtService interface {
+	RecordNewTransaction(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error)
+	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
+	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
+	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (map[string]dto.FriendBalance, error)
+	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
+
+	ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error)
+	ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error
+}
+
+type FriendshipBalanceService interface {
+	// RecalculatePair recomputes and upserts friendship_balances for one profile pair from
+	// their full transaction history. No-op if no Friendship row exists for the pair. Caller
+	// must already be inside transactor.WithinTransaction, alongside the write being cached.
+	RecalculatePair(ctx context.Context, profileID1, profileID2 uuid.UUID) error
+
+	// RecalculateAllForProfile recomputes every friendship_balances row for every friendship
+	// profileID is party to, in one pass over profileID's full transaction set. Used after a
+	// profile merge/repoint, where the whole graph can shift in one write. Caller must already
+	// be inside transactor.WithinTransaction.
+	RecalculateAllForProfile(ctx context.Context, profileID uuid.UUID) error
+
+	// GetNetBalancesForProfile serves GET /friendships: net balance per currency per
+	// counterparty, signed so positive = profileID is net lender, zero balances omitted.
+	GetNetBalancesForProfile(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error)
+}
+
+type TransferMethodService interface {
+	GetAll(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]dto.TransferMethodResponse, error)
+	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
+	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
+	SyncMethods(ctx context.Context) error
+	PopulateSignedURL(debts.TransferMethod) dto.TransferMethodResponse
+	Shutdown() error
+}
+
+type GroupExpenseService interface {
+	CreateDraft(ctx context.Context, req dto.NewDraftRequest) (dto.GroupExpenseResponse, error)
+	GetAll(ctx context.Context, userProfileID uuid.UUID, ownership expenses.ExpenseOwnership, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error)
+	GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
+	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error)
+	Delete(ctx context.Context, userProfileID, id uuid.UUID) error
+	SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error
+	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error)
+
+	GetUnconfirmedForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
+	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
+	Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error
+	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error)
+	ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error)
+	ProcessCallback(ctx context.Context, id uuid.UUID, callbackFn func(context.Context, expenses.GroupExpense) error) error
+}
+
+type ExpenseItemService interface {
+	Add(ctx context.Context, request dto.NewExpenseItemRequest) error
+	Update(ctx context.Context, request dto.UpdateExpenseItemRequest) error
+	Remove(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) error
+	SyncParticipants(ctx context.Context, req dto.SyncItemParticipantsRequest) error
+}
+
+type OtherFeeService interface {
+	Add(ctx context.Context, request dto.NewOtherFeeRequest) (dto.OtherFeeResponse, error)
+	Update(ctx context.Context, request dto.UpdateOtherFeeRequest) (dto.OtherFeeResponse, error)
+	Remove(ctx context.Context, groupExpenseID, otherFeeID, userProfileID uuid.UUID) error
+	GetCalculationMethods() []dto.FeeCalculationMethodInfo
+}
+
+type ExpenseBillService interface {
+	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
+	Cleanup(ctx context.Context) error
+	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
+	SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error)
+}
+
+type SubscriptionLimitService interface {
+	GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
+	CheckUploadLimit(ctx context.Context, profileID uuid.UUID) error
+}
+
+type ProfileTransferMethodService interface {
+	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
+	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
+	GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
+}
+
+type NotificationService interface {
+	HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error
+	HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error
+	HandleFriendRequestAccepted(ctx context.Context, msg message.FriendRequestAccepted) error
+	HandleExpenseConfirmed(ctx context.Context, msg message.ExpenseConfirmed) error
+
+	GetUnread(ctx context.Context, profileID uuid.UUID) ([]dto.NotificationResponse, error)
+	MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error
+	MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error
+}
+
+type PushNotificationService interface {
+	Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error
+	Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error
+	UnsubscribeBySession(ctx context.Context, sessionID uuid.UUID) error
+	Deliver(ctx context.Context, msg message.NotificationCreated) error
+}

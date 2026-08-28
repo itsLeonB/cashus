@@ -1,0 +1,30 @@
+package appconstant
+
+type ctxKey string
+
+const (
+	ContextUserID          ctxKey = "userID"
+	ContextProfileID       ctxKey = "profileID"
+	ContextFriendshipID    ctxKey = "friendshipID"
+	ContextGroupExpenseID  ctxKey = "groupExpenseID"
+	ContextExpenseItemID   ctxKey = "expenseItemID"
+	ContextOtherFeeID      ctxKey = "otherFeeID"
+	ContextExpenseBillID   ctxKey = "expenseBillID"
+	ContextProvider        ctxKey = "provider"
+	ContextFriendRequestID ctxKey = "friendRequestID"
+	ContextNotificationID  ctxKey = "notificationID"
+
+	ContextPlanID         ctxKey = "planID"
+	ContextPlanVersionID  ctxKey = "planVersionID"
+	ContextSubscriptionID ctxKey = "subscriptionID"
+	ContextPaymentID      ctxKey = "paymentID"
+
+	ContextSessionID   ctxKey = "sessionID"
+	ContextFingerprint ctxKey = "fgp"
+	ContextExp         ctxKey = "exp"
+	ContextIat         ctxKey = "iat"
+)
+
+func (c ctxKey) String() string {
+	return string(c)
+}

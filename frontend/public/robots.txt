@@ -1,0 +1,166 @@
+# Cashus robots.txt
+
+# Search engine crawlers
+User-agent: Googlebot
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: Bingbot
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+# Social preview crawlers (need access to render link cards)
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# AI crawlers — welcome on the public marketing surface, keep them out of the app.
+# Every AI user-agent uses the same restricted allowlist as the search crawlers
+# above; a blanket "Allow: /" would expose /auth/ and the authenticated app.
+User-agent: GPTBot
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: OAI-SearchBot
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: ChatGPT-User
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: ClaudeBot
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: Claude-Web
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: PerplexityBot
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+User-agent: Google-Extended
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+
+# Default: allow public pages, disallow the authenticated app and shared profiles
+User-agent: *
+Allow: /$
+Allow: /privacy-policy
+Allow: /terms-of-service
+Disallow: /dashboard
+Disallow: /friends
+Disallow: /expenses
+Disallow: /profile
+Disallow: /subscription
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /auth/
+Disallow: /f/
+
+Sitemap: https://cashus.online/sitemap.xml

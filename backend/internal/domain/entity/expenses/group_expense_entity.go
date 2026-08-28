@@ -1,0 +1,67 @@
+package expenses
+
+import (
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/go-crud"
+	"github.com/shopspring/decimal"
+)
+
+type ExpenseStatus string
+
+const (
+	DraftExpense     ExpenseStatus = "DRAFT"
+	ReadyExpense     ExpenseStatus = "READY"
+	ConfirmedExpense ExpenseStatus = "CONFIRMED"
+)
+
+type ExpenseOwnership string
+
+const (
+	OwnedExpense         ExpenseOwnership = "OWNED"
+	ParticipatingExpense ExpenseOwnership = "PARTICIPATING"
+)
+
+type GroupExpense struct {
+	crud.BaseEntity
+	PayerProfileID   uuid.NullUUID
+	Currency         string
+	TotalAmount      decimal.Decimal
+	ItemsTotal       decimal.Decimal
+	FeesTotal        decimal.Decimal
+	Description      string
+	Status           ExpenseStatus
+	CreatorProfileID uuid.UUID
+	Processed        bool
+
+	// Relationships
+	Payer        users.UserProfile    `gorm:"foreignKey:PayerProfileID"`
+	Creator      users.UserProfile    `gorm:"foreignKey:CreatorProfileID"`
+	Items        []ExpenseItem        `gorm:"foreignKey:GroupExpenseID"`
+	OtherFees    []OtherFee           `gorm:"foreignKey:GroupExpenseID"`
+	Participants []ExpenseParticipant `gorm:"foreignKey:GroupExpenseID"`
+	Bill         ExpenseBill          `gorm:"foreignKey:GroupExpenseID"`
+}
+
+func (GroupExpense) coreRelations() []string {
+	return []string{
+		"Items",
+		"OtherFees",
+		"OtherFees.Participants",
+		"Payer",
+		"Creator",
+		"Items.Participants",
+		"Items.Participants.Profile",
+		"Participants",
+		"Participants.ParticipantProfile",
+		"Participants.ProxyProfile",
+	}
+}
+
+func (ge GroupExpense) ForCalculationRelations() []string {
+	return append(ge.coreRelations(), "OtherFees.Participants.Profile")
+}
+
+func (ge GroupExpense) ForDisplayRelations() []string {
+	return append(ge.coreRelations(), "Bill")
+}

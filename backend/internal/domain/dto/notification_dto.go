@@ -1,0 +1,19 @@
+package dto
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/datatypes"
+)
+
+type NotificationResponse struct {
+	ID         uuid.UUID      `json:"id"`
+	Type       string         `json:"type"`
+	EntityType string         `json:"entityType"`
+	EntityID   uuid.UUID      `json:"entityId"`
+	Metadata   datatypes.JSON `json:"metadata" swaggertype:"object"`
+	ReadAt     time.Time      `json:"readAt,omitzero"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	Title      string         `json:"title"`
+}

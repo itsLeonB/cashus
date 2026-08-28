@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "2bc96f7c5d3c82f76714d9ec5027ef72518ede527b009a4cab6afd6db339ada9"
+    },
+    "tanstack-query": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/tanstack-query/skills/tanstack-query/SKILL.md",
+      "computedHash": "b8a0477cd4d7bf8fa54d27f8e64d82388402f0d502591db50a357df5b9995c75"
+    },
+    "tanstack-router": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/tanstack-router/skills/tanstack-router/SKILL.md",
+      "computedHash": "24beccc4016f91bab65547209cfd849ea5e66f3d5d92820683a9dd84669ced56"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}

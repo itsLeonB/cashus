@@ -30,3 +30,12 @@ Diverging API assumptions between two independently-working agents is the main f
 4. After both return, review and integrate their worktree branches back into the main branch.
 
 Each component keeps its own build/test commands and conventions in its own `CLAUDE.md` — read the relevant one (or let the matching subagent read it) before working in that directory.
+
+## Post-implementation review
+
+After `backend-agent` or `frontend-agent` finishes *implementing* something (not for pure exploration/read-only tasks), the orchestrator dispatches one code-review subagent per component that was actually changed — e.g. `pr-review-toolkit:code-reviewer`, prompted to look only at the diff under that component's directory.
+
+1. **One review pass per component, ever, per feature.** Never re-dispatch the reviewer after fixes are applied to check its own fixes — that's how review↔fix loops become endless. One review, one fix pass, done.
+2. **Findings go to the implementation subagent, not the orchestrator.** It wrote the code — it's the one that fixes or consciously dismisses each finding. The orchestrator doesn't triage findings itself.
+3. **Doubt escalates to the orchestrator, not back to the reviewer.** If the implementation subagent disagrees with a finding, or isn't sure whether applying it is correct, it stops and reports the specific finding + its concern to the orchestrator instead of re-arguing with the reviewer or guessing. The orchestrator decides, then tells the implementation subagent how to proceed.
+4. For a cross-cutting feature, this happens independently for each side after both implementation subagents return from their worktrees — same one-shot rule, once per component, not once for the whole feature.

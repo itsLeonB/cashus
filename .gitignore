@@ -7,3 +7,4 @@ Thumbs.db
 
 # Safety net for stray env files at repo root
 .env
+.envrc

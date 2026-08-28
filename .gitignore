@@ -1,0 +1,9 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+
+# Safety net for stray env files at repo root
+.env

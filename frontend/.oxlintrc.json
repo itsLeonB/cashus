@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  "ignorePatterns": ["dist", ".remember", "scripts"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    // ponytail: no ESLint equivalent existed; flags 9 pre-existing sites
+    // (form reset on prop change, auth session sync, async verification flows).
+    // Deliberate deferral, not a bug dodge — enable once those are refactored.
+    "react/set-state-in-effect": "off"
+  }
+}

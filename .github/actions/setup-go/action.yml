@@ -30,6 +30,7 @@ runs:
     with:
       go-version: ${{ inputs.go-version }}
       go-version-file: ${{ inputs.go-version-file }}
+      cache-dependency-path: ${{ inputs.working-directory }}/go.sum
 
   - name: Resolve Go paths
     id: paths

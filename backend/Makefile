@@ -13,9 +13,7 @@ test-coverage-html \
 test-clean \
 build \
 build-all \
-docs \
-install-pre-push-hook \
-uninstall-pre-push-hook
+docs
 
 help:
 	@echo "Makefile commands:"
@@ -34,8 +32,6 @@ help:
 	@echo "  make build                   - Build HTTP server for production"
 	@echo "  make build-all               - Build all programs for production"
 	@echo "  make docs                    - Generate Swagger + Markdown docs"
-	@echo "  make install-pre-push-hook   - Install git pre-push hook for linting and testing"
-	@echo "  make uninstall-pre-push-hook - Uninstall git pre-push hook"
 
 http:
 	go run ./cmd/http
@@ -105,14 +101,3 @@ docs:
 		--parseDependency \
 		--parseInternal
 	@echo "Docs generated: docs/swagger.json, docs/swagger.yaml, docs/docs.go"
-
-install-pre-push-hook:
-	@mkdir -p .git/hooks
-	@cp scripts/git-pre-push.sh .git/hooks/pre-push
-	@chmod +x .git/hooks/pre-push
-	@echo "Pre-push hook installed successfully!"
-
-uninstall-pre-push-hook:
-	@echo "Uninstalling pre-push git hook..."
-	@rm -f .git/hooks/pre-push
-	@echo "Pre-push hook uninstalled successfully!"

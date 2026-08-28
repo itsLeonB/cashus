@@ -43,6 +43,13 @@
       "headers": {
         "X-Grafana-URL": "${GRAFANA_STACK_URL}"
       }
+    },
+    "youtrack": {
+      "type": "http",
+      "url": "https://youtrack.cashus.online/mcp",
+      "headers": {
+        "Authorization": "Bearer ${YOUTRACK_TOKEN}"
+      }
     }
   }
 }

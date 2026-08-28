@@ -1,0 +1,6 @@
+export POSTGRES_DEV_URI="postgresql://"
+export POSTGRES_PROD_URI="postgresql://"
+
+export GRAFANA_STACK_URL="https://"
+
+export YOUTRACK_TOKEN="perm-xxx"

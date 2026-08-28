@@ -9,13 +9,13 @@ if ! bun test; then
 fi
 echo "✅ Tests passed"
 
-# ESLint
-echo "2. Running ESLint..."
+# Lint
+echo "2. Running lint..."
 if ! bun lint; then
-    echo "❌ ESLint failed. Fix errors before pushing."
+    echo "❌ Lint failed. Fix errors before pushing."
     exit 1
 fi
-echo "✅ ESLint passed"
+echo "✅ Lint passed"
 
 # Build
 echo "3. Building project..."

@@ -13,7 +13,7 @@ Cashus is a modern expense-splitting and debt-tracking web application. This rep
 - **State/Data**: TanStack Query (React Query) v5
 - **Routing**: React Router v6
 - **Validation**: Zod v4
-- **Linting**: ESLint 9 flat config + typescript-eslint + sonarjs + react-hooks
+- **Linting**: oxlint (typescript, react, unicorn, oxc plugins)
 - **Deployment**: Vercel
 
 ## Commands
@@ -57,14 +57,14 @@ import config from "@/config/config";
 ### Imports
 
 - Use `@/` path alias (maps to `src/`).
-- Use named imports from `react` — never `import * as React`.
+- Use named imports from `react` — never `import * as React` (convention; not currently lint-enforced — oxlint's `import/no-namespace` can't be scoped to just `react` and would false-positive on shadcn's `import * as XPrimitive from "@radix-ui/..."`).
 - Group: external packages → `@/` internal → relative.
 
 ### Components
 
 - Pages are default-exported from `src/pages/`.
 - Reusable UI uses shadcn/ui conventions (`components/ui/`).
-- Props should be read-only (enforced via `sonarjs/prefer-read-only-props`).
+- Props should be read-only (convention; not currently lint-enforced — oxlint has no `sonarjs/prefer-read-only-props` equivalent).
 
 ### Data Fetching
 

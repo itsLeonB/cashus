@@ -51,7 +51,7 @@ Cashus is a modern web application designed to make financial interactions with 
 
 - `bun dev`: Start development server
 - `bun build`: Create production build
-- `bun lint`: Run ESLint for code quality
+- `bun lint`: Run oxlint for code quality
 - `bun preview`: Preview the production build locally
 
 ## License

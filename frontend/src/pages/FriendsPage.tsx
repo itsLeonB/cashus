@@ -146,7 +146,7 @@ export default function FriendsPage() {
     if (isLoading)
       return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {new Array(6).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
@@ -242,7 +242,7 @@ export default function FriendsPage() {
     if (received.isLoading)
       return (
         <div className="space-y-3">
-          {new Array(2).map((_, i) => (
+          {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-14" />
           ))}
         </div>
@@ -322,7 +322,7 @@ export default function FriendsPage() {
     if (received.isLoading)
       return (
         <div className="space-y-3">
-          {new Array(2).map((_, i) => (
+          {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-14" />
           ))}
         </div>
@@ -381,7 +381,7 @@ export default function FriendsPage() {
     if (sent?.isLoading)
       return (
         <div className="space-y-3">
-          {new Array(2).map((_, i) => (
+          {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-14" />
           ))}
         </div>

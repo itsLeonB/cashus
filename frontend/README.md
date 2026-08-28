@@ -56,4 +56,4 @@ Cashus is a modern web application designed to make financial interactions with 
 
 ## License
 
-All rights reserved.
+GNU Affero General Public License v3.0 (AGPL-3.0) — see the repository root [LICENSE](../LICENSE).

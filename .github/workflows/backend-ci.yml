@@ -29,7 +29,8 @@ jobs:
       - name: Setup Go with cache
         uses: ./.github/actions/setup-go
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
+          working-directory: backend
 
       - name: Verify dependencies
         run: |
@@ -59,7 +60,8 @@ jobs:
       - name: Setup Go with cache
         uses: ./.github/actions/setup-go
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
+          working-directory: backend
 
       - name: Run go vet
         run: go vet ./...
@@ -81,7 +83,8 @@ jobs:
       - name: Setup Go with cache
         uses: ./.github/actions/setup-go
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
+          working-directory: backend
 
       - name: Build
         run: make build-all
@@ -97,7 +100,8 @@ jobs:
       - name: Setup Go with cache
         uses: ./.github/actions/setup-go
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
+          working-directory: backend
 
       - name: Run govulncheck
         run: make vulncheck
@@ -113,7 +117,8 @@ jobs:
       - name: Setup Go with cache
         uses: ./.github/actions/setup-go
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
+          working-directory: backend
 
       - name: Install and Run Gosec
         run: |
@@ -194,7 +199,8 @@ jobs:
       - name: Setup Go with cache
         uses: ./.github/actions/setup-go
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
+          working-directory: backend
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3

@@ -3,8 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
+    paths: ["frontend/**"]
   pull_request:
     branches: [main, dev]
+    paths: ["frontend/**"]
+
+defaults:
+  run:
+    working-directory: frontend
 
 jobs:
   test:
@@ -13,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup
-        uses: ./.github/actions/setup
+        uses: ./.github/actions/setup-bun
       - run: bun test
 
   lint:
@@ -22,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup
-        uses: ./.github/actions/setup
+        uses: ./.github/actions/setup-bun
       - run: bun lint
 
   build:
@@ -31,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup
-        uses: ./.github/actions/setup
+        uses: ./.github/actions/setup-bun
       - run: bun run build
 
   audit:
@@ -40,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup
-        uses: ./.github/actions/setup
+        uses: ./.github/actions/setup-bun
       - name: Check unused components
         run: bun run scripts/check-unused-components.ts
       - name: Check unused dependencies

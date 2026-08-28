@@ -3,13 +3,19 @@ name: CI
 on:
   push:
     branches: [main]
+    paths: ["backend/**"]
   pull_request:
     branches: [main, dev]
+    paths: ["backend/**"]
 
 permissions:
   contents: read
   security-events: write
   actions: read
+
+defaults:
+  run:
+    working-directory: backend
 
 jobs:
   test:
@@ -35,7 +41,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.out
+          file: ./backend/coverage.out
           flags: unittests
           fail_ci_if_error: false
           verbose: true
@@ -123,8 +129,8 @@ jobs:
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: results.sarif
-        if: always() && hashFiles('results.sarif') != ''
+          sarif_file: backend/results.sarif
+        if: always() && hashFiles('backend/results.sarif') != ''
 
   image-scan:
     name: Image Scan (${{ matrix.name }})
@@ -135,17 +141,17 @@ jobs:
       matrix:
         include:
           - name: http
-            dockerfile: Dockerfile
-            context: .
+            dockerfile: backend/Dockerfile
+            context: backend
           - name: worker
-            dockerfile: Dockerfile.worker
-            context: .
+            dockerfile: backend/Dockerfile.worker
+            context: backend
           - name: job
-            dockerfile: Dockerfile.job
-            context: .
+            dockerfile: backend/Dockerfile.job
+            context: backend
           - name: otel-collector
-            dockerfile: otel/Dockerfile
-            context: otel
+            dockerfile: backend/otel/Dockerfile
+            context: backend/otel
 
     steps:
       - name: Checkout code

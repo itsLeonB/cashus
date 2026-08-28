@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/"
+    directory: "/backend"
     schedule:
       interval: "weekly"
 
@@ -12,7 +12,7 @@ updates:
 
   - package-ecosystem: "docker"
     directories:
-      - "/"
-      - "/otel"
+      - "/backend"
+      - "/backend/otel"
     schedule:
       interval: "weekly"

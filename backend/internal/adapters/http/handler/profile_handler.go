@@ -93,7 +93,7 @@ func (ph *ProfileHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, 
 
 type SearchProfilesInput struct {
 	httpapi.AuthInput
-	Query string `query:"query" minLength:"3" maxLength:"255"`
+	Query string `query:"query" required:"true" minLength:"3" maxLength:"255"`
 }
 
 type SearchProfilesOutput struct {

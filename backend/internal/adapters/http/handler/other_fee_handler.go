@@ -1,15 +1,15 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type OtherFeeHandler struct {
@@ -24,126 +24,142 @@ func NewOtherFeeHandler(
 	}
 }
 
-// HandleAdd godoc
-// @Summary      Add a fee to a group expense
-// @Tags         other-fees
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        body body dto.NewOtherFeeRequest true "New fee payload"
-// @Success      201  {object}  response.JSONResponse[dto.OtherFeeResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/fees [post]
-func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
-	return server.Handler("OtherFeeHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
+type AddOtherFeeInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	Body           struct {
+		Name              string                        `json:"name" minLength:"3"`
+		Amount            httpapi.Decimal               `json:"amount"`
+		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
+	}
+}
+
+type AddOtherFeeOutput struct {
+	Body dto.OtherFeeResponse
+}
+
+// RegisterAdd registers POST /api/v1/group-expenses/{groupExpenseID}/fees on the Huma API.
+func (geh *OtherFeeHandler) RegisterAdd(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "add-other-fee",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/group-expenses/{groupExpenseID}/fees",
+		Summary:       "Add a fee to a group expense",
+		Tags:          []string{"other-fees"},
+		DefaultStatus: http.StatusCreated,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *AddOtherFeeInput) (*AddOtherFeeOutput, error) {
+		request := dto.NewOtherFeeRequest{
+			UserProfileID:     in.ProfileID,
+			GroupExpenseID:    in.GroupExpenseID,
+			Name:              in.Body.Name,
+			Amount:            in.Body.Amount.Decimal,
+			CalculationMethod: in.Body.CalculationMethod,
+		}
+
+		res, err := geh.otherFeeSvc.Add(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.NewOtherFeeRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.UserProfileID = userProfileID
-		request.GroupExpenseID = groupExpenseID
-
-		return geh.otherFeeSvc.Add(ctx.Request.Context(), request)
+		return &AddOtherFeeOutput{Body: res}, nil
 	})
 }
 
-// HandleUpdate godoc
-// @Summary      Update a fee on a group expense
-// @Tags         other-fees
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        otherFeeId     path string true "Fee ID"
-// @Param        body body dto.UpdateOtherFeeRequest true "Update fee payload"
-// @Success      200  {object}  response.JSONResponse[dto.OtherFeeResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/fees/{otherFeeId} [put]
-func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("OtherFeeHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
+type UpdateOtherFeeInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	OtherFeeID     uuid.UUID `path:"otherFeeID"`
+	Body           struct {
+		Name              string                        `json:"name" minLength:"3"`
+		Amount            httpapi.Decimal               `json:"amount"`
+		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
+	}
+}
+
+type UpdateOtherFeeOutput struct {
+	Body dto.OtherFeeResponse
+}
+
+// RegisterUpdate registers PUT /api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID} on the Huma API.
+func (geh *OtherFeeHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "update-other-fee",
+		Method:        http.MethodPut,
+		Path:          "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}",
+		Summary:       "Update a fee on a group expense",
+		Tags:          []string{"other-fees"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *UpdateOtherFeeInput) (*UpdateOtherFeeOutput, error) {
+		request := dto.UpdateOtherFeeRequest{
+			UserProfileID:     in.ProfileID,
+			ID:                in.OtherFeeID,
+			GroupExpenseID:    in.GroupExpenseID,
+			Name:              in.Body.Name,
+			Amount:            in.Body.Amount.Decimal,
+			CalculationMethod: in.Body.CalculationMethod,
+		}
+
+		res, err := geh.otherFeeSvc.Update(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		otherFeeID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextOtherFeeID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.UpdateOtherFeeRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.UserProfileID = userProfileID
-		request.GroupExpenseID = groupExpenseID
-		request.ID = otherFeeID
-
-		return geh.otherFeeSvc.Update(ctx.Request.Context(), request)
+		return &UpdateOtherFeeOutput{Body: res}, nil
 	})
 }
 
-// HandleRemove godoc
-// @Summary      Remove a fee from a group expense
-// @Tags         other-fees
-// @Security     BearerAuth
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        otherFeeId     path string true "Fee ID"
-// @Success      204
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/fees/{otherFeeId} [delete]
-func (geh *OtherFeeHandler) HandleRemove() gin.HandlerFunc {
-	return server.Handler("OtherFeeHandler.HandleRemove", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
+type RemoveOtherFeeInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	OtherFeeID     uuid.UUID `path:"otherFeeID"`
+}
+
+type RemoveOtherFeeOutput struct{}
+
+// RegisterRemove registers DELETE /api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID} on the Huma API.
+func (geh *OtherFeeHandler) RegisterRemove(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "remove-other-fee",
+		Method:        http.MethodDelete,
+		Path:          "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}",
+		Summary:       "Remove a fee from a group expense",
+		Tags:          []string{"other-fees"},
+		DefaultStatus: http.StatusNoContent,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *RemoveOtherFeeInput) (*RemoveOtherFeeOutput, error) {
+		if err := geh.otherFeeSvc.Remove(ctx, in.GroupExpenseID, in.OtherFeeID, in.ProfileID); err != nil {
 			return nil, err
 		}
 
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		feeID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextOtherFeeID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, geh.otherFeeSvc.Remove(ctx.Request.Context(), groupExpenseID, feeID, userProfileID)
+		return &RemoveOtherFeeOutput{}, nil
 	})
 }
 
-// HandleGetFeeCalculationMethods godoc
-// @Summary      Get available fee calculation methods
-// @Tags         other-fees
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.FeeCalculationMethodInfo]
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/fee-calculation-methods [get]
-func (geh *OtherFeeHandler) HandleGetFeeCalculationMethods() gin.HandlerFunc {
-	return server.Handler("OtherFeeHandler.HandleGetFeeCalculationMethods", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		return geh.otherFeeSvc.GetCalculationMethods(), nil
+type GetFeeCalculationMethodsInput struct {
+	httpapi.AuthInput
+}
+
+type GetFeeCalculationMethodsOutput struct {
+	Body []dto.FeeCalculationMethodInfo
+}
+
+// RegisterGetFeeCalculationMethods registers GET /api/v1/group-expenses/fee-calculation-methods on the Huma API.
+func (geh *OtherFeeHandler) RegisterGetFeeCalculationMethods(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-fee-calculation-methods",
+		Method:        http.MethodGet,
+		Path:          "/api/v1/group-expenses/fee-calculation-methods",
+		Summary:       "Get available fee calculation methods",
+		Tags:          []string{"other-fees"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetFeeCalculationMethodsInput) (*GetFeeCalculationMethodsOutput, error) {
+		return &GetFeeCalculationMethodsOutput{Body: geh.otherFeeSvc.GetCalculationMethods()}, nil
 	})
 }

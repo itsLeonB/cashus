@@ -31,6 +31,34 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 	handlers.Debt.RegisterGetTransactionSummary(api, protectedMW...)
 	handlers.Debt.RegisterGetRecent(api, protectedMW...)
 
+	handlers.GroupExpense.RegisterCreateDraft(api, protectedMW...)
+	handlers.GroupExpense.RegisterGetAll(api, protectedMW...)
+	handlers.GroupExpense.RegisterGetDetails(api, protectedMW...)
+	handlers.GroupExpense.RegisterConfirmDraft(api, protectedMW...)
+	handlers.GroupExpense.RegisterDelete(api, protectedMW...)
+	handlers.GroupExpense.RegisterSyncParticipants(api, protectedMW...)
+	handlers.GroupExpense.RegisterGetRecent(api, protectedMW...)
+
+	handlers.ExpenseItem.RegisterAdd(api, protectedMW...)
+	handlers.ExpenseItem.RegisterUpdate(api, protectedMW...)
+	handlers.ExpenseItem.RegisterRemove(api, protectedMW...)
+	handlers.ExpenseItem.RegisterSyncParticipants(api, protectedMW...)
+
+	handlers.OtherFee.RegisterAdd(api, protectedMW...)
+	handlers.OtherFee.RegisterUpdate(api, protectedMW...)
+	handlers.OtherFee.RegisterRemove(api, protectedMW...)
+	handlers.OtherFee.RegisterGetFeeCalculationMethods(api, protectedMW...)
+
+	handlers.ExpenseBill.RegisterPresignedSave(api, protectedMW...)
+	handlers.ExpenseBill.RegisterTriggerParsing(api, protectedMW...)
+
+	handlers.Notification.RegisterGetUnread(api, protectedMW...)
+	handlers.Notification.RegisterMarkAsRead(api, protectedMW...)
+	handlers.Notification.RegisterMarkAllAsRead(api, protectedMW...)
+
+	handlers.PushSubscription.RegisterSubscribe(api, protectedMW...)
+	handlers.PushSubscription.RegisterUnsubscribe(api, protectedMW...)
+
 	apiRoutes := router.Group("/api")
 	{
 		v1 := apiRoutes.Group("/v1")
@@ -118,49 +146,6 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				}
 
 				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-
-				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
-				{
-					groupExpenseRoutes.POST("", handlers.GroupExpense.HandleCreateDraft())
-					groupExpenseRoutes.GET("", handlers.GroupExpense.HandleGetAll())
-					groupExpenseRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleGetDetails())
-					groupExpenseRoutes.PATCH(fmt.Sprintf("/:%s/confirmed", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleConfirmDraft())
-					groupExpenseRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleDelete())
-					groupExpenseRoutes.GET("/fee-calculation-methods", handlers.OtherFee.HandleGetFeeCalculationMethods())
-					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/participants", appconstant.ContextGroupExpenseID.String()), handlers.GroupExpense.HandleSyncParticipants())
-					groupExpenseRoutes.POST(fmt.Sprintf("/:%s/bills", appconstant.ContextGroupExpenseID.String()), handlers.ExpenseBill.HandlePresignedSave())
-					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/bills/:%s", appconstant.ContextGroupExpenseID.String(), appconstant.ContextExpenseBillID.String()), handlers.ExpenseBill.HandleTriggerParsing())
-					groupExpenseRoutes.GET("/recent", handlers.GroupExpense.HandleGetRecent())
-				}
-
-				expenseItemRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/items", appconstant.ContextGroupExpenseID))
-				{
-					expenseItemRoute := fmt.Sprintf("/:%s", appconstant.ContextExpenseItemID)
-					expenseItemRoutes.POST("", handlers.ExpenseItem.HandleAdd())
-					expenseItemRoutes.PUT(expenseItemRoute, handlers.ExpenseItem.HandleUpdate())
-					expenseItemRoutes.DELETE(expenseItemRoute, handlers.ExpenseItem.HandleRemove())
-					expenseItemRoutes.PUT(expenseItemRoute+"/participants", handlers.ExpenseItem.HandleSyncParticipants())
-				}
-
-				otherFeeRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/fees", appconstant.ContextGroupExpenseID))
-				{
-					otherFeeRoutes.POST("", handlers.OtherFee.HandleAdd())
-					otherFeeRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleUpdate())
-					otherFeeRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleRemove())
-				}
-
-				notificationRoutes := protectedRoutes.Group("/notifications")
-				{
-					notificationRoutes.GET("", handlers.Notification.HandleGetUnread())
-					notificationRoutes.PATCH(fmt.Sprintf("/:%s", appconstant.ContextNotificationID), handlers.Notification.HandleMarkAsRead())
-					notificationRoutes.PATCH("", handlers.Notification.HandleMarkAllAsRead())
-				}
-
-				pushRoutes := protectedRoutes.Group("/push")
-				{
-					pushRoutes.POST("/subscribe", handlers.PushSubscription.HandleSubscribe())
-					pushRoutes.POST("/unsubscribe", handlers.PushSubscription.HandleUnsubscribe())
-				}
 
 				protectedRoutes.POST(fmt.Sprintf("/plans/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
 				protectedRoutes.POST(fmt.Sprintf("/subscriptions/:%s", appconstant.ContextSubscriptionID.String()), handlers.Payment.HandleMakePayment())

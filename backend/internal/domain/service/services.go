@@ -143,7 +143,7 @@ type ExpenseBillService interface {
 }
 
 type SubscriptionLimitService interface {
-	GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
+	GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionLimitsResponse, error)
 	CheckUploadLimit(ctx context.Context, profileID uuid.UUID) error
 }
 

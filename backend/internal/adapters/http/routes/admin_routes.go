@@ -1,14 +1,19 @@
 package routes
 
 import (
-	"fmt"
-
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 )
 
-func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddleware gin.HandlerFunc) {
+// RegisterAdminRoutes wires up the admin auth register/login gin routes
+// (which delegate to authgin.StatelessHandler, an external library, and so
+// are kept as native gin routes) and the Huma operations for the rest of the
+// admin API. Huma is bound at the engine root, so every protected admin
+// operation must have the admin auth gin middleware bridged onto it
+// individually via httpapi.Bridge.
+func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddleware gin.HandlerFunc, api huma.API) {
 	adminRoutes := router.Group("/admin")
 	{
 		v1 := adminRoutes.Group("/v1")
@@ -18,52 +23,38 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddl
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())
 				authRoutes.POST("/login", handlers.Auth.HandleLogin())
 			}
-
-			protectedRoutes := v1.Group("/", authMiddleware)
-			{
-				protectedRoutes.GET("/auth/me", handlers.Auth.HandleMe())
-
-				planRoutes := protectedRoutes.Group("/plans")
-				{
-					planRoutes.POST("", handlers.Plan.HandleCreate())
-					planRoutes.GET("", handlers.Plan.HandleGetList())
-					planRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleGetOne())
-					planRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleUpdate())
-					planRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleDelete())
-				}
-
-				planVersionRoutes := protectedRoutes.Group("/plan-versions")
-				{
-					planVersionRoutes.POST("", handlers.PlanVersion.HandleCreate())
-					planVersionRoutes.GET("", handlers.PlanVersion.HandleGetList())
-					planVersionRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleGetOne())
-					planVersionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleUpdate())
-					planVersionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleDelete())
-				}
-
-				subscriptionRoutes := protectedRoutes.Group("/subscriptions")
-				{
-					subscriptionRoutes.POST("", handlers.Subscription.HandleCreate())
-					subscriptionRoutes.GET("", handlers.Subscription.HandleGetList())
-					subscriptionRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleGetOne())
-					subscriptionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleUpdate())
-					subscriptionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleDelete())
-				}
-
-				paymentRoutes := protectedRoutes.Group("/payments")
-				{
-					paymentRoutes.GET("", handlers.Payment.HandleGetList())
-					paymentRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleGetOne())
-					paymentRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleUpdate())
-					paymentRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleDelete())
-				}
-
-				profileRoutes := protectedRoutes.Group("/profiles")
-				{
-					profileRoutes.GET("", handlers.Profile.HandleGetList())
-					profileRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProfileID.String()), handlers.Profile.HandleGetOne())
-				}
-			}
 		}
 	}
+
+	adminMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(authMiddleware),
+	}
+
+	handlers.Auth.RegisterMe(api, adminMW...)
+
+	handlers.Plan.RegisterCreate(api, adminMW...)
+	handlers.Plan.RegisterGetList(api, adminMW...)
+	handlers.Plan.RegisterGetOne(api, adminMW...)
+	handlers.Plan.RegisterUpdate(api, adminMW...)
+	handlers.Plan.RegisterDelete(api, adminMW...)
+
+	handlers.PlanVersion.RegisterCreate(api, adminMW...)
+	handlers.PlanVersion.RegisterGetList(api, adminMW...)
+	handlers.PlanVersion.RegisterGetOne(api, adminMW...)
+	handlers.PlanVersion.RegisterUpdate(api, adminMW...)
+	handlers.PlanVersion.RegisterDelete(api, adminMW...)
+
+	handlers.Subscription.RegisterCreate(api, adminMW...)
+	handlers.Subscription.RegisterGetList(api, adminMW...)
+	handlers.Subscription.RegisterGetOne(api, adminMW...)
+	handlers.Subscription.RegisterUpdate(api, adminMW...)
+	handlers.Subscription.RegisterDelete(api, adminMW...)
+
+	handlers.Payment.RegisterGetList(api, adminMW...)
+	handlers.Payment.RegisterGetOne(api, adminMW...)
+	handlers.Payment.RegisterUpdate(api, adminMW...)
+	handlers.Payment.RegisterDelete(api, adminMW...)
+
+	handlers.Profile.RegisterGetList(api, adminMW...)
+	handlers.Profile.RegisterGetOne(api, adminMW...)
 }

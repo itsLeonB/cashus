@@ -69,7 +69,7 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 
 	routes.RegisterBaseRoutes(router)
 	routes.RegisterAPIRoutes(router, handlers, authMW, api)
-	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth)
+	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth, api)
 
 	return handlers.Shutdown, nil
 }

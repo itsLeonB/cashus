@@ -1,13 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type TransferMethodHandler struct {
@@ -18,22 +19,32 @@ func NewTransferMethodHandler(transferMethodService service.TransferMethodServic
 	return &TransferMethodHandler{transferMethodService}
 }
 
-// HandleGetAll godoc
-// @Summary      Get all transfer methods
-// @Tags         transfer-methods
-// @Security     BearerAuth
-// @Produce      json
-// @Param        status query string false "Filter by status"
-// @Success      200  {object}  response.JSONResponse[[]dto.TransferMethodResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /transfer-methods [get]
-func (tmh *TransferMethodHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler("TransferMethodHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
+type GetAllTransferMethodsInput struct {
+	httpapi.AuthInput
+	Status string `query:"status"`
+}
+
+type GetAllTransferMethodsOutput struct {
+	Body []dto.TransferMethodResponse
+}
+
+// RegisterGetAll registers GET /api/v1/transfer-methods on the Huma API.
+func (tmh *TransferMethodHandler) RegisterGetAll(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-transfer-methods",
+		Method:        http.MethodGet,
+		Path:          "/api/v1/transfer-methods",
+		Summary:       "Get all transfer methods",
+		Tags:          []string{"transfer-methods"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetAllTransferMethodsInput) (*GetAllTransferMethodsOutput, error) {
+		res, err := tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(in.Status), in.ProfileID)
 		if err != nil {
 			return nil, err
 		}
 
-		return tmh.transferMethodService.GetAll(ctx.Request.Context(), debts.ParentFilter(ctx.Query("status")), profileID)
+		return &GetAllTransferMethodsOutput{Body: res}, nil
 	})
 }

@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"fmt"
-
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
@@ -25,6 +23,46 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 		httpapi.Bridge(authMiddleware),
 		httpapi.Bridge(authgin.CSRFMiddleware()),
 	}
+
+	profilesMW := append(append([]func(huma.Context, func(huma.Context)){}, protectedMW...),
+		httpapi.Bridge(middlewares.WithRateKey(appconstant.ContextProfileID.String())),
+		httpapi.Bridge(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			Limit:   rate.Limit(10.0 / 60),
+			Burst:   3,
+			KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
+		})),
+	)
+
+	handlers.Public.RegisterGetPublicProfile(api)
+	handlers.Plan.RegisterGetActive(api)
+	handlers.Payment.RegisterNotification(api)
+
+	handlers.Payment.RegisterMakePayment(api, protectedMW...)
+
+	handlers.Profile.RegisterProfile(api, protectedMW...)
+	handlers.Profile.RegisterUpdate(api, protectedMW...)
+	handlers.Profile.RegisterAssociate(api, protectedMW...)
+	handlers.Profile.RegisterSearch(api, profilesMW...)
+
+	handlers.ProfileTransferMethod.RegisterAdd(api, protectedMW...)
+	handlers.ProfileTransferMethod.RegisterGetAllOwned(api, protectedMW...)
+	handlers.ProfileTransferMethod.RegisterGetAllByFriendProfileID(api, profilesMW...)
+
+	handlers.Subscription.RegisterGetSubscribedDetails(api, protectedMW...)
+	handlers.Subscription.RegisterCreatePurchase(api, protectedMW...)
+
+	handlers.Friendship.RegisterCreateAnonymousFriendship(api, protectedMW...)
+	handlers.Friendship.RegisterGetAll(api, protectedMW...)
+	handlers.Friendship.RegisterGetDetails(api, protectedMW...)
+
+	handlers.FriendshipRequest.RegisterSend(api, profilesMW...)
+	handlers.FriendshipRequest.RegisterGetAll(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterCancel(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterIgnore(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterBlock(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterAccept(api, protectedMW...)
+
+	handlers.TransferMethod.RegisterGetAll(api, protectedMW...)
 
 	handlers.Debt.RegisterCreate(api, protectedMW...)
 	handlers.Debt.RegisterGetAll(api, protectedMW...)
@@ -63,10 +101,6 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 	{
 		v1 := apiRoutes.Group("/v1")
 		{
-			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
-			v1.GET("/plans", handlers.Plan.HandleGetActive())
-			v1.GET("/public/profiles/:slug", handlers.Public.HandleGetPublicProfile())
-
 			authRoutes := v1.Group("/auth")
 			authRoutes.Use(sentinelGin.RateLimit(httpserver.RateLimitConfig{
 				Limit:   rate.Limit(20.0 / 60),
@@ -101,54 +135,6 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 			protectedRoutes := v1.Group("/", authMiddleware, authgin.CSRFMiddleware())
 			{
 				protectedRoutes.DELETE("/auth/logout", handlers.Auth.Logout())
-
-				transferMethodsRoute := "/transfer-methods"
-				profileRoutes := protectedRoutes.Group("/profile")
-				{
-					profileRoutes.GET("", handlers.Profile.HandleProfile())
-					profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
-					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
-					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
-					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
-					profileRoutes.GET("/subscription", handlers.Subscription.HandleGetSubscribedDetails())
-				}
-
-				profilesRoutes := protectedRoutes.Group("/profiles")
-				profilesRoutes.Use(
-					middlewares.WithRateKey(appconstant.ContextProfileID.String()),
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(10.0 / 60),
-						Burst:   3,
-						KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
-					}),
-				)
-				{
-					profilesRoutes.GET("", handlers.Profile.HandleSearch())
-					profilesRoutes.POST(fmt.Sprintf("/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
-					profilesRoutes.GET(fmt.Sprintf("/:%s%s", appconstant.ContextProfileID.String(), transferMethodsRoute), handlers.ProfileTransferMethod.HandleGetAllByFriendProfileID())
-				}
-
-				friendshipRoutes := protectedRoutes.Group("/friendships")
-				{
-					friendshipRoutes.POST("", handlers.Friendship.HandleCreateAnonymousFriendship())
-					friendshipRoutes.GET("", handlers.Friendship.HandleGetAll())
-					friendshipRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextFriendshipID), handlers.Friendship.HandleGetDetails())
-				}
-
-				receivedFriendRequestRoute := fmt.Sprintf("/%s/:%s", appconstant.ReceivedFriendRequest, appconstant.ContextFriendRequestID)
-				friendRequestRoutes := protectedRoutes.Group("/friend-requests")
-				{
-					friendRequestRoutes.GET(fmt.Sprintf("/:%s", appconstant.PathFriendRequestType), handlers.FriendshipRequest.HandleGetAll())
-					friendRequestRoutes.DELETE(fmt.Sprintf("/%s/:%s", appconstant.SentFriendRequest, appconstant.ContextFriendRequestID), handlers.FriendshipRequest.HandleCancel())
-					friendRequestRoutes.DELETE(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleIgnore())
-					friendRequestRoutes.PATCH(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleBlock())
-					friendRequestRoutes.POST(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleAccept())
-				}
-
-				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-
-				protectedRoutes.POST(fmt.Sprintf("/plans/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
-				protectedRoutes.POST(fmt.Sprintf("/subscriptions/:%s", appconstant.ContextSubscriptionID.String()), handlers.Payment.HandleMakePayment())
 			}
 		}
 	}

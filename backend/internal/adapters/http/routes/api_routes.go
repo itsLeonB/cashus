@@ -3,8 +3,10 @@ package routes
 import (
 	"fmt"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/go-authkit/authgin"
@@ -13,7 +15,22 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc) {
+// RegisterAPIRoutes wires up both the remaining ginkgo/gin routes and the
+// (currently canary-only) Huma operations. Huma is bound at the engine root,
+// so operations that need the same auth+CSRF protection as
+// `protectedRoutes` below must have those gin middlewares bridged onto them
+// individually via httpapi.Bridge.
+func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc, api huma.API) {
+	protectedMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(authMiddleware),
+		httpapi.Bridge(authgin.CSRFMiddleware()),
+	}
+
+	handlers.Debt.RegisterCreate(api, protectedMW...)
+	handlers.Debt.RegisterGetAll(api, protectedMW...)
+	handlers.Debt.RegisterGetTransactionSummary(api, protectedMW...)
+	handlers.Debt.RegisterGetRecent(api, protectedMW...)
+
 	apiRoutes := router.Group("/api")
 	{
 		v1 := apiRoutes.Group("/v1")
@@ -101,14 +118,6 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				}
 
 				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-
-				debtsRoutes := protectedRoutes.Group("/debts")
-				{
-					debtsRoutes.POST("", handlers.Debt.HandleCreate())
-					debtsRoutes.GET("", handlers.Debt.HandleGetAll())
-					debtsRoutes.GET("/summary", handlers.Debt.HandleGetTransactionSummary())
-					debtsRoutes.GET("/recent", handlers.Debt.HandleGetRecent())
-				}
 
 				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
 				{

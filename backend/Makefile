@@ -12,8 +12,7 @@ test-coverage \
 test-coverage-html \
 test-clean \
 build \
-build-all \
-docs
+build-all
 
 help:
 	@echo "Makefile commands:"
@@ -31,7 +30,6 @@ help:
 	@echo "  make test-clean              - Clean test cache and run tests"
 	@echo "  make build                   - Build HTTP server for production"
 	@echo "  make build-all               - Build all programs for production"
-	@echo "  make docs                    - Generate Swagger + Markdown docs"
 
 http:
 	go run ./cmd/http
@@ -90,14 +88,3 @@ build-all:
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags job -o bin/job ./cmd/job
 	@echo "Build success! Binaries are located in bin/"
 	@ls -lh bin/
-
-docs:
-	@echo "Generating Swagger docs..."
-	swag init \
-		--generalInfo main.go \
-		--dir cmd/http,internal/adapters/http/handler,internal/domain/dto,internal/domain/dto/monetization,internal/domain/entity/users,internal/domain/entity/expenses,internal/domain/entity/debts \
-		--output docs \
-		--outputTypes go,json,yaml \
-		--parseDependency \
-		--parseInternal
-	@echo "Docs generated: docs/swagger.json, docs/swagger.yaml, docs/docs.go"

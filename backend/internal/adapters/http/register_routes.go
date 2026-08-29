@@ -5,7 +5,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
-	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"

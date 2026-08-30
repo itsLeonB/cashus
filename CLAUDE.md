@@ -39,3 +39,17 @@ After `backend-agent` or `frontend-agent` finishes *implementing* something (not
 2. **Findings go to the implementation subagent, not the orchestrator.** It wrote the code — it's the one that fixes or consciously dismisses each finding. The orchestrator doesn't triage findings itself.
 3. **Doubt escalates to the orchestrator, not back to the reviewer.** If the implementation subagent disagrees with a finding, or isn't sure whether applying it is correct, it stops and reports the specific finding + its concern to the orchestrator instead of re-arguing with the reviewer or guessing. The orchestrator decides, then tells the implementation subagent how to proceed.
 4. For a cross-cutting feature, this happens independently for each side after both implementation subagents return from their worktrees — same one-shot rule, once per component, not once for the whole feature.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in YouTrack, project `CASH`, not GitHub — read/write via the `youtrack-tickets` skill (MCP), tracker structure changes via `youtrack-admin` (REST). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Mapped to CASH's `Stage` field (`Need Grooming`/`Open`) plus a `wontfix` tag — no agent/human split, some roles collapse. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

@@ -35,7 +35,7 @@ type AddOtherFeeInput struct {
 }
 
 type AddOtherFeeOutput struct {
-	Body dto.OtherFeeResponse
+	Body httpapi.Envelope[dto.OtherFeeResponse]
 }
 
 // RegisterAdd registers POST /api/v1/group-expenses/{groupExpenseID}/fees on the Huma API.
@@ -63,7 +63,7 @@ func (geh *OtherFeeHandler) RegisterAdd(api huma.API, mw ...func(huma.Context, f
 			return nil, err
 		}
 
-		return &AddOtherFeeOutput{Body: res}, nil
+		return &AddOtherFeeOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -79,7 +79,7 @@ type UpdateOtherFeeInput struct {
 }
 
 type UpdateOtherFeeOutput struct {
-	Body dto.OtherFeeResponse
+	Body httpapi.Envelope[dto.OtherFeeResponse]
 }
 
 // RegisterUpdate registers PUT /api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID} on the Huma API.
@@ -108,7 +108,7 @@ func (geh *OtherFeeHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context
 			return nil, err
 		}
 
-		return &UpdateOtherFeeOutput{Body: res}, nil
+		return &UpdateOtherFeeOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -145,7 +145,7 @@ type GetFeeCalculationMethodsInput struct {
 }
 
 type GetFeeCalculationMethodsOutput struct {
-	Body []dto.FeeCalculationMethodInfo
+	Body httpapi.Envelope[[]dto.FeeCalculationMethodInfo]
 }
 
 // RegisterGetFeeCalculationMethods registers GET /api/v1/group-expenses/fee-calculation-methods on the Huma API.
@@ -160,6 +160,6 @@ func (geh *OtherFeeHandler) RegisterGetFeeCalculationMethods(api huma.API, mw ..
 		Security:      []map[string][]string{{"BearerAuth": {}}},
 		Middlewares:   mw,
 	}, func(ctx context.Context, in *GetFeeCalculationMethodsInput) (*GetFeeCalculationMethodsOutput, error) {
-		return &GetFeeCalculationMethodsOutput{Body: geh.otherFeeSvc.GetCalculationMethods()}, nil
+		return &GetFeeCalculationMethodsOutput{Body: httpapi.NewEnvelope(geh.otherFeeSvc.GetCalculationMethods())}, nil
 	})
 }

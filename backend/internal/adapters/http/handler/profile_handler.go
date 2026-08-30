@@ -28,7 +28,7 @@ type GetProfileInput struct {
 }
 
 type GetProfileOutput struct {
-	Body dto.ProfileResponse
+	Body httpapi.Envelope[dto.ProfileResponse]
 }
 
 // RegisterProfile registers GET /api/v1/profile on the Huma API.
@@ -48,7 +48,7 @@ func (ph *ProfileHandler) RegisterProfile(api huma.API, mw ...func(huma.Context,
 			return nil, err
 		}
 
-		return &GetProfileOutput{Body: res}, nil
+		return &GetProfileOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -61,7 +61,7 @@ type UpdateProfileInput struct {
 }
 
 type UpdateProfileOutput struct {
-	Body dto.ProfileResponse
+	Body httpapi.Envelope[dto.ProfileResponse]
 }
 
 // RegisterUpdate registers PATCH /api/v1/profile on the Huma API.
@@ -87,7 +87,7 @@ func (ph *ProfileHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &UpdateProfileOutput{Body: res}, nil
+		return &UpdateProfileOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -97,7 +97,7 @@ type SearchProfilesInput struct {
 }
 
 type SearchProfilesOutput struct {
-	Body []dto.SearchProfileResponse
+	Body httpapi.Envelope[[]dto.SearchProfileResponse]
 }
 
 // RegisterSearch registers GET /api/v1/profiles on the Huma API.
@@ -117,7 +117,7 @@ func (ph *ProfileHandler) RegisterSearch(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &SearchProfilesOutput{Body: res}, nil
+		return &SearchProfilesOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 

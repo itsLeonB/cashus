@@ -24,7 +24,7 @@ type GetUnreadNotificationsInput struct {
 }
 
 type GetUnreadNotificationsOutput struct {
-	Body []dto.NotificationResponse
+	Body httpapi.Envelope[[]dto.NotificationResponse]
 }
 
 // RegisterGetUnread registers GET /api/v1/notifications on the Huma API.
@@ -44,7 +44,7 @@ func (nh *NotificationHandler) RegisterGetUnread(api huma.API, mw ...func(huma.C
 			return nil, err
 		}
 
-		return &GetUnreadNotificationsOutput{Body: res}, nil
+		return &GetUnreadNotificationsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 

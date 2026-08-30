@@ -10,8 +10,11 @@ import "github.com/danielgtaylor/huma/v2"
 // NewConfig builds the huma.Config used to construct the single huma.API
 // bound to the gin engine root.
 //
-// Two deviations from huma.DefaultConfig are made so response bodies are the
-// bare DTO (Huma-native, no ginkgo envelope, no Huma schema-link additions):
+// Successful response bodies are wrapped in a top-level "data" field (see
+// httpapi.Envelope) by each handler's Output struct, matching the envelope
+// shape the frontend expects. That wrapping is done per-Output-struct, not
+// here; this config only disables Huma's own schema-link additions, which
+// are unrelated to the envelope:
 //   - CreateHooks is cleared so the default SchemaLinkTransformer (which
 //     injects a top-level "$schema" field and a describedby Link header into
 //     every response) is never registered.

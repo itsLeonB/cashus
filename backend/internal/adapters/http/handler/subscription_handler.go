@@ -23,7 +23,7 @@ type CreateSubscriptionPurchaseInput struct {
 }
 
 type CreateSubscriptionPurchaseOutput struct {
-	Body dto.PaymentResponse
+	Body httpapi.Envelope[dto.PaymentResponse]
 }
 
 // RegisterCreatePurchase registers POST /api/v1/plans/{planID}/versions/{planVersionID}/subscriptions on the Huma API.
@@ -49,7 +49,7 @@ func (sh *SubscriptionHandler) RegisterCreatePurchase(api huma.API, mw ...func(h
 			return nil, err
 		}
 
-		return &CreateSubscriptionPurchaseOutput{Body: res}, nil
+		return &CreateSubscriptionPurchaseOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -58,7 +58,7 @@ type GetSubscribedDetailsInput struct {
 }
 
 type GetSubscribedDetailsOutput struct {
-	Body dto.SubscriptionResponse
+	Body httpapi.Envelope[dto.SubscriptionResponse]
 }
 
 // RegisterGetSubscribedDetails registers GET /api/v1/profile/subscription on the Huma API.
@@ -78,6 +78,6 @@ func (sh *SubscriptionHandler) RegisterGetSubscribedDetails(api huma.API, mw ...
 			return nil, err
 		}
 
-		return &GetSubscribedDetailsOutput{Body: res}, nil
+		return &GetSubscribedDetailsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

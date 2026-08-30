@@ -37,7 +37,7 @@ type CreateAnonymousFriendshipInput struct {
 }
 
 type CreateAnonymousFriendshipOutput struct {
-	Body dto.FriendshipResponse
+	Body httpapi.Envelope[dto.FriendshipResponse]
 }
 
 // RegisterCreateAnonymousFriendship registers POST /api/v1/friendships on the Huma API.
@@ -62,7 +62,7 @@ func (fh *FriendshipHandler) RegisterCreateAnonymousFriendship(api huma.API, mw 
 			return nil, err
 		}
 
-		return &CreateAnonymousFriendshipOutput{Body: res}, nil
+		return &CreateAnonymousFriendshipOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -71,7 +71,7 @@ type GetAllFriendshipsInput struct {
 }
 
 type GetAllFriendshipsOutput struct {
-	Body []dto.FriendshipResponse
+	Body httpapi.Envelope[[]dto.FriendshipResponse]
 }
 
 // RegisterGetAll registers GET /api/v1/friendships on the Huma API.
@@ -102,7 +102,7 @@ func (fh *FriendshipHandler) RegisterGetAll(api huma.API, mw ...func(huma.Contex
 			}
 		}
 
-		return &GetAllFriendshipsOutput{Body: friendships}, nil
+		return &GetAllFriendshipsOutput{Body: httpapi.NewEnvelope(friendships)}, nil
 	})
 }
 
@@ -112,7 +112,7 @@ type GetFriendshipDetailsInput struct {
 }
 
 type GetFriendshipDetailsOutput struct {
-	Body dto.FriendDetailsResponse
+	Body httpapi.Envelope[dto.FriendDetailsResponse]
 }
 
 // RegisterGetDetails registers GET /api/v1/friendships/{friendshipID} on the Huma API.
@@ -132,6 +132,6 @@ func (fh *FriendshipHandler) RegisterGetDetails(api huma.API, mw ...func(huma.Co
 			return nil, err
 		}
 
-		return &GetFriendshipDetailsOutput{Body: res}, nil
+		return &GetFriendshipDetailsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

@@ -22,7 +22,7 @@ type GetPaymentListInput struct {
 
 type GetPaymentListOutput struct {
 	XTotalCount int `header:"X-Total-Count"`
-	Body        []dto.PaymentResponse
+	Body        httpapi.Envelope[[]dto.PaymentResponse]
 }
 
 // RegisterGetList registers GET /admin/v1/payments on the Huma API.
@@ -42,7 +42,7 @@ func (ph *PaymentHandler) RegisterGetList(api huma.API, mw ...func(huma.Context,
 			return nil, err
 		}
 
-		return &GetPaymentListOutput{XTotalCount: len(res), Body: res}, nil
+		return &GetPaymentListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -52,7 +52,7 @@ type GetPaymentInput struct {
 }
 
 type GetPaymentOutput struct {
-	Body dto.PaymentResponse
+	Body httpapi.Envelope[dto.PaymentResponse]
 }
 
 // RegisterGetOne registers GET /admin/v1/payments/{paymentID} on the Huma API.
@@ -72,7 +72,7 @@ func (ph *PaymentHandler) RegisterGetOne(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &GetPaymentOutput{Body: res}, nil
+		return &GetPaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -90,7 +90,7 @@ type UpdatePaymentInput struct {
 }
 
 type UpdatePaymentOutput struct {
-	Body dto.PaymentResponse
+	Body httpapi.Envelope[dto.PaymentResponse]
 }
 
 // RegisterUpdate registers PUT /admin/v1/payments/{paymentID} on the Huma API.
@@ -120,7 +120,7 @@ func (ph *PaymentHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &UpdatePaymentOutput{Body: res}, nil
+		return &UpdatePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -130,7 +130,7 @@ type DeletePaymentInput struct {
 }
 
 type DeletePaymentOutput struct {
-	Body dto.PaymentResponse
+	Body httpapi.Envelope[dto.PaymentResponse]
 }
 
 // RegisterDelete registers DELETE /admin/v1/payments/{paymentID} on the Huma API.
@@ -150,6 +150,6 @@ func (ph *PaymentHandler) RegisterDelete(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &DeletePaymentOutput{Body: res}, nil
+		return &DeletePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

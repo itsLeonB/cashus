@@ -24,7 +24,7 @@ type CreatePlanInput struct {
 }
 
 type CreatePlanOutput struct {
-	Body dto.PlanResponse
+	Body httpapi.Envelope[dto.PlanResponse]
 }
 
 // RegisterCreate registers POST /admin/v1/plans on the Huma API.
@@ -49,7 +49,7 @@ func (ph *PlanHandler) RegisterCreate(api huma.API, mw ...func(huma.Context, fun
 			return nil, err
 		}
 
-		return &CreatePlanOutput{Body: res}, nil
+		return &CreatePlanOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -59,7 +59,7 @@ type GetPlanListInput struct {
 
 type GetPlanListOutput struct {
 	XTotalCount int `header:"X-Total-Count"`
-	Body        []dto.PlanResponse
+	Body        httpapi.Envelope[[]dto.PlanResponse]
 }
 
 // RegisterGetList registers GET /admin/v1/plans on the Huma API.
@@ -79,7 +79,7 @@ func (ph *PlanHandler) RegisterGetList(api huma.API, mw ...func(huma.Context, fu
 			return nil, err
 		}
 
-		return &GetPlanListOutput{XTotalCount: len(res), Body: res}, nil
+		return &GetPlanListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -89,7 +89,7 @@ type GetPlanInput struct {
 }
 
 type GetPlanOutput struct {
-	Body dto.PlanResponse
+	Body httpapi.Envelope[dto.PlanResponse]
 }
 
 // RegisterGetOne registers GET /admin/v1/plans/{planID} on the Huma API.
@@ -109,7 +109,7 @@ func (ph *PlanHandler) RegisterGetOne(api huma.API, mw ...func(huma.Context, fun
 			return nil, err
 		}
 
-		return &GetPlanOutput{Body: res}, nil
+		return &GetPlanOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -124,7 +124,7 @@ type UpdatePlanInput struct {
 }
 
 type UpdatePlanOutput struct {
-	Body dto.PlanResponse
+	Body httpapi.Envelope[dto.PlanResponse]
 }
 
 // RegisterUpdate registers PUT /admin/v1/plans/{planID} on the Huma API.
@@ -151,7 +151,7 @@ func (ph *PlanHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, fun
 			return nil, err
 		}
 
-		return &UpdatePlanOutput{Body: res}, nil
+		return &UpdatePlanOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -161,7 +161,7 @@ type DeletePlanInput struct {
 }
 
 type DeletePlanOutput struct {
-	Body dto.PlanResponse
+	Body httpapi.Envelope[dto.PlanResponse]
 }
 
 // RegisterDelete registers DELETE /admin/v1/plans/{planID} on the Huma API.
@@ -181,6 +181,6 @@ func (ph *PlanHandler) RegisterDelete(api huma.API, mw ...func(huma.Context, fun
 			return nil, err
 		}
 
-		return &DeletePlanOutput{Body: res}, nil
+		return &DeletePlanOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

@@ -32,7 +32,7 @@ type CreatePlanVersionInput struct {
 }
 
 type CreatePlanVersionOutput struct {
-	Body dto.PlanVersionResponse
+	Body httpapi.Envelope[dto.PlanVersionResponse]
 }
 
 // RegisterCreate registers POST /admin/v1/plan-versions on the Huma API.
@@ -64,7 +64,7 @@ func (pvh *PlanVersionHandler) RegisterCreate(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &CreatePlanVersionOutput{Body: res}, nil
+		return &CreatePlanVersionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -74,7 +74,7 @@ type GetPlanVersionListInput struct {
 
 type GetPlanVersionListOutput struct {
 	XTotalCount int `header:"X-Total-Count"`
-	Body        []dto.PlanVersionResponse
+	Body        httpapi.Envelope[[]dto.PlanVersionResponse]
 }
 
 // RegisterGetList registers GET /admin/v1/plan-versions on the Huma API.
@@ -94,7 +94,7 @@ func (pvh *PlanVersionHandler) RegisterGetList(api huma.API, mw ...func(huma.Con
 			return nil, err
 		}
 
-		return &GetPlanVersionListOutput{XTotalCount: len(res), Body: res}, nil
+		return &GetPlanVersionListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -104,7 +104,7 @@ type GetPlanVersionInput struct {
 }
 
 type GetPlanVersionOutput struct {
-	Body dto.PlanVersionResponse
+	Body httpapi.Envelope[dto.PlanVersionResponse]
 }
 
 // RegisterGetOne registers GET /admin/v1/plan-versions/{planVersionID} on the Huma API.
@@ -124,7 +124,7 @@ func (pvh *PlanVersionHandler) RegisterGetOne(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &GetPlanVersionOutput{Body: res}, nil
+		return &GetPlanVersionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -145,7 +145,7 @@ type UpdatePlanVersionInput struct {
 }
 
 type UpdatePlanVersionOutput struct {
-	Body dto.PlanVersionResponse
+	Body httpapi.Envelope[dto.PlanVersionResponse]
 }
 
 // RegisterUpdate registers PUT /admin/v1/plan-versions/{planVersionID} on the Huma API.
@@ -178,7 +178,7 @@ func (pvh *PlanVersionHandler) RegisterUpdate(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &UpdatePlanVersionOutput{Body: res}, nil
+		return &UpdatePlanVersionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -188,7 +188,7 @@ type DeletePlanVersionInput struct {
 }
 
 type DeletePlanVersionOutput struct {
-	Body dto.PlanVersionResponse
+	Body httpapi.Envelope[dto.PlanVersionResponse]
 }
 
 // RegisterDelete registers DELETE /admin/v1/plan-versions/{planVersionID} on the Huma API.
@@ -208,6 +208,6 @@ func (pvh *PlanVersionHandler) RegisterDelete(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &DeletePlanVersionOutput{Body: res}, nil
+		return &DeletePlanVersionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
 )
@@ -58,7 +59,7 @@ type MakePaymentInput struct {
 }
 
 type MakePaymentOutput struct {
-	Body dto.PaymentResponse
+	Body httpapi.Envelope[dto.PaymentResponse]
 }
 
 // RegisterMakePayment registers POST /api/v1/subscriptions/{subscriptionID} on the Huma API.
@@ -78,6 +79,6 @@ func (ph *PaymentHandler) RegisterMakePayment(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &MakePaymentOutput{Body: res}, nil
+		return &MakePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

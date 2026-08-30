@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateAnonymousFriend } from "@/hooks/useApi";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 interface InlineAnonymousFriendFormProps {
   readonly onCreated?: (profileId: string) => void;
@@ -29,12 +30,11 @@ export function InlineAnonymousFriendForm({
       });
       setName("");
       onCreated?.(result.profileId);
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to add friend",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };

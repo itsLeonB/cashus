@@ -72,13 +72,12 @@ export default function ResetPasswordPage() {
 
           setTimeout(() => navigate("/login"), 3000);
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Reset failed",
             description:
-              err.message || "Something went wrong. Please try again.",
+              error.message || "Something went wrong. Please try again.",
           });
         },
       },

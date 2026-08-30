@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Search, UserPlus, Loader2 } from "lucide-react";
 import { InlineAnonymousFriendForm } from "./InlineAnonymousFriendForm";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 interface AddFriendModalProps {
   readonly open: boolean;
@@ -46,12 +47,11 @@ export function AddFriendModal({ open, onOpenChange }: AddFriendModalProps) {
         description: "Friend request has been sent",
       });
       onOpenChange(false);
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to send request",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     } finally {
       setPendingRequestIds((prev) => {

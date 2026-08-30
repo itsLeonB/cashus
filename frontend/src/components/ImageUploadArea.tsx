@@ -72,22 +72,20 @@ export function ImageUploadArea({
     setPreviewUrl(URL.createObjectURL(fileToUpload));
 
     if (expenseId && uploadPermission.canUpload) {
-      const handleUploadError = (error: unknown) => {
-        const err = error as ApiError;
-
-        if (err.statusCode === 422) {
+      const handleUploadError = (error: ApiError) => {
+        if (error.statusCode === 422) {
           setUploadError(
-            err.message ||
+            error.message ||
               "This image couldn't be processed. Please try another photo.",
           );
-          if (err.errors) {
-            console.error("Backend validation failed:", err.errors);
+          if (error.errors) {
+            console.error("Backend validation failed:", error.errors);
           }
         } else {
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
           clearInputs();
         }

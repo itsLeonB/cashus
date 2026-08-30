@@ -20,10 +20,7 @@ export const formatCurrency = (amount: number | string, currency = "IDR") => {
     minimumFractionDigits: 2,
   });
 
-  if (typeof amount === "string") {
-    return numberFormat.format(Number.parseFloat(amount));
-  }
-  return numberFormat.format(amount);
+  return numberFormat.format(Number(amount));
 };
 
 export function urlBase64ToUint8Array(base64String: string) {

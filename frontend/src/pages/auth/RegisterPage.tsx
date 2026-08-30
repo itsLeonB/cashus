@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, Loader2, Check } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -43,12 +44,11 @@ export default function RegisterPage() {
     try {
       await register(email, password, passwordConfirmation, slug);
       setIsSuccess(true);
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Registration failed",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     } finally {
       setIsLoading(false);

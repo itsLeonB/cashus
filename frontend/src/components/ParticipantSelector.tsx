@@ -6,6 +6,7 @@ import { InlineAnonymousFriendForm } from "./InlineAnonymousFriendForm";
 import { cn } from "@/lib/utils";
 import { useSyncParticipants, useFriendships } from "@/hooks/useApi";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
@@ -251,12 +252,11 @@ export function ParticipantSelector({
       });
       toast({ title: "Participants updated successfully" });
       onSuccess?.();
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to update participants",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };

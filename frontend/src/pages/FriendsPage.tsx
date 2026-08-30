@@ -29,6 +29,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function FriendsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,12 +60,11 @@ export default function FriendsPage() {
         title: "Request accepted",
         description: "You are now friends",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to accept request",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -76,12 +76,11 @@ export default function FriendsPage() {
         title: "Request ignored",
         description: "The request has been removed",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to ignore request",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -93,12 +92,11 @@ export default function FriendsPage() {
         title: "Request cancelled",
         description: "The request has been cancelled",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to cancel request",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -110,12 +108,11 @@ export default function FriendsPage() {
         title: "Request blocked",
         description: "The user has been blocked",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to block request",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -127,12 +124,11 @@ export default function FriendsPage() {
         title: "Request unblocked",
         description: "The user has been unblocked",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to unblock request",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };

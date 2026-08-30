@@ -2,11 +2,18 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import config from "@/config/config";
 
+interface UserJotInitOptions {
+  widget?: boolean;
+  position?: string;
+  theme?: string;
+  trigger?: string;
+}
+
 declare global {
   var uj:
     | {
         q: unknown[];
-        init: (projectId: string, options?: Record<string, unknown>) => void;
+        init: (projectId: string, options?: UserJotInitOptions) => void;
         identify: (user: {
           id: string | number;
           email: string;
@@ -50,7 +57,7 @@ export function useUserJotTracker() {
   useEffect(() => {
     if (!initialized.current || !user || !globalThis.uj) return;
 
-    const fullName = typeof user.name === "string" ? user.name.trim() : "";
+    const fullName = user.name.trim();
     const [firstName, ...rest] = fullName ? fullName.split(/\s+/) : [""];
     const lastName = rest.join(" ");
 

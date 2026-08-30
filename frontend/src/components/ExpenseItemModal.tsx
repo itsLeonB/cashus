@@ -81,12 +81,11 @@ export function ExpenseItemModal({
             });
             onOpenChange(false);
           },
-          onError: (error: unknown) => {
-            const err = error as { message?: string };
+          onError: (error) => {
             toast({
               variant: "destructive",
               title: "Failed to update item",
-              description: err.message || "Something went wrong",
+              description: error.message || "Something went wrong",
             });
           },
         },
@@ -100,12 +99,11 @@ export function ExpenseItemModal({
           });
           onOpenChange(false);
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to add item",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
       });

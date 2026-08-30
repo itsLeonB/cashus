@@ -54,12 +54,11 @@ export function AssociateProfileModal({
             onSuccess();
           }
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to link profile",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
         onSettled: () => {

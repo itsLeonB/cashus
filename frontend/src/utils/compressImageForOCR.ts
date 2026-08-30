@@ -30,7 +30,7 @@ export async function compressImageForOCR(file: File): Promise<File> {
   // but we can be explicit if we want to ensure it happens for > 5MB.
   const isLargePng = file.type === "image/png" && file.size > 5 * 1024 * 1024;
 
-  const options = {
+  const options: Options = {
     maxSizeMB: 2,
     maxWidthOrHeight: 3000,
     initialQuality: 0.92,
@@ -51,7 +51,7 @@ export async function compressImageForOCR(file: File): Promise<File> {
     // If the library downscales to meet 2MB, it might go below 1600.
     // Given 2MB limit, it's very unlikely to go below 1600 for a 3000px image at 0.85+ quality.
 
-    const compressedBlob = await imageCompression(file, options as Options);
+    const compressedBlob = await imageCompression(file, options);
 
     // Create a new File object to preserve the original name
     // If we converted PNG to JPEG, we should update the extension if possible,

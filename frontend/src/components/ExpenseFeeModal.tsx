@@ -91,12 +91,11 @@ export function ExpenseFeeModal({
             });
             onOpenChange(false);
           },
-          onError: (error: unknown) => {
-            const err = error as { message?: string };
+          onError: (error) => {
             toast({
               variant: "destructive",
               title: "Failed to update fee",
-              description: err.message || "Something went wrong",
+              description: error.message || "Something went wrong",
             });
           },
         },
@@ -110,12 +109,11 @@ export function ExpenseFeeModal({
           });
           onOpenChange(false);
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to add fee",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
       });

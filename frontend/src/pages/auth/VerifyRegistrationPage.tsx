@@ -33,11 +33,10 @@ export default function VerifyRegistrationPage() {
         );
         timeoutId = setTimeout(() => navigate("/login"), 3000);
       },
-      onError: (error: unknown) => {
-        const err = error as { message?: string };
+      onError: (error) => {
         setStatus("error");
         setMessage(
-          err.message || "Verification failed. The token may have expired.",
+          error.message || "Verification failed. The token may have expired.",
         );
       },
     });

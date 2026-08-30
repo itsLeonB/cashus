@@ -15,9 +15,7 @@ interface ExpenseConfirmationPreviewProps {
 // Small, single-purpose helpers
 // ---------------------------------------------------------------------------
 
-function buildCoveredByMap(
-  participants: ExpenseConfirmationResponse["participants"],
-): Record<string, string[]> {
+function buildCoveredByMap(participants: ExpenseConfirmationResponse["participants"]) {
   const map: Record<string, string[]> = {};
   for (const p of participants ?? []) {
     if (p.hasProxy && p.proxyProfile) {

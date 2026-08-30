@@ -29,7 +29,7 @@ type AddOtherFeeInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	Body           struct {
 		Name              string                        `json:"name" minLength:"3"`
-		Amount            httpapi.Decimal               `json:"amount"`
+		Amount            httpapi.Decimal               `json:"amount" required:"true"`
 		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
 	}
 }
@@ -73,7 +73,7 @@ type UpdateOtherFeeInput struct {
 	OtherFeeID     uuid.UUID `path:"otherFeeID"`
 	Body           struct {
 		Name              string                        `json:"name" minLength:"3"`
-		Amount            httpapi.Decimal               `json:"amount"`
+		Amount            httpapi.Decimal               `json:"amount" required:"true"`
 		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
 	}
 }

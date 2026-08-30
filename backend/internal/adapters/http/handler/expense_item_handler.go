@@ -28,7 +28,7 @@ type AddExpenseItemInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	Body           struct {
 		Name     string          `json:"name" minLength:"3"`
-		Amount   httpapi.Decimal `json:"amount"`
+		Amount   httpapi.Decimal `json:"amount" required:"true"`
 		Quantity int             `json:"quantity" minimum:"1"`
 	}
 }
@@ -69,7 +69,7 @@ type UpdateExpenseItemInput struct {
 	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
 	Body           struct {
 		Name     string          `json:"name" minLength:"3"`
-		Amount   httpapi.Decimal `json:"amount"`
+		Amount   httpapi.Decimal `json:"amount" required:"true"`
 		Quantity int             `json:"quantity" minimum:"1"`
 	}
 }

@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -16,6 +17,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    tailwindcss(),
     // Substitute %VITE_SITE_URL% in index.html with the configured origin,
     // falling back to the production origin so staging/preview builds never
     // emit a broken literal placeholder or advertise the wrong host.

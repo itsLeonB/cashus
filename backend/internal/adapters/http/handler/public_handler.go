@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 )
@@ -22,7 +23,7 @@ type GetPublicProfileInput struct {
 }
 
 type GetPublicProfileOutput struct {
-	Body dto.FriendDetailsResponse
+	Body httpapi.Envelope[dto.FriendDetailsResponse]
 }
 
 // RegisterGetPublicProfile registers GET /api/v1/public/profiles/{slug} on the Huma API.
@@ -41,6 +42,6 @@ func (ph *PublicHandler) RegisterGetPublicProfile(api huma.API, mw ...func(huma.
 			return nil, err
 		}
 
-		return &GetPublicProfileOutput{Body: res}, nil
+		return &GetPublicProfileOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

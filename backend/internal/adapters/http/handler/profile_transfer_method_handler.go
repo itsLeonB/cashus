@@ -58,7 +58,7 @@ type GetAllOwnedProfileTransferMethodsInput struct {
 }
 
 type GetAllOwnedProfileTransferMethodsOutput struct {
-	Body []dto.ProfileTransferMethodResponse
+	Body httpapi.Envelope[[]dto.ProfileTransferMethodResponse]
 }
 
 // RegisterGetAllOwned registers GET /api/v1/profile/transfer-methods on the Huma API.
@@ -78,7 +78,7 @@ func (ptmh *ProfileTransferMethodHandler) RegisterGetAllOwned(api huma.API, mw .
 			return nil, err
 		}
 
-		return &GetAllOwnedProfileTransferMethodsOutput{Body: res}, nil
+		return &GetAllOwnedProfileTransferMethodsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -88,7 +88,7 @@ type GetAllProfileTransferMethodsByFriendProfileIDInput struct {
 }
 
 type GetAllProfileTransferMethodsByFriendProfileIDOutput struct {
-	Body []dto.ProfileTransferMethodResponse
+	Body httpapi.Envelope[[]dto.ProfileTransferMethodResponse]
 }
 
 // RegisterGetAllByFriendProfileID registers GET /api/v1/profiles/{profileID}/transfer-methods on the Huma API.
@@ -108,6 +108,6 @@ func (ptmh *ProfileTransferMethodHandler) RegisterGetAllByFriendProfileID(api hu
 			return nil, err
 		}
 
-		return &GetAllProfileTransferMethodsByFriendProfileIDOutput{Body: res}, nil
+		return &GetAllProfileTransferMethodsByFriendProfileIDOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

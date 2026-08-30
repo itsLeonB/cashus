@@ -25,7 +25,7 @@ type GetAllTransferMethodsInput struct {
 }
 
 type GetAllTransferMethodsOutput struct {
-	Body []dto.TransferMethodResponse
+	Body httpapi.Envelope[[]dto.TransferMethodResponse]
 }
 
 // RegisterGetAll registers GET /api/v1/transfer-methods on the Huma API.
@@ -45,6 +45,6 @@ func (tmh *TransferMethodHandler) RegisterGetAll(api huma.API, mw ...func(huma.C
 			return nil, err
 		}
 
-		return &GetAllTransferMethodsOutput{Body: res}, nil
+		return &GetAllTransferMethodsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

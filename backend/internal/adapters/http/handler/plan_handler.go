@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
 )
@@ -16,7 +17,7 @@ type PlanHandler struct {
 type GetActivePlansInput struct{}
 
 type GetActivePlansOutput struct {
-	Body []dto.PlanVersionResponse
+	Body httpapi.Envelope[[]dto.PlanVersionResponse]
 }
 
 // RegisterGetActive registers GET /api/v1/plans on the Huma API.
@@ -35,6 +36,6 @@ func (ph *PlanHandler) RegisterGetActive(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &GetActivePlansOutput{Body: res}, nil
+		return &GetActivePlansOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

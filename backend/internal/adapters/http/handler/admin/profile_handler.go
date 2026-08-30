@@ -21,7 +21,7 @@ type GetAdminProfileListInput struct {
 
 type GetAdminProfileListOutput struct {
 	XTotalCount int `header:"X-Total-Count"`
-	Body        []dto.ProfileResponse
+	Body        httpapi.Envelope[[]dto.ProfileResponse]
 }
 
 // RegisterGetList registers GET /admin/v1/profiles on the Huma API.
@@ -41,7 +41,7 @@ func (ph *ProfileHandler) RegisterGetList(api huma.API, mw ...func(huma.Context,
 			return nil, err
 		}
 
-		return &GetAdminProfileListOutput{XTotalCount: len(res), Body: res}, nil
+		return &GetAdminProfileListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -51,7 +51,7 @@ type GetAdminProfileInput struct {
 }
 
 type GetAdminProfileOutput struct {
-	Body dto.ProfileResponse
+	Body httpapi.Envelope[dto.ProfileResponse]
 }
 
 // RegisterGetOne registers GET /admin/v1/profiles/{profileID} on the Huma API.
@@ -71,6 +71,6 @@ func (ph *ProfileHandler) RegisterGetOne(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &GetAdminProfileOutput{Body: res}, nil
+		return &GetAdminProfileOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

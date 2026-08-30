@@ -28,7 +28,7 @@ type PresignedSaveExpenseBillInput struct {
 }
 
 type PresignedSaveExpenseBillOutput struct {
-	Body dto.PresignedExpenseBillResponse
+	Body httpapi.Envelope[dto.PresignedExpenseBillResponse]
 }
 
 // RegisterPresignedSave registers POST /api/v1/group-expenses/{groupExpenseID}/bills on the Huma API.
@@ -54,7 +54,7 @@ func (geh *ExpenseBillHandler) RegisterPresignedSave(api huma.API, mw ...func(hu
 			return nil, err
 		}
 
-		return &PresignedSaveExpenseBillOutput{Body: res}, nil
+		return &PresignedSaveExpenseBillOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 

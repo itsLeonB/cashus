@@ -55,7 +55,7 @@ type GetAllFriendRequestsInput struct {
 }
 
 type GetAllFriendRequestsOutput struct {
-	Body []dto.FriendshipRequestResponse
+	Body httpapi.Envelope[[]dto.FriendshipRequestResponse]
 }
 
 // RegisterGetAll registers GET /api/v1/friend-requests/{friendRequestType} on the Huma API.
@@ -86,7 +86,7 @@ func (frh *FriendshipRequestHandler) RegisterGetAll(api huma.API, mw ...func(hum
 			return nil, err
 		}
 
-		return &GetAllFriendRequestsOutput{Body: response}, nil
+		return &GetAllFriendRequestsOutput{Body: httpapi.NewEnvelope(response)}, nil
 	})
 }
 
@@ -179,7 +179,7 @@ func (frh *FriendshipRequestHandler) RegisterBlock(api huma.API, mw ...func(huma
 }
 
 type AcceptFriendRequestOutput struct {
-	Body dto.FriendshipResponse
+	Body httpapi.Envelope[dto.FriendshipResponse]
 }
 
 // RegisterAccept registers POST /api/v1/friend-requests/received/{friendRequestID} on the Huma API.
@@ -199,6 +199,6 @@ func (frh *FriendshipRequestHandler) RegisterAccept(api huma.API, mw ...func(hum
 			return nil, err
 		}
 
-		return &AcceptFriendRequestOutput{Body: res}, nil
+		return &AcceptFriendRequestOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

@@ -33,7 +33,7 @@ type CreateGroupExpenseDraftInput struct {
 }
 
 type CreateGroupExpenseDraftOutput struct {
-	Body dto.GroupExpenseResponse
+	Body httpapi.Envelope[dto.GroupExpenseResponse]
 }
 
 // RegisterCreateDraft registers POST /api/v1/group-expenses on the Huma API.
@@ -59,7 +59,7 @@ func (geh *groupExpenseHandler) RegisterCreateDraft(api huma.API, mw ...func(hum
 			return nil, err
 		}
 
-		return &CreateGroupExpenseDraftOutput{Body: res}, nil
+		return &CreateGroupExpenseDraftOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -70,7 +70,7 @@ type GetAllGroupExpensesInput struct {
 }
 
 type GetAllGroupExpensesOutput struct {
-	Body []dto.GroupExpenseResponse
+	Body httpapi.Envelope[[]dto.GroupExpenseResponse]
 }
 
 // RegisterGetAll registers GET /api/v1/group-expenses on the Huma API.
@@ -95,7 +95,7 @@ func (geh *groupExpenseHandler) RegisterGetAll(api huma.API, mw ...func(huma.Con
 			return nil, err
 		}
 
-		return &GetAllGroupExpensesOutput{Body: res}, nil
+		return &GetAllGroupExpensesOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -105,7 +105,7 @@ type GetGroupExpenseDetailsInput struct {
 }
 
 type GetGroupExpenseDetailsOutput struct {
-	Body dto.GroupExpenseResponse
+	Body httpapi.Envelope[dto.GroupExpenseResponse]
 }
 
 // RegisterGetDetails registers GET /api/v1/group-expenses/{groupExpenseID} on the Huma API.
@@ -125,7 +125,7 @@ func (geh *groupExpenseHandler) RegisterGetDetails(api huma.API, mw ...func(huma
 			return nil, err
 		}
 
-		return &GetGroupExpenseDetailsOutput{Body: res}, nil
+		return &GetGroupExpenseDetailsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -136,7 +136,7 @@ type ConfirmGroupExpenseDraftInput struct {
 }
 
 type ConfirmGroupExpenseDraftOutput struct {
-	Body dto.ExpenseConfirmationResponse
+	Body httpapi.Envelope[dto.ExpenseConfirmationResponse]
 }
 
 // RegisterConfirmDraft registers PATCH /api/v1/group-expenses/{groupExpenseID}/confirmed on the Huma API.
@@ -156,7 +156,7 @@ func (geh *groupExpenseHandler) RegisterConfirmDraft(api huma.API, mw ...func(hu
 			return nil, err
 		}
 
-		return &ConfirmGroupExpenseDraftOutput{Body: res}, nil
+		return &ConfirmGroupExpenseDraftOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -232,7 +232,7 @@ type GetRecentGroupExpensesInput struct {
 }
 
 type GetRecentGroupExpensesOutput struct {
-	Body []dto.GroupExpenseResponse
+	Body httpapi.Envelope[[]dto.GroupExpenseResponse]
 }
 
 // RegisterGetRecent registers GET /api/v1/group-expenses/recent on the Huma API.
@@ -252,6 +252,6 @@ func (geh *groupExpenseHandler) RegisterGetRecent(api huma.API, mw ...func(huma.
 			return nil, err
 		}
 
-		return &GetRecentGroupExpensesOutput{Body: res}, nil
+		return &GetRecentGroupExpensesOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

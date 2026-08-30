@@ -28,7 +28,7 @@ type CreateSubscriptionInput struct {
 }
 
 type CreateSubscriptionOutput struct {
-	Body dto.SubscriptionResponse
+	Body httpapi.Envelope[dto.SubscriptionResponse]
 }
 
 // RegisterCreate registers POST /admin/v1/subscriptions on the Huma API.
@@ -56,7 +56,7 @@ func (sh *SubscriptionHandler) RegisterCreate(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &CreateSubscriptionOutput{Body: res}, nil
+		return &CreateSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -66,7 +66,7 @@ type GetSubscriptionListInput struct {
 
 type GetSubscriptionListOutput struct {
 	XTotalCount int `header:"X-Total-Count"`
-	Body        []dto.SubscriptionResponse
+	Body        httpapi.Envelope[[]dto.SubscriptionResponse]
 }
 
 // RegisterGetList registers GET /admin/v1/subscriptions on the Huma API.
@@ -86,7 +86,7 @@ func (sh *SubscriptionHandler) RegisterGetList(api huma.API, mw ...func(huma.Con
 			return nil, err
 		}
 
-		return &GetSubscriptionListOutput{XTotalCount: len(res), Body: res}, nil
+		return &GetSubscriptionListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -96,7 +96,7 @@ type GetSubscriptionInput struct {
 }
 
 type GetSubscriptionOutput struct {
-	Body dto.SubscriptionResponse
+	Body httpapi.Envelope[dto.SubscriptionResponse]
 }
 
 // RegisterGetOne registers GET /admin/v1/subscriptions/{subscriptionID} on the Huma API.
@@ -116,7 +116,7 @@ func (sh *SubscriptionHandler) RegisterGetOne(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &GetSubscriptionOutput{Body: res}, nil
+		return &GetSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -136,7 +136,7 @@ type UpdateSubscriptionInput struct {
 }
 
 type UpdateSubscriptionOutput struct {
-	Body dto.SubscriptionResponse
+	Body httpapi.Envelope[dto.SubscriptionResponse]
 }
 
 // RegisterUpdate registers PUT /admin/v1/subscriptions/{subscriptionID} on the Huma API.
@@ -168,7 +168,7 @@ func (sh *SubscriptionHandler) RegisterUpdate(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &UpdateSubscriptionOutput{Body: res}, nil
+		return &UpdateSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -178,7 +178,7 @@ type DeleteSubscriptionInput struct {
 }
 
 type DeleteSubscriptionOutput struct {
-	Body dto.SubscriptionResponse
+	Body httpapi.Envelope[dto.SubscriptionResponse]
 }
 
 // RegisterDelete registers DELETE /admin/v1/subscriptions/{subscriptionID} on the Huma API.
@@ -198,6 +198,6 @@ func (sh *SubscriptionHandler) RegisterDelete(api huma.API, mw ...func(huma.Cont
 			return nil, err
 		}
 
-		return &DeleteSubscriptionOutput{Body: res}, nil
+		return &DeleteSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

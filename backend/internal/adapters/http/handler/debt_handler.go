@@ -32,7 +32,7 @@ type CreateDebtInput struct {
 }
 
 type CreateDebtOutput struct {
-	Body dto.DebtTransactionResponse
+	Body httpapi.Envelope[dto.DebtTransactionResponse]
 }
 
 // RegisterCreate registers POST /api/v1/debts on the Huma API.
@@ -62,7 +62,7 @@ func (dh *DebtHandler) RegisterCreate(api huma.API, mw ...func(huma.Context, fun
 			return nil, err
 		}
 
-		return &CreateDebtOutput{Body: res}, nil
+		return &CreateDebtOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -71,7 +71,7 @@ type GetAllDebtsInput struct {
 }
 
 type GetAllDebtsOutput struct {
-	Body []dto.DebtTransactionResponse
+	Body httpapi.Envelope[[]dto.DebtTransactionResponse]
 }
 
 // RegisterGetAll registers GET /api/v1/debts on the Huma API.
@@ -91,7 +91,7 @@ func (dh *DebtHandler) RegisterGetAll(api huma.API, mw ...func(huma.Context, fun
 			return nil, err
 		}
 
-		return &GetAllDebtsOutput{Body: res}, nil
+		return &GetAllDebtsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -100,7 +100,7 @@ type GetDebtsSummaryInput struct {
 }
 
 type GetDebtsSummaryOutput struct {
-	Body map[string]dto.FriendBalance
+	Body httpapi.Envelope[map[string]dto.FriendBalance]
 }
 
 // RegisterGetTransactionSummary registers GET /api/v1/debts/summary on the Huma API.
@@ -120,7 +120,7 @@ func (dh *DebtHandler) RegisterGetTransactionSummary(api huma.API, mw ...func(hu
 			return nil, err
 		}
 
-		return &GetDebtsSummaryOutput{Body: res}, nil
+		return &GetDebtsSummaryOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
@@ -129,7 +129,7 @@ type GetRecentDebtsInput struct {
 }
 
 type GetRecentDebtsOutput struct {
-	Body []dto.DebtTransactionResponse
+	Body httpapi.Envelope[[]dto.DebtTransactionResponse]
 }
 
 // RegisterGetRecent registers GET /api/v1/debts/recent on the Huma API.
@@ -149,6 +149,6 @@ func (dh *DebtHandler) RegisterGetRecent(api huma.API, mw ...func(huma.Context, 
 			return nil, err
 		}
 
-		return &GetRecentDebtsOutput{Body: res}, nil
+		return &GetRecentDebtsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

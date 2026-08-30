@@ -39,7 +39,7 @@ type GetAdminMeInput struct {
 }
 
 type GetAdminMeOutput struct {
-	Body dto.AdminMe
+	Body httpapi.Envelope[dto.AdminMe]
 }
 
 // RegisterMe registers GET /admin/v1/auth/me on the Huma API.
@@ -66,7 +66,7 @@ func (ah *AuthHandler) RegisterMe(api huma.API, mw ...func(huma.Context, func(hu
 		}
 
 		return &GetAdminMeOutput{
-			Body: dto.AdminMe{ID: user.ID, FullName: util.GetNameFromEmail(user.Email)},
+			Body: httpapi.NewEnvelope(dto.AdminMe{ID: user.ID, FullName: util.GetNameFromEmail(user.Email)}),
 		}, nil
 	})
 }

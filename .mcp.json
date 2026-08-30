@@ -50,6 +50,18 @@
       "headers": {
         "Authorization": "Bearer ${YOUTRACK_TOKEN}"
       }
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "serena",
+      "args": [
+        "start-mcp-server",
+        "--context",
+        "claude-code",
+        "--project",
+        "/home/leon/Projects/itsLeonB/cashus"
+      ],
+      "env": {}
     }
   }
 }

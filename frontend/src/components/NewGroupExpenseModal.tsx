@@ -27,6 +27,7 @@ import { ImageUploadArea } from "./ImageUploadArea";
 import { CurrencySelect } from "./CurrencySelect";
 import { useUploadPermission } from "@/hooks/useUploadPermission";
 import { UploadLimitInfo } from "./UploadLimitInfo";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 type InputType = "upload" | "manual";
 type Step = "details" | "upload" | "participants";
@@ -95,12 +96,11 @@ export function NewGroupExpenseModal({
       } else {
         setStep("participants");
       }
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to create expense",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };

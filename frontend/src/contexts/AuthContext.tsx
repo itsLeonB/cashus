@@ -48,6 +48,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       setUser(profile);
       setIsRefreshFailed(false);
     } catch (error) {
+      // SAFETY: authApi.getProfile() goes through apiClient (see
+      // src/lib/api/client.ts), which only ever throws/rejects with
+      // ApiError-shaped objects.
       const err = error as ApiError;
       if (err.isRefreshFailure) {
         setIsRefreshFailed(true);

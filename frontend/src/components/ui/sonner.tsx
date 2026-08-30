@@ -16,6 +16,9 @@ const Toaster = ({ ...props }: Readonly<ToasterProps>) => {
 
   return (
     <Sonner
+      // SAFETY: next-themes' useTheme() types `theme` as a plain string, but
+      // this app only ever sets it to "light" | "dark" | "system" (see
+      // ThemeProvider), which is exactly what Sonner's `theme` prop expects.
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{

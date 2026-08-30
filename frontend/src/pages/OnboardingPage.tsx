@@ -75,12 +75,11 @@ export default function OnboardingPage() {
           })
           .finally(() => navigate("/dashboard", { replace: true }));
       },
-      onError: (error: unknown) => {
-        const err = error as { message?: string };
+      onError: (error) => {
         toast({
           variant: "destructive",
           title: "Could not finish setup",
-          description: err.message || "Please try again.",
+          description: error.message || "Please try again.",
         });
       },
     });

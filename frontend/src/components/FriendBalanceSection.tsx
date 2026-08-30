@@ -3,14 +3,14 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import DebtSummary from "@/components/DebtSummary";
 import CurrencyBalanceSummary from "@/components/CurrencyBalanceSummary";
 import { TransactionHistory } from "@/components/TransactionHistory";
-import type { FriendBalance } from "@/lib/api";
+import type { FriendBalance, ApiError } from "@/lib/api";
 
 interface FriendBalanceSectionProps {
   balancesPerCurrency: Record<string, FriendBalance>;
   friendName: string;
   defaultCurrency?: string;
   isLoading?: boolean;
-  error?: Error | null;
+  error?: ApiError | null;
   isError?: boolean;
   onRecordTransaction?: () => void;
 }

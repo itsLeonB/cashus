@@ -17,6 +17,9 @@ if ("serviceWorker" in navigator) {
     // Detect standalone via matchMedia or navigator.standalone and notify SW
     const sendStandaloneStatus = () => {
       if (navigator.serviceWorker.controller) {
+        // SAFETY: `standalone` is a non-standard Safari/iOS-only property not
+        // declared on the DOM lib's Navigator type; checking it defensively
+        // (optional chaining below) is safe on browsers that lack it.
         const isStandalone =
           globalThis.matchMedia("(display-mode: standalone)").matches ||
           (navigator as Navigator & { standalone?: boolean }).standalone ===

@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 interface TransactionModalProps {
   open: boolean;
@@ -34,15 +35,7 @@ interface TransactionModalProps {
   defaultDirection?: DebtDirection;
 }
 
-const directionConfig: Record<
-  DebtDirection,
-  {
-    label: string;
-    description: string;
-    icon: typeof ArrowUpRight;
-    colorClass: string;
-  }
-> = {
+const directionConfig = {
   OUTGOING: {
     label: "I gave money",
     description: "You gave money to friend",
@@ -55,7 +48,17 @@ const directionConfig: Record<
     icon: ArrowDownLeft,
     colorClass: "border-warning text-warning bg-warning/10",
   },
-};
+} satisfies Record<
+  DebtDirection,
+  {
+    label: string;
+    description: string;
+    icon: typeof ArrowUpRight;
+    colorClass: string;
+  }
+>;
+
+const DEBT_DIRECTIONS: DebtDirection[] = ["OUTGOING", "INCOMING"];
 
 export function TransactionModal({
   open,
@@ -99,12 +102,11 @@ export function TransactionModal({
       });
       resetForm();
       onOpenChange(false);
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to record transaction",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -128,7 +130,7 @@ export function TransactionModal({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Direction Type */}
           <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(directionConfig) as DebtDirection[]).map((key) => {
+            {DEBT_DIRECTIONS.map((key) => {
               const config = directionConfig[key];
               const Icon = config.icon;
               return (

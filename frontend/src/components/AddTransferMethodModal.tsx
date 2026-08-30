@@ -68,12 +68,11 @@ export function AddTransferMethodModal({
           setAccountNumber("");
           onOpenChange(false);
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to add transfer method",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
       },

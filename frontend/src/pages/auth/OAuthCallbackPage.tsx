@@ -52,8 +52,7 @@ export default function OAuthCallbackPage() {
           globalThis.location.replace("/dashboard");
           await new Promise(() => {});
         },
-        onError: (err: unknown) => {
-          const error = err as { message?: string };
+        onError: (error) => {
           setError(error.message || "Failed to complete authentication");
         },
       },

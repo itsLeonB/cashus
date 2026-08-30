@@ -64,7 +64,9 @@ import type {
   ExpenseItemResponse,
   OtherFeeResponse,
   ExpenseConfirmationResponse,
+  ExpenseBillResponse,
 } from "@/lib/api/types";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString("en-US", {
@@ -79,13 +81,7 @@ const calculateItemAmount = (item: NewExpenseItemRequest): number => {
   return amount * item.quantity;
 };
 
-const billStatusDisplay: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-  }
-> = {
+const billStatusDisplay = {
   PENDING: { label: "Processing...", variant: "secondary" },
   EXTRACTED: { label: "Processing...", variant: "secondary" },
   FAILED_EXTRACTING: { label: "Extraction Failed", variant: "destructive" },
@@ -93,7 +89,13 @@ const billStatusDisplay: Record<
   FAILED_PARSING: { label: "Parsing Failed", variant: "destructive" },
   NOT_DETECTED: { label: "No Bill Image", variant: "outline" },
   NOT_UPLOADED: { label: "Not Uploaded", variant: "outline" },
-};
+} satisfies Record<
+  ExpenseBillResponse["status"],
+  {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  }
+>;
 
 const isRetryableStatus = (status: string) => {
   return status === "FAILED_EXTRACTING" || status === "FAILED_PARSING";
@@ -138,13 +140,10 @@ export default function ExpenseDetailPage() {
 
   const calculationMethodDisplayByName = useMemo(() => {
     if (!calculationMethods) return {};
-    return calculationMethods.reduce(
-      (acc, method) => {
-        acc[method.name] = method.display;
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
+    return calculationMethods.reduce<Record<string, string>>((acc, method) => {
+      acc[method.name] = method.display;
+      return acc;
+    }, {});
   }, [calculationMethods]);
 
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
@@ -240,12 +239,11 @@ export default function ExpenseDetailPage() {
       const result = await confirmExpense.mutateAsync(true);
       setDryRunResult(result);
       setConfirmPreviewModalOpen(true);
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to preview",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     } finally {
       setIsDryRunLoading(false);
@@ -264,12 +262,11 @@ export default function ExpenseDetailPage() {
         description:
           "The expense has been confirmed and debts have been recorded",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to confirm",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -287,12 +284,11 @@ export default function ExpenseDetailPage() {
             description: "The item has been removed from the expense.",
           });
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to remove item",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
         onSettled: () => {
@@ -315,12 +311,11 @@ export default function ExpenseDetailPage() {
             description: "The fee has been removed from the expense.",
           });
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to remove fee",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
         onSettled: () => {
@@ -360,12 +355,11 @@ export default function ExpenseDetailPage() {
         title: "Retry initiated",
         description: "Bill processing has been restarted.",
       });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Failed to retry",
-        description: err.message || "Something went wrong",
+        description: getApiErrorMessage(error),
       });
     }
   };
@@ -847,13 +841,11 @@ export default function ExpenseDetailPage() {
                                 "The expense has been deleted successfully.",
                             });
                             navigate("/expenses");
-                          } catch (error: unknown) {
-                            const err = error as { message?: string };
+                          } catch (error) {
                             toast({
                               variant: "destructive",
                               title: "Failed to delete",
-                              description:
-                                err.message || "Something went wrong",
+                              description: getApiErrorMessage(error),
                             });
                           }
                         }}

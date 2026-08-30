@@ -2,12 +2,12 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { FriendBalance } from "@/lib/api";
+import { FriendBalance, ApiError } from "@/lib/api";
 
 type DebtSummaryProps = {
   data: FriendBalance | undefined;
   isLoading: boolean;
-  error?: Error | null;
+  error?: ApiError | null;
   isError?: boolean;
   currency?: string;
 };

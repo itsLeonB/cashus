@@ -88,12 +88,11 @@ export default function ProfilePage() {
               "Check your email for instructions to reset your password",
           });
         },
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Failed to send reset email",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
       });
@@ -112,12 +111,11 @@ export default function ProfilePage() {
         turnstileRef.current?.reset();
         setCaptchaToken(null);
       },
-      onError: (error: unknown) => {
-        const err = error as { message?: string };
+      onError: (error) => {
         toast({
           variant: "destructive",
           title: "Failed to send reset email",
-          description: err.message || "Something went wrong",
+          description: error.message || "Something went wrong",
         });
         turnstileRef.current?.reset();
         setCaptchaToken(null);
@@ -164,12 +162,11 @@ export default function ProfilePage() {
           });
         });
       },
-      onError: (error: unknown) => {
-        const err = error as { message?: string };
+      onError: (error) => {
         toast({
           variant: "destructive",
           title: "Update failed",
-          description: err.message || "Something went wrong",
+          description: error.message || "Something went wrong",
         });
       },
     });

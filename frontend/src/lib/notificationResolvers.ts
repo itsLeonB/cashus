@@ -9,7 +9,7 @@ type NotificationConfig = {
   route: (notification: Notification) => string;
 };
 
-const notificationConfigs: Record<string, NotificationConfig> = {
+const notificationConfigs = {
   "debt-created": {
     route: (notification) => {
       const metadata = notification.metadata;
@@ -32,7 +32,7 @@ const notificationConfigs: Record<string, NotificationConfig> = {
   "expense-confirmed": {
     route: (notification) => `/expenses/${notification.entityId}`,
   },
-};
+} satisfies Record<string, NotificationConfig>;
 
 /**
  * Resolves a notification to an application route.

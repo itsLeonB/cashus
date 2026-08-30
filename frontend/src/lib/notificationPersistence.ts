@@ -51,6 +51,9 @@ export function getNotificationContext(): NotificationContext | null {
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (stored) {
+      // SAFETY: the only writer of this storage key is
+      // persistNotificationContext() below, which always serializes a
+      // NotificationContext, so parsing it back as NotificationContext is safe.
       const parsed = JSON.parse(stored) as NotificationContext;
       // Sync memory state
       memoryContext = parsed;

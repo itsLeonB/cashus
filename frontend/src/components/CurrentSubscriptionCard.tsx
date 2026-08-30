@@ -27,14 +27,7 @@ function formatDate(dateStr: string) {
   });
 }
 
-const STATUS_BADGE_CONFIG: Record<
-  string,
-  {
-    className: string;
-    text: string;
-    variant?: "outline" | "secondary" | "default";
-  }
-> = {
+const STATUS_BADGE_CONFIG = {
   canceled: {
     variant: "outline",
     className: "text-xs border-warning text-warning",
@@ -56,7 +49,14 @@ const STATUS_BADGE_CONFIG: Record<
       "text-xs bg-success/15 text-success border-success/30 hover:bg-success/20",
     text: "Active",
   },
-};
+} satisfies Record<
+  string,
+  {
+    className: string;
+    text: string;
+    variant?: "outline" | "secondary" | "default";
+  }
+>;
 
 function StatusBadge({ status }: Readonly<{ status: string }>) {
   const cfg = STATUS_BADGE_CONFIG[status];

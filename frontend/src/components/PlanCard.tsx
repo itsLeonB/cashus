@@ -29,10 +29,10 @@ interface PlanCardProps {
   ) => void;
 }
 
-const INTERVAL_LABELS: Record<string, string> = {
+const INTERVAL_LABELS = {
   monthly: "/ month",
   yearly: "/ year",
-};
+} satisfies Record<string, string>;
 
 function formatInterval(interval: string) {
   return INTERVAL_LABELS[interval?.toLowerCase()] ?? `/ ${interval}`;

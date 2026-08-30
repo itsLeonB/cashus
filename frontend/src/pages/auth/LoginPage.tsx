@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import { authApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,12 +30,11 @@ export default function LoginPage() {
     try {
       await login(email, password);
       // Hard reload is triggered inside login(), we just wait.
-    } catch (error: unknown) {
-      const err = error as Error;
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: err.message || "Invalid email or password",
+        description: getApiErrorMessage(error, "Invalid email or password"),
       });
     } finally {
       setIsLoading(false);

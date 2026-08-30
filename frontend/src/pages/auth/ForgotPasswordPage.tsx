@@ -36,12 +36,11 @@ export default function ForgotPasswordPage() {
         turnstileRef.current?.reset();
         setCaptchaToken(null);
       },
-      onError: (error: unknown) => {
-        const err = error as { message?: string };
+      onError: (error) => {
         toast({
           variant: "destructive",
           title: "Request failed",
-          description: err.message || "Something went wrong",
+          description: error.message || "Something went wrong",
         });
         turnstileRef.current?.reset();
         setCaptchaToken(null);
@@ -58,12 +57,11 @@ export default function ForgotPasswordPage() {
       setWaitingForCaptcha(true);
     } else {
       forgotPassword({ email, captchaToken: "" }, {
-        onError: (error: unknown) => {
-          const err = error as { message?: string };
+        onError: (error) => {
           toast({
             variant: "destructive",
             title: "Request failed",
-            description: err.message || "Something went wrong",
+            description: error.message || "Something went wrong",
           });
         },
       });

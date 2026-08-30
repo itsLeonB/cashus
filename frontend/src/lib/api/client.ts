@@ -4,7 +4,7 @@ import config from "@/config/config";
 const API_BASE_URL = config.API_BASE_URL;
 
 // One-time migration: remove old tokens from localStorage
-if (typeof localStorage !== "undefined") {
+if (globalThis.localStorage) {
   localStorage.removeItem("authToken");
   localStorage.removeItem("refreshToken");
 }
@@ -137,15 +137,18 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const method = options.method || "GET";
 
-    const headers: HeadersInit = {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    };
+    const headers: HeadersInit = {};
+    if (options.headers) {
+      Object.assign(headers, options.headers);
+    }
+    if (options.body) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (method !== "GET" && method !== "HEAD") {
       const csrf = this.getCsrfToken();
       if (csrf) {
-        (headers as Record<string, string>)["X-CSRF-Token"] = csrf;
+        headers["X-CSRF-Token"] = csrf;
       }
     }
 
@@ -166,11 +169,14 @@ class ApiClient {
     }
 
     if (response.status === 204) {
+      // SAFETY: HTTP 204 responses have no body. Callers of endpoints that
+      // return 204 type T as void/undefined-compatible, so an empty object
+      // is a safe stand-in for "no data".
       return {} as T;
     }
 
     const data = await response.json();
-    return data && typeof data === "object" && "data" in data ? data.data : data;
+    return data && data instanceof Object && "data" in data ? data.data : data;
   }
 
   get<T>(
@@ -193,21 +199,21 @@ class ApiClient {
     return this.request<T>(url, { method: "GET" });
   }
 
-  post<T>(endpoint: string, data?: unknown) {
+  post<T, D = unknown>(endpoint: string, data?: D) {
     return this.request<T>(endpoint, {
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  put<T>(endpoint: string, data?: unknown) {
+  put<T, D = unknown>(endpoint: string, data?: D) {
     return this.request<T>(endpoint, {
       method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  patch<T>(endpoint: string, data?: unknown) {
+  patch<T, D = unknown>(endpoint: string, data?: D) {
     return this.request<T>(endpoint, {
       method: "PATCH",
       body: data ? JSON.stringify(data) : undefined,
@@ -253,7 +259,7 @@ class ApiClient {
     }
 
     const data = await response.json();
-    return data && typeof data === "object" && "data" in data ? data.data : data;
+    return data && data instanceof Object && "data" in data ? data.data : data;
   }
 }
 

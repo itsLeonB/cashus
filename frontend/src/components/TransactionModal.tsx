@@ -58,7 +58,11 @@ const directionConfig = {
   }
 >;
 
-const DEBT_DIRECTIONS: DebtDirection[] = ["OUTGOING", "INCOMING"];
+// SAFETY: directionConfig above is checked with `satisfies
+// Record<DebtDirection, ...>`, so its keys are guaranteed to be exactly the
+// DebtDirection variants — Object.keys just can't express that in its
+// return type (string[]).
+const DEBT_DIRECTIONS = Object.keys(directionConfig) as DebtDirection[];
 
 export function TransactionModal({
   open,

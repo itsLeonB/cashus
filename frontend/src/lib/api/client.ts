@@ -138,11 +138,13 @@ class ApiClient {
     const method = options.method || "GET";
 
     const headers: HeadersInit = {};
-    if (options.headers) {
-      Object.assign(headers, options.headers);
-    }
     if (options.body) {
       headers["Content-Type"] = "application/json";
+    }
+    if (options.headers) {
+      // Merged after the default above so a caller-supplied header (e.g. a
+      // custom Content-Type) overrides it, matching fetch's usual semantics.
+      Object.assign(headers, options.headers);
     }
 
     if (method !== "GET" && method !== "HEAD") {

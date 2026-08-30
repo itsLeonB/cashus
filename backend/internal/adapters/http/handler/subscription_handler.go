@@ -1,15 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type SubscriptionHandler struct {
@@ -17,59 +16,68 @@ type SubscriptionHandler struct {
 	paymentSvc service.PaymentService
 }
 
-// HandleCreatePurchase godoc
-// @Summary      Create a subscription purchase
-// @Tags         subscriptions
-// @Security     BearerAuth
-// @Produce      json
-// @Param        planId        path string true "Plan ID"
-// @Param        planVersionId path string true "Plan version ID"
-// @Success      201  {object}  response.JSONResponse[monetization.PaymentResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /plans/{planId}/versions/{planVersionId}/subscriptions [post]
-func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleCreatePurchase", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type CreateSubscriptionPurchaseInput struct {
+	httpapi.AuthInput
+	PlanID        uuid.UUID `path:"planID"`
+	PlanVersionID uuid.UUID `path:"planVersionID"`
+}
 
-		planID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanID.String())
-		if err != nil {
-			return nil, err
-		}
+type CreateSubscriptionPurchaseOutput struct {
+	Body httpapi.Envelope[dto.PaymentResponse]
+}
 
-		planVersionID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
-		if err != nil {
-			return nil, err
-		}
-
+// RegisterCreatePurchase registers POST /api/v1/plans/{planID}/versions/{planVersionID}/subscriptions on the Huma API.
+func (sh *SubscriptionHandler) RegisterCreatePurchase(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "create-subscription-purchase",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/plans/{planID}/versions/{planVersionID}/subscriptions",
+		Summary:       "Create a subscription purchase",
+		Tags:          []string{"subscriptions"},
+		DefaultStatus: http.StatusCreated,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *CreateSubscriptionPurchaseInput) (*CreateSubscriptionPurchaseOutput, error) {
 		req := dto.PurchaseSubscriptionRequest{
-			ProfileID:     profileID,
-			PlanID:        planID,
-			PlanVersionID: planVersionID,
+			ProfileID:     in.ProfileID,
+			PlanID:        in.PlanID,
+			PlanVersionID: in.PlanVersionID,
 		}
 
-		return sh.paymentSvc.NewPurchase(ctx.Request.Context(), req)
+		res, err := sh.paymentSvc.NewPurchase(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		return &CreateSubscriptionPurchaseOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-// HandleGetSubscribedDetails godoc
-// @Summary      Get current subscription details
-// @Tags         subscriptions
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[monetization.SubscriptionResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profile/subscription [get]
-func (sh *SubscriptionHandler) HandleGetSubscribedDetails() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleGetSubscribedDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
+type GetSubscribedDetailsInput struct {
+	httpapi.AuthInput
+}
+
+type GetSubscribedDetailsOutput struct {
+	Body httpapi.Envelope[dto.SubscriptionResponse]
+}
+
+// RegisterGetSubscribedDetails registers GET /api/v1/profile/subscription on the Huma API.
+func (sh *SubscriptionHandler) RegisterGetSubscribedDetails(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-subscribed-details",
+		Method:        http.MethodGet,
+		Path:          "/api/v1/profile/subscription",
+		Summary:       "Get current subscription details",
+		Tags:          []string{"subscriptions"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetSubscribedDetailsInput) (*GetSubscribedDetailsOutput, error) {
+		res, err := sh.svc.GetSubscribedDetails(ctx, in.ProfileID)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.GetSubscribedDetails(ctx.Request.Context(), profileID)
+		return &GetSubscribedDetailsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

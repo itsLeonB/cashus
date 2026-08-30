@@ -1375,22 +1375,22 @@ func (_c *MockSubscriptionLimitService_CheckUploadLimit_Call) RunAndReturn(run f
 }
 
 // GetCurrent provides a mock function for the type MockSubscriptionLimitService
-func (_mock *MockSubscriptionLimitService) GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+func (_mock *MockSubscriptionLimitService) GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionLimitsResponse, error) {
 	ret := _mock.Called(ctx, profileID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetCurrent")
 	}
 
-	var r0 dto.SubscriptionResponse
+	var r0 dto.SubscriptionLimitsResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dto.SubscriptionResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (dto.SubscriptionLimitsResponse, error)); ok {
 		return returnFunc(ctx, profileID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) dto.SubscriptionResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) dto.SubscriptionLimitsResponse); ok {
 		r0 = returnFunc(ctx, profileID)
 	} else {
-		r0 = ret.Get(0).(dto.SubscriptionResponse)
+		r0 = ret.Get(0).(dto.SubscriptionLimitsResponse)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
 		r1 = returnFunc(ctx, profileID)
@@ -1430,12 +1430,12 @@ func (_c *MockSubscriptionLimitService_GetCurrent_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockSubscriptionLimitService_GetCurrent_Call) Return(subscriptionResponse dto.SubscriptionResponse, err error) *MockSubscriptionLimitService_GetCurrent_Call {
+func (_c *MockSubscriptionLimitService_GetCurrent_Call) Return(subscriptionResponse dto.SubscriptionLimitsResponse, err error) *MockSubscriptionLimitService_GetCurrent_Call {
 	_c.Call.Return(subscriptionResponse, err)
 	return _c
 }
 
-func (_c *MockSubscriptionLimitService_GetCurrent_Call) RunAndReturn(run func(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)) *MockSubscriptionLimitService_GetCurrent_Call {
+func (_c *MockSubscriptionLimitService_GetCurrent_Call) RunAndReturn(run func(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionLimitsResponse, error)) *MockSubscriptionLimitService_GetCurrent_Call {
 	_c.Call.Return(run)
 	return _c
 }

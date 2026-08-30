@@ -1,14 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type ProfileHandler struct {
@@ -23,101 +23,130 @@ func NewProfileHandler(
 	}
 }
 
-// HandleProfile godoc
-// @Summary      Get current user's profile
-// @Tags         profile
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[dto.ProfileResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profile [get]
-func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleProfile", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
+type GetProfileInput struct {
+	httpapi.AuthInput
+}
+
+type GetProfileOutput struct {
+	Body httpapi.Envelope[dto.ProfileResponse]
+}
+
+// RegisterProfile registers GET /api/v1/profile on the Huma API.
+func (ph *ProfileHandler) RegisterProfile(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-profile",
+		Method:        http.MethodGet,
+		Path:          "/api/v1/profile",
+		Summary:       "Get current user's profile",
+		Tags:          []string{"profile"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetProfileInput) (*GetProfileOutput, error) {
+		res, err := ph.profileService.GetByID(ctx, in.ProfileID)
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.profileService.GetByID(ctx.Request.Context(), profileID)
+		return &GetProfileOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-// HandleUpdate godoc
-// @Summary      Update current user's profile
-// @Tags         profile
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.UpdateProfileRequest true "Update profile payload"
-// @Success      200  {object}  response.JSONResponse[dto.ProfileResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /profile [patch]
-func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
+type UpdateProfileInput struct {
+	httpapi.AuthInput
+	Body struct {
+		Name         string `json:"name" minLength:"3" maxLength:"255"`
+		HomeCurrency string `json:"homeCurrency" minLength:"3" maxLength:"3"`
+	}
+}
+
+type UpdateProfileOutput struct {
+	Body httpapi.Envelope[dto.ProfileResponse]
+}
+
+// RegisterUpdate registers PATCH /api/v1/profile on the Huma API.
+func (ph *ProfileHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "update-profile",
+		Method:        http.MethodPatch,
+		Path:          "/api/v1/profile",
+		Summary:       "Update current user's profile",
+		Tags:          []string{"profile"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *UpdateProfileInput) (*UpdateProfileOutput, error) {
+		request := dto.UpdateProfileRequest{
+			ID:           in.ProfileID,
+			Name:         in.Body.Name,
+			HomeCurrency: in.Body.HomeCurrency,
+		}
+
+		res, err := ph.profileService.Update(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		request, err := server.BindJSON[dto.UpdateProfileRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.ID = profileID
-
-		return ph.profileService.Update(ctx.Request.Context(), request)
+		return &UpdateProfileOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-// HandleSearch godoc
-// @Summary      Search profiles
-// @Tags         profile
-// @Security     BearerAuth
-// @Produce      json
-// @Param        query query string false "Search query"
-// @Success      200  {object}  response.JSONResponse[[]dto.SearchProfileResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profiles [get]
-func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleSearch", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		request, err := server.BindRequest[dto.SearchRequest](ctx, binding.Query)
+type SearchProfilesInput struct {
+	httpapi.AuthInput
+	Query string `query:"query" required:"true" minLength:"3" maxLength:"255"`
+}
+
+type SearchProfilesOutput struct {
+	Body httpapi.Envelope[[]dto.SearchProfileResponse]
+}
+
+// RegisterSearch registers GET /api/v1/profiles on the Huma API.
+func (ph *ProfileHandler) RegisterSearch(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "search-profiles",
+		Method:        http.MethodGet,
+		Path:          "/api/v1/profiles",
+		Summary:       "Search profiles",
+		Tags:          []string{"profile"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *SearchProfilesInput) (*SearchProfilesOutput, error) {
+		res, err := ph.profileService.Search(ctx, in.ProfileID, in.Query)
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.profileService.Search(ctx.Request.Context(), profileID, request.Query)
+		return &SearchProfilesOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-// HandleAssociate godoc
-// @Summary      Associate anonymous profile with real profile
-// @Tags         profile
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.AssociateProfileRequest true "Associate payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /profile/associate [post]
-func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleAssociate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
+type AssociateProfileInput struct {
+	httpapi.AuthInput
+	Body struct {
+		RealProfileID uuid.UUID `json:"realProfileId"`
+		AnonProfileID uuid.UUID `json:"anonProfileId"`
+	}
+}
+
+type AssociateProfileOutput struct{}
+
+// RegisterAssociate registers POST /api/v1/profile/associate on the Huma API.
+func (ph *ProfileHandler) RegisterAssociate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "associate-profile",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/profile/associate",
+		Summary:       "Associate anonymous profile with real profile",
+		Tags:          []string{"profile"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *AssociateProfileInput) (*AssociateProfileOutput, error) {
+		if err := ph.profileService.MergeAnonymousProfile(ctx, in.ProfileID, in.Body.RealProfileID, in.Body.AnonProfileID); err != nil {
 			return nil, err
 		}
 
-		request, err := server.BindJSON[dto.AssociateProfileRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, ph.profileService.MergeAnonymousProfile(ctx.Request.Context(), profileID, request.RealProfileID, request.AnonProfileID)
+		return &AssociateProfileOutput{}, nil
 	})
 }

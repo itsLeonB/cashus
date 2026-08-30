@@ -3,10 +3,11 @@ package http
 import (
 	"os"
 
+	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
-	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/adapters/http/routes"
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -16,8 +17,6 @@ import (
 	"github.com/itsLeonB/go-authkit/authgin"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services, adminRepos *admin.Repositories) (func(), error) {
@@ -49,8 +48,13 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 		routes.RegisterTestRoutes(router)
 	}
 
-	// Swagger UI: /docs/index.html
-	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Huma API bound to the engine root. Operations carry full paths (e.g.
+	// "/api/v1/debts"), so this single huma.API covers public + protected +
+	// admin routes as they migrate off ginkgo. Huma auto-mounts its docs UI
+	// and OpenAPI spec at "/docs", "/openapi.json", "/openapi.yaml" —
+	// unauthenticated, outside "/api/v1" — which is why the swaggo UI route
+	// (also "/docs/*any") is removed here to avoid colliding with it.
+	api := humagin.New(router, httpapi.NewConfig())
 
 	// Markdown docs: /docs.md
 	router.GET("/docs.md", func(ctx *gin.Context) {
@@ -63,8 +67,8 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	})
 
 	routes.RegisterBaseRoutes(router)
-	routes.RegisterAPIRoutes(router, handlers, authMW)
-	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth)
+	routes.RegisterAPIRoutes(router, handlers, authMW, api)
+	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth, api)
 
 	return handlers.Shutdown, nil
 }

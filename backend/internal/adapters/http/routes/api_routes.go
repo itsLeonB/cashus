@@ -1,10 +1,10 @@
 package routes
 
 import (
-	"fmt"
-
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/go-authkit/authgin"
@@ -13,15 +13,94 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc) {
+// RegisterAPIRoutes wires up both the remaining ginkgo/gin routes and the
+// (currently canary-only) Huma operations. Huma is bound at the engine root,
+// so operations that need the same auth+CSRF protection as
+// `protectedRoutes` below must have those gin middlewares bridged onto them
+// individually via httpapi.Bridge.
+func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc, api huma.API) {
+	protectedMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(authMiddleware),
+		httpapi.Bridge(authgin.CSRFMiddleware()),
+	}
+
+	profilesMW := append(append([]func(huma.Context, func(huma.Context)){}, protectedMW...),
+		httpapi.Bridge(middlewares.WithRateKey(appconstant.ContextProfileID.String())),
+		httpapi.Bridge(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			Limit:   rate.Limit(10.0 / 60),
+			Burst:   3,
+			KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
+		})),
+	)
+
+	handlers.Public.RegisterGetPublicProfile(api)
+	handlers.Plan.RegisterGetActive(api)
+	handlers.Payment.RegisterNotification(api)
+
+	handlers.Payment.RegisterMakePayment(api, protectedMW...)
+
+	handlers.Profile.RegisterProfile(api, protectedMW...)
+	handlers.Profile.RegisterUpdate(api, protectedMW...)
+	handlers.Profile.RegisterAssociate(api, protectedMW...)
+	handlers.Profile.RegisterSearch(api, profilesMW...)
+
+	handlers.ProfileTransferMethod.RegisterAdd(api, protectedMW...)
+	handlers.ProfileTransferMethod.RegisterGetAllOwned(api, protectedMW...)
+	handlers.ProfileTransferMethod.RegisterGetAllByFriendProfileID(api, profilesMW...)
+
+	handlers.Subscription.RegisterGetSubscribedDetails(api, protectedMW...)
+	handlers.Subscription.RegisterCreatePurchase(api, protectedMW...)
+
+	handlers.Friendship.RegisterCreateAnonymousFriendship(api, protectedMW...)
+	handlers.Friendship.RegisterGetAll(api, protectedMW...)
+	handlers.Friendship.RegisterGetDetails(api, protectedMW...)
+
+	handlers.FriendshipRequest.RegisterSend(api, profilesMW...)
+	handlers.FriendshipRequest.RegisterGetAll(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterCancel(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterIgnore(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterBlock(api, protectedMW...)
+	handlers.FriendshipRequest.RegisterAccept(api, protectedMW...)
+
+	handlers.TransferMethod.RegisterGetAll(api, protectedMW...)
+
+	handlers.Debt.RegisterCreate(api, protectedMW...)
+	handlers.Debt.RegisterGetAll(api, protectedMW...)
+	handlers.Debt.RegisterGetTransactionSummary(api, protectedMW...)
+	handlers.Debt.RegisterGetRecent(api, protectedMW...)
+
+	handlers.GroupExpense.RegisterCreateDraft(api, protectedMW...)
+	handlers.GroupExpense.RegisterGetAll(api, protectedMW...)
+	handlers.GroupExpense.RegisterGetDetails(api, protectedMW...)
+	handlers.GroupExpense.RegisterConfirmDraft(api, protectedMW...)
+	handlers.GroupExpense.RegisterDelete(api, protectedMW...)
+	handlers.GroupExpense.RegisterSyncParticipants(api, protectedMW...)
+	handlers.GroupExpense.RegisterGetRecent(api, protectedMW...)
+
+	handlers.ExpenseItem.RegisterAdd(api, protectedMW...)
+	handlers.ExpenseItem.RegisterUpdate(api, protectedMW...)
+	handlers.ExpenseItem.RegisterRemove(api, protectedMW...)
+	handlers.ExpenseItem.RegisterSyncParticipants(api, protectedMW...)
+
+	handlers.OtherFee.RegisterAdd(api, protectedMW...)
+	handlers.OtherFee.RegisterUpdate(api, protectedMW...)
+	handlers.OtherFee.RegisterRemove(api, protectedMW...)
+	handlers.OtherFee.RegisterGetFeeCalculationMethods(api, protectedMW...)
+
+	handlers.ExpenseBill.RegisterPresignedSave(api, protectedMW...)
+	handlers.ExpenseBill.RegisterTriggerParsing(api, protectedMW...)
+
+	handlers.Notification.RegisterGetUnread(api, protectedMW...)
+	handlers.Notification.RegisterMarkAsRead(api, protectedMW...)
+	handlers.Notification.RegisterMarkAllAsRead(api, protectedMW...)
+
+	handlers.PushSubscription.RegisterSubscribe(api, protectedMW...)
+	handlers.PushSubscription.RegisterUnsubscribe(api, protectedMW...)
+
 	apiRoutes := router.Group("/api")
 	{
 		v1 := apiRoutes.Group("/v1")
 		{
-			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
-			v1.GET("/plans", handlers.Plan.HandleGetActive())
-			v1.GET("/public/profiles/:slug", handlers.Public.HandleGetPublicProfile())
-
 			authRoutes := v1.Group("/auth")
 			authRoutes.Use(sentinelGin.RateLimit(httpserver.RateLimitConfig{
 				Limit:   rate.Limit(20.0 / 60),
@@ -56,105 +135,6 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 			protectedRoutes := v1.Group("/", authMiddleware, authgin.CSRFMiddleware())
 			{
 				protectedRoutes.DELETE("/auth/logout", handlers.Auth.Logout())
-
-				transferMethodsRoute := "/transfer-methods"
-				profileRoutes := protectedRoutes.Group("/profile")
-				{
-					profileRoutes.GET("", handlers.Profile.HandleProfile())
-					profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
-					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
-					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
-					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
-					profileRoutes.GET("/subscription", handlers.Subscription.HandleGetSubscribedDetails())
-				}
-
-				profilesRoutes := protectedRoutes.Group("/profiles")
-				profilesRoutes.Use(
-					middlewares.WithRateKey(appconstant.ContextProfileID.String()),
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(10.0 / 60),
-						Burst:   3,
-						KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
-					}),
-				)
-				{
-					profilesRoutes.GET("", handlers.Profile.HandleSearch())
-					profilesRoutes.POST(fmt.Sprintf("/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
-					profilesRoutes.GET(fmt.Sprintf("/:%s%s", appconstant.ContextProfileID.String(), transferMethodsRoute), handlers.ProfileTransferMethod.HandleGetAllByFriendProfileID())
-				}
-
-				friendshipRoutes := protectedRoutes.Group("/friendships")
-				{
-					friendshipRoutes.POST("", handlers.Friendship.HandleCreateAnonymousFriendship())
-					friendshipRoutes.GET("", handlers.Friendship.HandleGetAll())
-					friendshipRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextFriendshipID), handlers.Friendship.HandleGetDetails())
-				}
-
-				receivedFriendRequestRoute := fmt.Sprintf("/%s/:%s", appconstant.ReceivedFriendRequest, appconstant.ContextFriendRequestID)
-				friendRequestRoutes := protectedRoutes.Group("/friend-requests")
-				{
-					friendRequestRoutes.GET(fmt.Sprintf("/:%s", appconstant.PathFriendRequestType), handlers.FriendshipRequest.HandleGetAll())
-					friendRequestRoutes.DELETE(fmt.Sprintf("/%s/:%s", appconstant.SentFriendRequest, appconstant.ContextFriendRequestID), handlers.FriendshipRequest.HandleCancel())
-					friendRequestRoutes.DELETE(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleIgnore())
-					friendRequestRoutes.PATCH(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleBlock())
-					friendRequestRoutes.POST(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleAccept())
-				}
-
-				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-
-				debtsRoutes := protectedRoutes.Group("/debts")
-				{
-					debtsRoutes.POST("", handlers.Debt.HandleCreate())
-					debtsRoutes.GET("", handlers.Debt.HandleGetAll())
-					debtsRoutes.GET("/summary", handlers.Debt.HandleGetTransactionSummary())
-					debtsRoutes.GET("/recent", handlers.Debt.HandleGetRecent())
-				}
-
-				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
-				{
-					groupExpenseRoutes.POST("", handlers.GroupExpense.HandleCreateDraft())
-					groupExpenseRoutes.GET("", handlers.GroupExpense.HandleGetAll())
-					groupExpenseRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleGetDetails())
-					groupExpenseRoutes.PATCH(fmt.Sprintf("/:%s/confirmed", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleConfirmDraft())
-					groupExpenseRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleDelete())
-					groupExpenseRoutes.GET("/fee-calculation-methods", handlers.OtherFee.HandleGetFeeCalculationMethods())
-					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/participants", appconstant.ContextGroupExpenseID.String()), handlers.GroupExpense.HandleSyncParticipants())
-					groupExpenseRoutes.POST(fmt.Sprintf("/:%s/bills", appconstant.ContextGroupExpenseID.String()), handlers.ExpenseBill.HandlePresignedSave())
-					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/bills/:%s", appconstant.ContextGroupExpenseID.String(), appconstant.ContextExpenseBillID.String()), handlers.ExpenseBill.HandleTriggerParsing())
-					groupExpenseRoutes.GET("/recent", handlers.GroupExpense.HandleGetRecent())
-				}
-
-				expenseItemRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/items", appconstant.ContextGroupExpenseID))
-				{
-					expenseItemRoute := fmt.Sprintf("/:%s", appconstant.ContextExpenseItemID)
-					expenseItemRoutes.POST("", handlers.ExpenseItem.HandleAdd())
-					expenseItemRoutes.PUT(expenseItemRoute, handlers.ExpenseItem.HandleUpdate())
-					expenseItemRoutes.DELETE(expenseItemRoute, handlers.ExpenseItem.HandleRemove())
-					expenseItemRoutes.PUT(expenseItemRoute+"/participants", handlers.ExpenseItem.HandleSyncParticipants())
-				}
-
-				otherFeeRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/fees", appconstant.ContextGroupExpenseID))
-				{
-					otherFeeRoutes.POST("", handlers.OtherFee.HandleAdd())
-					otherFeeRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleUpdate())
-					otherFeeRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleRemove())
-				}
-
-				notificationRoutes := protectedRoutes.Group("/notifications")
-				{
-					notificationRoutes.GET("", handlers.Notification.HandleGetUnread())
-					notificationRoutes.PATCH(fmt.Sprintf("/:%s", appconstant.ContextNotificationID), handlers.Notification.HandleMarkAsRead())
-					notificationRoutes.PATCH("", handlers.Notification.HandleMarkAllAsRead())
-				}
-
-				pushRoutes := protectedRoutes.Group("/push")
-				{
-					pushRoutes.POST("/subscribe", handlers.PushSubscription.HandleSubscribe())
-					pushRoutes.POST("/unsubscribe", handlers.PushSubscription.HandleUnsubscribe())
-				}
-
-				protectedRoutes.POST(fmt.Sprintf("/plans/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
-				protectedRoutes.POST(fmt.Sprintf("/subscriptions/:%s", appconstant.ContextSubscriptionID.String()), handlers.Payment.HandleMakePayment())
 			}
 		}
 	}

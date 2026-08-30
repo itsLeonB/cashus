@@ -1,58 +1,84 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type PaymentHandler struct {
 	svc service.PaymentService
 }
 
-// HandleNotification godoc
-// @Summary      Handle Midtrans payment notification
-// @Tags         payments
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.MidtransNotificationPayload true "Midtrans notification payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Router       /payments/midtrans/notifications [post]
-func (ph *PaymentHandler) HandleNotification() gin.HandlerFunc {
-	return server.Handler("PaymentHandler.HandleNotification", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		req, err := server.BindJSON[dto.MidtransNotificationPayload](ctx)
-		if err != nil {
+type HandleMidtransNotificationInput struct {
+	Body struct {
+		OrderID       string `json:"order_id"`
+		StatusCode    string `json:"status_code"`
+		GrossAmount   string `json:"gross_amount"`
+		SignatureKey  string `json:"signature_key"`
+		StatusMessage string `json:"status_message,omitempty"`
+	}
+}
+
+type HandleMidtransNotificationOutput struct{}
+
+// RegisterNotification registers POST /api/v1/payments/midtrans/notifications on the Huma API.
+func (ph *PaymentHandler) RegisterNotification(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "handle-midtrans-notification",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/payments/midtrans/notifications",
+		Summary:       "Handle Midtrans payment notification",
+		Tags:          []string{"payments"},
+		DefaultStatus: http.StatusOK,
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *HandleMidtransNotificationInput) (*HandleMidtransNotificationOutput, error) {
+		req := dto.MidtransNotificationPayload{
+			OrderID:       in.Body.OrderID,
+			StatusCode:    in.Body.StatusCode,
+			GrossAmount:   in.Body.GrossAmount,
+			SignatureKey:  in.Body.SignatureKey,
+			StatusMessage: in.Body.StatusMessage,
+		}
+
+		if err := ph.svc.HandleNotification(ctx, req); err != nil {
 			return nil, err
 		}
 
-		return nil, ph.svc.HandleNotification(ctx.Request.Context(), req)
+		return &HandleMidtransNotificationOutput{}, nil
 	})
 }
 
-// HandleMakePayment godoc
-// @Summary      Make a payment for a subscription
-// @Tags         payments
-// @Security     BearerAuth
-// @Produce      json
-// @Param        subscriptionId path string true "Subscription ID"
-// @Success      201  {object}  response.JSONResponse[monetization.PaymentResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /subscriptions/{subscriptionId} [post]
-func (ph *PaymentHandler) HandleMakePayment() gin.HandlerFunc {
-	return server.Handler("PaymentHandler.HandleMakePayment", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		subscriptionID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
+type MakePaymentInput struct {
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
+}
+
+type MakePaymentOutput struct {
+	Body httpapi.Envelope[dto.PaymentResponse]
+}
+
+// RegisterMakePayment registers POST /api/v1/subscriptions/{subscriptionID} on the Huma API.
+func (ph *PaymentHandler) RegisterMakePayment(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "make-payment",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/subscriptions/{subscriptionID}",
+		Summary:       "Make a payment for a subscription",
+		Tags:          []string{"payments"},
+		DefaultStatus: http.StatusCreated,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *MakePaymentInput) (*MakePaymentOutput, error) {
+		res, err := ph.svc.MakePayment(ctx, in.SubscriptionID)
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.svc.MakePayment(ctx.Request.Context(), subscriptionID)
+		return &MakePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

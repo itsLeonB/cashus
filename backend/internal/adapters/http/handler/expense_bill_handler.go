@@ -1,15 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type ExpenseBillHandler struct {
@@ -20,65 +19,69 @@ func NewExpenseBillHandler(expenseBillService service.ExpenseBillService) *Expen
 	return &ExpenseBillHandler{expenseBillService}
 }
 
-// HandlePresignedSave godoc
-// @Summary      Get a presigned URL to upload an expense bill
-// @Tags         expense-bills
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        body body dto.PresignedExpenseBillRequest true "Presigned bill payload"
-// @Success      201  {object}  response.JSONResponse[dto.PresignedExpenseBillResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/bills [post]
-func (geh *ExpenseBillHandler) HandlePresignedSave() gin.HandlerFunc {
-	return server.Handler("ExpenseBillHandler.HandlePresignedSave", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
+type PresignedSaveExpenseBillInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	Body           struct {
+		Filename string `json:"fileName" minLength:"3"`
+	}
+}
+
+type PresignedSaveExpenseBillOutput struct {
+	Body httpapi.Envelope[dto.PresignedExpenseBillResponse]
+}
+
+// RegisterPresignedSave registers POST /api/v1/group-expenses/{groupExpenseID}/bills on the Huma API.
+func (geh *ExpenseBillHandler) RegisterPresignedSave(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "presigned-save-expense-bill",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/group-expenses/{groupExpenseID}/bills",
+		Summary:       "Get a presigned URL to upload an expense bill",
+		Tags:          []string{"expense-bills"},
+		DefaultStatus: http.StatusCreated,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *PresignedSaveExpenseBillInput) (*PresignedSaveExpenseBillOutput, error) {
+		request := dto.PresignedExpenseBillRequest{
+			ProfileID:      in.ProfileID,
+			GroupExpenseID: in.GroupExpenseID,
+			Filename:       in.Body.Filename,
+		}
+
+		res, err := geh.expenseBillService.SavePresigned(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.PresignedExpenseBillRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.ProfileID = profileID
-		req.GroupExpenseID = expenseID
-
-		return geh.expenseBillService.SavePresigned(ctx.Request.Context(), req)
+		return &PresignedSaveExpenseBillOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-// HandleTriggerParsing godoc
-// @Summary      Trigger parsing of an uploaded expense bill
-// @Tags         expense-bills
-// @Security     BearerAuth
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        expenseBillId  path string true "Expense bill ID"
-// @Success      200  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/bills/{expenseBillId} [put]
-func (geh *ExpenseBillHandler) HandleTriggerParsing() gin.HandlerFunc {
-	return server.Handler("ExpenseBillHandler.HandleTriggerParsing", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
+type TriggerExpenseBillParsingInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	ExpenseBillID  uuid.UUID `path:"expenseBillID"`
+}
+
+type TriggerExpenseBillParsingOutput struct{}
+
+// RegisterTriggerParsing registers PUT /api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID} on the Huma API.
+func (geh *ExpenseBillHandler) RegisterTriggerParsing(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "trigger-expense-bill-parsing",
+		Method:        http.MethodPut,
+		Path:          "/api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID}",
+		Summary:       "Trigger parsing of an uploaded expense bill",
+		Tags:          []string{"expense-bills"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *TriggerExpenseBillParsingInput) (*TriggerExpenseBillParsingOutput, error) {
+		if err := geh.expenseBillService.TriggerParsing(ctx, in.GroupExpenseID, in.ExpenseBillID); err != nil {
 			return nil, err
 		}
 
-		billID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseBillID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, geh.expenseBillService.TriggerParsing(ctx.Request.Context(), expenseID, billID)
+		return &TriggerExpenseBillParsingOutput{}, nil
 	})
 }

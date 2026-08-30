@@ -1,81 +1,203 @@
 package admin
 
 import (
-	"fmt"
+	"context"
 	"net/http"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type SubscriptionHandler struct {
 	svc service.SubscriptionService
 }
 
-func (sh *SubscriptionHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		req, err := server.BindJSON[dto.NewSubscriptionRequest](ctx)
+type CreateSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	Body struct {
+		ProfileID     uuid.UUID `json:"profileId"`
+		PlanVersionID uuid.UUID `json:"planVersionId"`
+		EndsAt        time.Time `json:"endsAt,omitempty"`
+		CanceledAt    time.Time `json:"canceledAt,omitempty"`
+		AutoRenew     bool      `json:"autoRenew,omitempty"`
+	}
+}
+
+type CreateSubscriptionOutput struct {
+	Body httpapi.Envelope[dto.SubscriptionResponse]
+}
+
+// RegisterCreate registers POST /admin/v1/subscriptions on the Huma API.
+func (sh *SubscriptionHandler) RegisterCreate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "create-admin-subscription",
+		Method:        http.MethodPost,
+		Path:          "/admin/v1/subscriptions",
+		Summary:       "Create a subscription",
+		Tags:          []string{"admin-subscriptions"},
+		DefaultStatus: http.StatusCreated,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *CreateSubscriptionInput) (*CreateSubscriptionOutput, error) {
+		request := dto.NewSubscriptionRequest{
+			ProfileID:     in.Body.ProfileID,
+			PlanVersionID: in.Body.PlanVersionID,
+			EndsAt:        in.Body.EndsAt,
+			CanceledAt:    in.Body.CanceledAt,
+			AutoRenew:     in.Body.AutoRenew,
+		}
+
+		res, err := sh.svc.Create(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.Create(ctx.Request.Context(), req)
+		return &CreateSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-func (sh *SubscriptionHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		subscriptions, err := sh.svc.GetList(ctx.Request.Context())
+type GetSubscriptionListInput struct {
+	httpapi.AdminAuthInput
+}
+
+type GetSubscriptionListOutput struct {
+	XTotalCount int `header:"X-Total-Count"`
+	Body        httpapi.Envelope[[]dto.SubscriptionResponse]
+}
+
+// RegisterGetList registers GET /admin/v1/subscriptions on the Huma API.
+func (sh *SubscriptionHandler) RegisterGetList(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-admin-subscriptions",
+		Method:        http.MethodGet,
+		Path:          "/admin/v1/subscriptions",
+		Summary:       "Get all subscriptions",
+		Tags:          []string{"admin-subscriptions"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetSubscriptionListInput) (*GetSubscriptionListOutput, error) {
+		res, err := sh.svc.GetList(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		ctx.Header("X-Total-Count", fmt.Sprint(len(subscriptions)))
-
-		return subscriptions, nil
+		return &GetSubscriptionListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-func (sh *SubscriptionHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
+type GetSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
+}
+
+type GetSubscriptionOutput struct {
+	Body httpapi.Envelope[dto.SubscriptionResponse]
+}
+
+// RegisterGetOne registers GET /admin/v1/subscriptions/{subscriptionID} on the Huma API.
+func (sh *SubscriptionHandler) RegisterGetOne(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-admin-subscription",
+		Method:        http.MethodGet,
+		Path:          "/admin/v1/subscriptions/{subscriptionID}",
+		Summary:       "Get a subscription by ID",
+		Tags:          []string{"admin-subscriptions"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetSubscriptionInput) (*GetSubscriptionOutput, error) {
+		res, err := sh.svc.GetOne(ctx, in.SubscriptionID)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.GetOne(ctx.Request.Context(), id)
+		return &GetSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-func (sh *SubscriptionHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
+type UpdateSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
+	Body           struct {
+		ProfileID          uuid.UUID `json:"profileId"`
+		PlanVersionID      uuid.UUID `json:"planVersionId"`
+		EndsAt             time.Time `json:"endsAt,omitempty"`
+		CanceledAt         time.Time `json:"canceledAt,omitempty"`
+		AutoRenew          bool      `json:"autoRenew,omitempty"`
+		Status             string    `json:"status" enum:"incomplete_payment,active,past_due_payment,canceled"`
+		CurrentPeriodStart time.Time `json:"currentPeriodStart,omitempty"`
+		CurrentPeriodEnd   time.Time `json:"currentPeriodEnd,omitempty"`
+	}
+}
+
+type UpdateSubscriptionOutput struct {
+	Body httpapi.Envelope[dto.SubscriptionResponse]
+}
+
+// RegisterUpdate registers PUT /admin/v1/subscriptions/{subscriptionID} on the Huma API.
+func (sh *SubscriptionHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "update-admin-subscription",
+		Method:        http.MethodPut,
+		Path:          "/admin/v1/subscriptions/{subscriptionID}",
+		Summary:       "Update a subscription",
+		Tags:          []string{"admin-subscriptions"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *UpdateSubscriptionInput) (*UpdateSubscriptionOutput, error) {
+		request := dto.UpdateSubscriptionRequest{
+			ID:                 in.SubscriptionID,
+			ProfileID:          in.Body.ProfileID,
+			PlanVersionID:      in.Body.PlanVersionID,
+			EndsAt:             in.Body.EndsAt,
+			CanceledAt:         in.Body.CanceledAt,
+			AutoRenew:          in.Body.AutoRenew,
+			Status:             in.Body.Status,
+			CurrentPeriodStart: in.Body.CurrentPeriodStart,
+			CurrentPeriodEnd:   in.Body.CurrentPeriodEnd,
+		}
+
+		res, err := sh.svc.Update(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		req, err := server.BindJSON[dto.UpdateSubscriptionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.ID = id
-
-		return sh.svc.Update(ctx.Request.Context(), req)
+		return &UpdateSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-func (sh *SubscriptionHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleDelete", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
+type DeleteSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
+}
+
+type DeleteSubscriptionOutput struct {
+	Body httpapi.Envelope[dto.SubscriptionResponse]
+}
+
+// RegisterDelete registers DELETE /admin/v1/subscriptions/{subscriptionID} on the Huma API.
+func (sh *SubscriptionHandler) RegisterDelete(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "delete-admin-subscription",
+		Method:        http.MethodDelete,
+		Path:          "/admin/v1/subscriptions/{subscriptionID}",
+		Summary:       "Delete a subscription",
+		Tags:          []string{"admin-subscriptions"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *DeleteSubscriptionInput) (*DeleteSubscriptionOutput, error) {
+		res, err := sh.svc.Delete(ctx, in.SubscriptionID)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.Delete(ctx.Request.Context(), id)
+		return &DeleteSubscriptionOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }

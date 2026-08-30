@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type SubscriptionResponse struct {
+type SubscriptionLimitsResponse struct {
 	Plan   string `json:"plan"`
 	Limits Limits `json:"limits"`
 }

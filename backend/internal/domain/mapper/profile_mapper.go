@@ -6,7 +6,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func ProfileToResponse(profile users.UserProfile, email string, subscription dto.SubscriptionResponse) dto.ProfileResponse {
+func ProfileToResponse(profile users.UserProfile, email string, subscription dto.SubscriptionLimitsResponse) dto.ProfileResponse {
 	return dto.ProfileResponse{
 		BaseDTO:             BaseToDTO(profile.BaseEntity),
 		UserID:              profile.UserID.UUID,

@@ -1,14 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
 type NotificationHandler struct {
@@ -19,64 +19,84 @@ func NewNotificationHandler(notificationService service.NotificationService) *No
 	return &NotificationHandler{notificationService}
 }
 
-// HandleGetUnread godoc
-// @Summary      Get unread notifications
-// @Tags         notifications
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.NotificationResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /notifications [get]
-func (nh *NotificationHandler) HandleGetUnread() gin.HandlerFunc {
-	return server.Handler("NotificationHandler.HandleGetUnread", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
+type GetUnreadNotificationsInput struct {
+	httpapi.AuthInput
+}
+
+type GetUnreadNotificationsOutput struct {
+	Body httpapi.Envelope[[]dto.NotificationResponse]
+}
+
+// RegisterGetUnread registers GET /api/v1/notifications on the Huma API.
+func (nh *NotificationHandler) RegisterGetUnread(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-unread-notifications",
+		Method:        http.MethodGet,
+		Path:          "/api/v1/notifications",
+		Summary:       "Get unread notifications",
+		Tags:          []string{"notifications"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *GetUnreadNotificationsInput) (*GetUnreadNotificationsOutput, error) {
+		res, err := nh.notificationService.GetUnread(ctx, in.ProfileID)
 		if err != nil {
 			return nil, err
 		}
 
-		return nh.notificationService.GetUnread(ctx.Request.Context(), profileID)
+		return &GetUnreadNotificationsOutput{Body: httpapi.NewEnvelope(res)}, nil
 	})
 }
 
-// HandleMarkAsRead godoc
-// @Summary      Mark a notification as read
-// @Tags         notifications
-// @Security     BearerAuth
-// @Param        notificationId path string true "Notification ID"
-// @Success      200  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /notifications/{notificationId} [patch]
-func (nh *NotificationHandler) HandleMarkAsRead() gin.HandlerFunc {
-	return server.Handler("NotificationHandler.HandleMarkAsRead", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
+type MarkNotificationAsReadInput struct {
+	httpapi.AuthInput
+	NotificationID uuid.UUID `path:"notificationID"`
+}
+
+type MarkNotificationAsReadOutput struct{}
+
+// RegisterMarkAsRead registers PATCH /api/v1/notifications/{notificationID} on the Huma API.
+func (nh *NotificationHandler) RegisterMarkAsRead(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "mark-notification-as-read",
+		Method:        http.MethodPatch,
+		Path:          "/api/v1/notifications/{notificationID}",
+		Summary:       "Mark a notification as read",
+		Tags:          []string{"notifications"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *MarkNotificationAsReadInput) (*MarkNotificationAsReadOutput, error) {
+		if err := nh.notificationService.MarkAsRead(ctx, in.ProfileID, in.NotificationID); err != nil {
 			return nil, err
 		}
 
-		notificationID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextNotificationID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, nh.notificationService.MarkAsRead(ctx.Request.Context(), profileID, notificationID)
+		return &MarkNotificationAsReadOutput{}, nil
 	})
 }
 
-// HandleMarkAllAsRead godoc
-// @Summary      Mark all notifications as read
-// @Tags         notifications
-// @Security     BearerAuth
-// @Success      200  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /notifications [patch]
-func (nh *NotificationHandler) HandleMarkAllAsRead() gin.HandlerFunc {
-	return server.Handler("NotificationHandler.HandleMarkAllAsRead", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
+type MarkAllNotificationsAsReadInput struct {
+	httpapi.AuthInput
+}
+
+type MarkAllNotificationsAsReadOutput struct{}
+
+// RegisterMarkAllAsRead registers PATCH /api/v1/notifications on the Huma API.
+func (nh *NotificationHandler) RegisterMarkAllAsRead(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "mark-all-notifications-as-read",
+		Method:        http.MethodPatch,
+		Path:          "/api/v1/notifications",
+		Summary:       "Mark all notifications as read",
+		Tags:          []string{"notifications"},
+		DefaultStatus: http.StatusOK,
+		Security:      []map[string][]string{{"BearerAuth": {}}},
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *MarkAllNotificationsAsReadInput) (*MarkAllNotificationsAsReadOutput, error) {
+		if err := nh.notificationService.MarkAllAsRead(ctx, in.ProfileID); err != nil {
 			return nil, err
 		}
 
-		return nil, nh.notificationService.MarkAllAsRead(ctx.Request.Context(), profileID)
+		return &MarkAllNotificationsAsReadOutput{}, nil
 	})
 }

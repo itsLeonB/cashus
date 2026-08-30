@@ -1,5 +1,8 @@
 {
   "ignores": [
-    "bun:test"
+    "bun:test",
+    "tw-animate-css",
+    "tailwindcss",
+    "typescript"
   ]
 }

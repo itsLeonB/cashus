@@ -2,6 +2,8 @@ module github.com/itsLeonB/cashback
 
 go 1.26
 
+toolchain go1.26.7
+
 require (
 	cloud.google.com/go/storage v1.58.0
 	cloud.google.com/go/vision v1.2.0

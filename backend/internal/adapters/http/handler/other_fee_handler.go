@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type OtherFeeHandler struct {
@@ -34,39 +34,6 @@ type AddOtherFeeInput struct {
 	}
 }
 
-type AddOtherFeeOutput struct {
-	Body httpapi.Envelope[dto.OtherFeeResponse]
-}
-
-// RegisterAdd registers POST /api/v1/group-expenses/{groupExpenseID}/fees on the Huma API.
-func (geh *OtherFeeHandler) RegisterAdd(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "add-other-fee",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/group-expenses/{groupExpenseID}/fees",
-		Summary:       "Add a fee to a group expense",
-		Tags:          []string{"other-fees"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *AddOtherFeeInput) (*AddOtherFeeOutput, error) {
-		request := dto.NewOtherFeeRequest{
-			UserProfileID:     in.ProfileID,
-			GroupExpenseID:    in.GroupExpenseID,
-			Name:              in.Body.Name,
-			Amount:            in.Body.Amount.Decimal,
-			CalculationMethod: in.Body.CalculationMethod,
-		}
-
-		res, err := geh.otherFeeSvc.Add(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return &AddOtherFeeOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type UpdateOtherFeeInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
@@ -78,88 +45,83 @@ type UpdateOtherFeeInput struct {
 	}
 }
 
-type UpdateOtherFeeOutput struct {
-	Body httpapi.Envelope[dto.OtherFeeResponse]
-}
-
-// RegisterUpdate registers PUT /api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID} on the Huma API.
-func (geh *OtherFeeHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "update-other-fee",
-		Method:        http.MethodPut,
-		Path:          "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}",
-		Summary:       "Update a fee on a group expense",
-		Tags:          []string{"other-fees"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *UpdateOtherFeeInput) (*UpdateOtherFeeOutput, error) {
-		request := dto.UpdateOtherFeeRequest{
-			UserProfileID:     in.ProfileID,
-			ID:                in.OtherFeeID,
-			GroupExpenseID:    in.GroupExpenseID,
-			Name:              in.Body.Name,
-			Amount:            in.Body.Amount.Decimal,
-			CalculationMethod: in.Body.CalculationMethod,
-		}
-
-		res, err := geh.otherFeeSvc.Update(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return &UpdateOtherFeeOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type RemoveOtherFeeInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	OtherFeeID     uuid.UUID `path:"otherFeeID"`
 }
 
-type RemoveOtherFeeOutput struct{}
-
-// RegisterRemove registers DELETE /api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID} on the Huma API.
-func (geh *OtherFeeHandler) RegisterRemove(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "remove-other-fee",
-		Method:        http.MethodDelete,
-		Path:          "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}",
-		Summary:       "Remove a fee from a group expense",
-		Tags:          []string{"other-fees"},
-		DefaultStatus: http.StatusNoContent,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *RemoveOtherFeeInput) (*RemoveOtherFeeOutput, error) {
-		if err := geh.otherFeeSvc.Remove(ctx, in.GroupExpenseID, in.OtherFeeID, in.ProfileID); err != nil {
-			return nil, err
-		}
-
-		return &RemoveOtherFeeOutput{}, nil
-	})
-}
-
 type GetFeeCalculationMethodsInput struct {
 	httpapi.AuthInput
 }
 
-type GetFeeCalculationMethodsOutput struct {
-	Body httpapi.Envelope[[]dto.FeeCalculationMethodInfo]
-}
+// Routes returns every route OtherFeeHandler exposes via endpoint.Endpoint /
+// endpoint.NoBodyEndpoint, for registration via endpoint.RegisterAll.
+func (geh *OtherFeeHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[AddOtherFeeInput, dto.OtherFeeResponse]{
+			OperationID: "add-other-fee",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/fees",
+			Summary:     "Add a fee to a group expense",
+			Tags:        []string{"other-fees"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in AddOtherFeeInput) (dto.OtherFeeResponse, error) {
+				request := dto.NewOtherFeeRequest{
+					UserProfileID:     in.ProfileID,
+					GroupExpenseID:    in.GroupExpenseID,
+					Name:              in.Body.Name,
+					Amount:            in.Body.Amount.Decimal,
+					CalculationMethod: in.Body.CalculationMethod,
+				}
 
-// RegisterGetFeeCalculationMethods registers GET /api/v1/group-expenses/fee-calculation-methods on the Huma API.
-func (geh *OtherFeeHandler) RegisterGetFeeCalculationMethods(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-fee-calculation-methods",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/group-expenses/fee-calculation-methods",
-		Summary:       "Get available fee calculation methods",
-		Tags:          []string{"other-fees"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetFeeCalculationMethodsInput) (*GetFeeCalculationMethodsOutput, error) {
-		return &GetFeeCalculationMethodsOutput{Body: httpapi.NewEnvelope(geh.otherFeeSvc.GetCalculationMethods())}, nil
-	})
+				return geh.otherFeeSvc.Add(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[UpdateOtherFeeInput, dto.OtherFeeResponse]{
+			OperationID: "update-other-fee",
+			Method:      http.MethodPut,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}",
+			Summary:     "Update a fee on a group expense",
+			Tags:        []string{"other-fees"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UpdateOtherFeeInput) (dto.OtherFeeResponse, error) {
+				request := dto.UpdateOtherFeeRequest{
+					UserProfileID:     in.ProfileID,
+					ID:                in.OtherFeeID,
+					GroupExpenseID:    in.GroupExpenseID,
+					Name:              in.Body.Name,
+					Amount:            in.Body.Amount.Decimal,
+					CalculationMethod: in.Body.CalculationMethod,
+				}
+
+				return geh.otherFeeSvc.Update(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetFeeCalculationMethodsInput, []dto.FeeCalculationMethodInfo]{
+			OperationID: "get-fee-calculation-methods",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/group-expenses/fee-calculation-methods",
+			Summary:     "Get available fee calculation methods",
+			Tags:        []string{"other-fees"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetFeeCalculationMethodsInput) ([]dto.FeeCalculationMethodInfo, error) {
+				return geh.otherFeeSvc.GetCalculationMethods(), nil
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[RemoveOtherFeeInput]{
+			OperationID: "remove-other-fee",
+			Method:      http.MethodDelete,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}",
+			Summary:     "Remove a fee from a group expense",
+			Tags:        []string{"other-fees"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in RemoveOtherFeeInput) error {
+				return geh.otherFeeSvc.Remove(ctx, in.GroupExpenseID, in.OtherFeeID, in.ProfileID)
+			},
+		}),
+	}
 }

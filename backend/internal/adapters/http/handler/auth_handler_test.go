@@ -6,13 +6,20 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/gin-gonic/gin"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
+	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
+	"github.com/itsLeonB/cashback/internal/mocks"
+	"github.com/itsLeonB/go-authkit/authgin"
+	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/time/rate"
 )
 
 // TestRegisterAuthInput_PasswordMismatch_ResolverError proves the
@@ -120,4 +127,81 @@ func TestResetPasswordInput_PasswordMismatch_Returns400NotPanic(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.False(t, handlerCalled, "handler must not run when the resolver already produced an error")
 	assert.Contains(t, rec.Body.String(), "passwordConfirmation")
+}
+
+// The tests below cover logic that used to live inline in the RegisterXxx
+// huma.Register closures and is now in the private sendPasswordReset /
+// refreshToken methods. ah.kit is left nil throughout: these tests only
+// exercise branches that return before ever touching it (a nil *AuthKit
+// method call would panic), which is also why there's no test here for the
+// success path of either method — that would require a live *authkit.AuthKit,
+// same limitation the pre-existing tests in this file already work around.
+
+// TestSendPasswordReset_RateLimited_ReturnsMappedTooManyRequests proves the
+// rate-limit guard now inside sendPasswordReset still short-circuits before
+// the captcha check or the (nil) kit call, and still maps to a 429 via
+// httpapi.MapAuthErr(authkit.ErrTooManyRequests).
+func TestSendPasswordReset_RateLimited_ReturnsMappedTooManyRequests(t *testing.T) {
+	limiter := middlewares.NewValueLimiter(rate.Limit(0), 0, time.Hour)
+	defer limiter.Stop()
+
+	captcha := mocks.NewMockCaptchaService(t) // no .On(...): must not be called
+	ah := &AuthHandler{captcha: captcha, limiter: limiter}
+
+	var in SendPasswordResetInput
+	in.Body.Email = "someone@example.com"
+
+	assert.NotPanics(t, func() {
+		_, err := ah.sendPasswordReset(context.Background(), in)
+
+		var appErr ungerr.AppError
+		assert.ErrorAs(t, err, &appErr)
+		assert.Equal(t, http.StatusTooManyRequests, appErr.HttpStatus())
+	})
+}
+
+// TestSendPasswordReset_CaptchaFails_ReturnsCaptchaErrorAsIs proves a captcha
+// verification failure is returned unwrapped (not passed through
+// httpapi.MapAuthErr, per the comment on MapAuthErr about errors that are
+// already an AppError).
+func TestSendPasswordReset_CaptchaFails_ReturnsCaptchaErrorAsIs(t *testing.T) {
+	captchaErr := ungerr.BadRequestError("invalid captcha token")
+
+	captcha := mocks.NewMockCaptchaService(t)
+	captcha.On("Verify", mock.Anything, "bad-token").Return(captchaErr)
+
+	ah := &AuthHandler{captcha: captcha} // no limiter: rate-limit check is skipped
+
+	var in SendPasswordResetInput
+	in.Body.Email = "someone@example.com"
+	in.Body.CaptchaToken = "bad-token"
+
+	_, err := ah.sendPasswordReset(context.Background(), in)
+
+	assert.ErrorIs(t, err, captchaErr)
+}
+
+// TestRefreshToken_MissingCookie_ReturnsUnauthorizedError proves the manual
+// ungerr.UnauthorizedError(...) construction for a failed
+// transport.ReadRefreshToken now lives inside refreshToken and still fires
+// before the (nil) kit is ever called.
+func TestRefreshToken_MissingCookie_ReturnsUnauthorizedError(t *testing.T) {
+	transport, err := authgin.NewCookieTransport(authgin.CookieConfig{})
+	assert.NoError(t, err)
+
+	ah := &AuthHandler{transport: transport}
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/auth/refresh", nil)
+	gc := &gin.Context{Request: req}
+
+	var in RefreshTokenInput
+	in.Gin = gc
+
+	assert.NotPanics(t, func() {
+		_, err := ah.refreshToken(context.Background(), in)
+
+		var appErr ungerr.AppError
+		assert.ErrorAs(t, err, &appErr)
+		assert.Equal(t, http.StatusUnauthorized, appErr.HttpStatus())
+	})
 }

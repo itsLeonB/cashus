@@ -59,6 +59,15 @@ type FriendshipRequestService interface {
 	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
 
+	// GetAllByType dispatches to GetAllSent or GetAllReceived based on
+	// requestType, returning ungerr.BadRequestError for any other value.
+	// This is the validation that used to live in the handler's RegisterGetAll.
+	GetAllByType(ctx context.Context, userProfileID uuid.UUID, requestType string) ([]dto.FriendshipRequestResponse, error)
+	// HandleBlockCommand dispatches to Block or Unblock based on command,
+	// returning ungerr.BadRequestError for any other value. This is the
+	// validation that used to live in the handler's RegisterBlock.
+	HandleBlockCommand(ctx context.Context, userProfileID, reqID uuid.UUID, command string) error
+
 	ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error)
 }
 

@@ -7,6 +7,7 @@ import (
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/go-authkit/authgin"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
@@ -32,69 +33,40 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 		})),
 	)
 
-	handlers.Public.RegisterGetPublicProfile(api)
-	handlers.Plan.RegisterGetActive(api)
+	endpoint.RegisterAll(api, handlers.Public.Routes())
+	endpoint.RegisterAll(api, handlers.Plan.Routes())
 	handlers.Payment.RegisterNotification(api)
 
-	handlers.Payment.RegisterMakePayment(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.Payment.Routes(), protectedMW...)
 
-	handlers.Profile.RegisterProfile(api, protectedMW...)
-	handlers.Profile.RegisterUpdate(api, protectedMW...)
-	handlers.Profile.RegisterAssociate(api, protectedMW...)
-	handlers.Profile.RegisterSearch(api, profilesMW...)
+	endpoint.RegisterAll(api, handlers.Profile.Routes(), protectedMW...)
+	endpoint.RegisterAll(api, handlers.Profile.SearchRoutes(), profilesMW...)
 
-	handlers.ProfileTransferMethod.RegisterAdd(api, protectedMW...)
-	handlers.ProfileTransferMethod.RegisterGetAllOwned(api, protectedMW...)
-	handlers.ProfileTransferMethod.RegisterGetAllByFriendProfileID(api, profilesMW...)
+	endpoint.RegisterAll(api, handlers.ProfileTransferMethod.Routes(), protectedMW...)
+	endpoint.RegisterAll(api, handlers.ProfileTransferMethod.GetAllByFriendProfileIDRoutes(), profilesMW...)
 
-	handlers.Subscription.RegisterGetSubscribedDetails(api, protectedMW...)
-	handlers.Subscription.RegisterCreatePurchase(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.Subscription.Routes(), protectedMW...)
 
-	handlers.Friendship.RegisterCreateAnonymousFriendship(api, protectedMW...)
-	handlers.Friendship.RegisterGetAll(api, protectedMW...)
-	handlers.Friendship.RegisterGetDetails(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.Friendship.Routes(), protectedMW...)
 
-	handlers.FriendshipRequest.RegisterSend(api, profilesMW...)
-	handlers.FriendshipRequest.RegisterGetAll(api, protectedMW...)
-	handlers.FriendshipRequest.RegisterCancel(api, protectedMW...)
-	handlers.FriendshipRequest.RegisterIgnore(api, protectedMW...)
-	handlers.FriendshipRequest.RegisterBlock(api, protectedMW...)
-	handlers.FriendshipRequest.RegisterAccept(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.FriendshipRequest.SendRoutes(), profilesMW...)
+	endpoint.RegisterAll(api, handlers.FriendshipRequest.Routes(), protectedMW...)
 
-	handlers.TransferMethod.RegisterGetAll(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.TransferMethod.Routes(), protectedMW...)
 
-	handlers.Debt.RegisterCreate(api, protectedMW...)
-	handlers.Debt.RegisterGetAll(api, protectedMW...)
-	handlers.Debt.RegisterGetTransactionSummary(api, protectedMW...)
-	handlers.Debt.RegisterGetRecent(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.Debt.Routes(), protectedMW...)
 
-	handlers.GroupExpense.RegisterCreateDraft(api, protectedMW...)
-	handlers.GroupExpense.RegisterGetAll(api, protectedMW...)
-	handlers.GroupExpense.RegisterGetDetails(api, protectedMW...)
-	handlers.GroupExpense.RegisterConfirmDraft(api, protectedMW...)
-	handlers.GroupExpense.RegisterDelete(api, protectedMW...)
-	handlers.GroupExpense.RegisterSyncParticipants(api, protectedMW...)
-	handlers.GroupExpense.RegisterGetRecent(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.GroupExpense.Routes(), protectedMW...)
 
-	handlers.ExpenseItem.RegisterAdd(api, protectedMW...)
-	handlers.ExpenseItem.RegisterUpdate(api, protectedMW...)
-	handlers.ExpenseItem.RegisterRemove(api, protectedMW...)
-	handlers.ExpenseItem.RegisterSyncParticipants(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.ExpenseItem.Routes(), protectedMW...)
 
-	handlers.OtherFee.RegisterAdd(api, protectedMW...)
-	handlers.OtherFee.RegisterUpdate(api, protectedMW...)
-	handlers.OtherFee.RegisterRemove(api, protectedMW...)
-	handlers.OtherFee.RegisterGetFeeCalculationMethods(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.OtherFee.Routes(), protectedMW...)
 
-	handlers.ExpenseBill.RegisterPresignedSave(api, protectedMW...)
-	handlers.ExpenseBill.RegisterTriggerParsing(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.ExpenseBill.Routes(), protectedMW...)
 
-	handlers.Notification.RegisterGetUnread(api, protectedMW...)
-	handlers.Notification.RegisterMarkAsRead(api, protectedMW...)
-	handlers.Notification.RegisterMarkAllAsRead(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.Notification.Routes(), protectedMW...)
 
-	handlers.PushSubscription.RegisterSubscribe(api, protectedMW...)
-	handlers.PushSubscription.RegisterUnsubscribe(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.PushSubscription.Routes(), protectedMW...)
 
 	// authRateMW mirrors the rate limit the whole /api/v1/auth group used to
 	// share as a gin route-group middleware (20/60 per IP): the
@@ -119,19 +91,20 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 		KeyFunc: httpserver.KeyFuncByIP(),
 	}))
 
-	handlers.Auth.RegisterRegister(api, authRateMW...)
-	handlers.Auth.RegisterLogin(api, authRateMW...)
-	handlers.Auth.RegisterOAuthLogin(api, authRateMW...)
-	handlers.Auth.RegisterOAuthCallback(api, authRateMW...)
-	handlers.Auth.RegisterVerifyRegistration(api, authRateMW...)
-	handlers.Auth.RegisterSendPasswordReset(api, passwordResetMW...)
-	handlers.Auth.RegisterResetPassword(api, resetPasswordMW...)
-	handlers.Auth.RegisterRefreshToken(api, authRateMW...)
+	// Register, Login, OAuthLogin, OAuthCallback, VerifyRegistration, and
+	// RefreshToken share only the group-wide rate limit.
+	endpoint.RegisterAll(api, handlers.Auth.Routes(), authRateMW...)
+
+	// SendPasswordReset and ResetPassword each need an extra, tighter rate
+	// limit layered on top of authRateMW, so they're registered separately
+	// from the rest of Routes() with their own middleware slice.
+	endpoint.RegisterAll(api, handlers.Auth.PasswordResetRoutes(), passwordResetMW...)
+	endpoint.RegisterAll(api, handlers.Auth.ResetPasswordRoutes(), resetPasswordMW...)
 
 	// Logout is not under the rate-limited /auth group above (it never was,
 	// even before this migration); it's protected the same way as every
 	// other protected route.
-	handlers.Auth.RegisterLogout(api, protectedMW...)
+	endpoint.RegisterAll(api, handlers.Auth.LogoutRoutes(), protectedMW...)
 }
 
 // withRateLimit appends an extra bridged gin middleware onto a copy of base,

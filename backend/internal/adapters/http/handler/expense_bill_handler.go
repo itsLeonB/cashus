@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type ExpenseBillHandler struct {
@@ -27,61 +27,45 @@ type PresignedSaveExpenseBillInput struct {
 	}
 }
 
-type PresignedSaveExpenseBillOutput struct {
-	Body httpapi.Envelope[dto.PresignedExpenseBillResponse]
-}
-
-// RegisterPresignedSave registers POST /api/v1/group-expenses/{groupExpenseID}/bills on the Huma API.
-func (geh *ExpenseBillHandler) RegisterPresignedSave(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "presigned-save-expense-bill",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/group-expenses/{groupExpenseID}/bills",
-		Summary:       "Get a presigned URL to upload an expense bill",
-		Tags:          []string{"expense-bills"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *PresignedSaveExpenseBillInput) (*PresignedSaveExpenseBillOutput, error) {
-		request := dto.PresignedExpenseBillRequest{
-			ProfileID:      in.ProfileID,
-			GroupExpenseID: in.GroupExpenseID,
-			Filename:       in.Body.Filename,
-		}
-
-		res, err := geh.expenseBillService.SavePresigned(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return &PresignedSaveExpenseBillOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type TriggerExpenseBillParsingInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	ExpenseBillID  uuid.UUID `path:"expenseBillID"`
 }
 
-type TriggerExpenseBillParsingOutput struct{}
+// Routes returns every route ExpenseBillHandler exposes via
+// endpoint.Endpoint / endpoint.NoBodyEndpoint, for registration via
+// endpoint.RegisterAll.
+func (geh *ExpenseBillHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[PresignedSaveExpenseBillInput, dto.PresignedExpenseBillResponse]{
+			OperationID: "presigned-save-expense-bill",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/bills",
+			Summary:     "Get a presigned URL to upload an expense bill",
+			Tags:        []string{"expense-bills"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in PresignedSaveExpenseBillInput) (dto.PresignedExpenseBillResponse, error) {
+				request := dto.PresignedExpenseBillRequest{
+					ProfileID:      in.ProfileID,
+					GroupExpenseID: in.GroupExpenseID,
+					Filename:       in.Body.Filename,
+				}
 
-// RegisterTriggerParsing registers PUT /api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID} on the Huma API.
-func (geh *ExpenseBillHandler) RegisterTriggerParsing(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "trigger-expense-bill-parsing",
-		Method:        http.MethodPut,
-		Path:          "/api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID}",
-		Summary:       "Trigger parsing of an uploaded expense bill",
-		Tags:          []string{"expense-bills"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *TriggerExpenseBillParsingInput) (*TriggerExpenseBillParsingOutput, error) {
-		if err := geh.expenseBillService.TriggerParsing(ctx, in.GroupExpenseID, in.ExpenseBillID); err != nil {
-			return nil, err
-		}
-
-		return &TriggerExpenseBillParsingOutput{}, nil
-	})
+				return geh.expenseBillService.SavePresigned(ctx, request)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[TriggerExpenseBillParsingInput]{
+			OperationID: "trigger-expense-bill-parsing",
+			Method:      http.MethodPut,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID}",
+			Summary:     "Trigger parsing of an uploaded expense bill",
+			Tags:        []string{"expense-bills"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in TriggerExpenseBillParsingInput) error {
+				return geh.expenseBillService.TriggerParsing(ctx, in.GroupExpenseID, in.ExpenseBillID)
+			},
+		}),
+	}
 }

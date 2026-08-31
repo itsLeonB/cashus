@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type TransferMethodHandler struct {
@@ -24,27 +24,21 @@ type GetAllTransferMethodsInput struct {
 	Status string `query:"status"`
 }
 
-type GetAllTransferMethodsOutput struct {
-	Body httpapi.Envelope[[]dto.TransferMethodResponse]
-}
-
-// RegisterGetAll registers GET /api/v1/transfer-methods on the Huma API.
-func (tmh *TransferMethodHandler) RegisterGetAll(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-transfer-methods",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/transfer-methods",
-		Summary:       "Get all transfer methods",
-		Tags:          []string{"transfer-methods"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetAllTransferMethodsInput) (*GetAllTransferMethodsOutput, error) {
-		res, err := tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(in.Status), in.ProfileID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetAllTransferMethodsOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
+// Routes returns every route TransferMethodHandler exposes, for registration
+// via endpoint.RegisterAll.
+func (tmh *TransferMethodHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetAllTransferMethodsInput, []dto.TransferMethodResponse]{
+			OperationID: "get-transfer-methods",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/transfer-methods",
+			Summary:     "Get all transfer methods",
+			Tags:        []string{"transfer-methods"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllTransferMethodsInput) ([]dto.TransferMethodResponse, error) {
+				return tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(in.Status), in.ProfileID)
+			},
+		}),
+	}
 }

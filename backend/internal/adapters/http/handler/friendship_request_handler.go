@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/ungerr"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type FriendshipRequestHandler struct {
@@ -27,26 +26,24 @@ type SendFriendRequestInput struct {
 	FriendProfileID uuid.UUID `path:"profileID"`
 }
 
-type SendFriendRequestOutput struct{}
-
-// RegisterSend registers POST /api/v1/profiles/{profileID}/friend-requests on the Huma API.
-func (frh *FriendshipRequestHandler) RegisterSend(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "send-friend-request",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/profiles/{profileID}/friend-requests",
-		Summary:       "Send a friend request",
-		Tags:          []string{"friend-requests"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *SendFriendRequestInput) (*SendFriendRequestOutput, error) {
-		if err := frh.svc.Send(ctx, in.ProfileID, in.FriendProfileID); err != nil {
-			return nil, err
-		}
-
-		return &SendFriendRequestOutput{}, nil
-	})
+// SendRoutes returns send-friend-request on its own, so
+// routes/api_routes.go can register it with profilesMW instead of sharing
+// Routes()'s protectedMW group: it's rate-limited like RegisterSearch and
+// RegisterGetAllByFriendProfileID, using the same shared limiter instance.
+func (frh *FriendshipRequestHandler) SendRoutes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SendFriendRequestInput]{
+			OperationID: "send-friend-request",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/profiles/{profileID}/friend-requests",
+			Summary:     "Send a friend request",
+			Tags:        []string{"friend-requests"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in SendFriendRequestInput) error {
+				return frh.svc.Send(ctx, in.ProfileID, in.FriendProfileID)
+			},
+		}),
+	}
 }
 
 type GetAllFriendRequestsInput struct {
@@ -54,89 +51,9 @@ type GetAllFriendRequestsInput struct {
 	RequestType string `path:"friendRequestType"`
 }
 
-type GetAllFriendRequestsOutput struct {
-	Body httpapi.Envelope[[]dto.FriendshipRequestResponse]
-}
-
-// RegisterGetAll registers GET /api/v1/friend-requests/{friendRequestType} on the Huma API.
-func (frh *FriendshipRequestHandler) RegisterGetAll(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-friend-requests",
-		Method:        http.MethodGet,
-		Path:          fmt.Sprintf("/api/v1/friend-requests/{%s}", appconstant.PathFriendRequestType),
-		Summary:       "Get all friend requests (sent or received)",
-		Tags:          []string{"friend-requests"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetAllFriendRequestsInput) (*GetAllFriendRequestsOutput, error) {
-		var response []dto.FriendshipRequestResponse
-		var err error
-
-		switch in.RequestType {
-		case appconstant.SentFriendRequest:
-			response, err = frh.svc.GetAllSent(ctx, in.ProfileID)
-		case appconstant.ReceivedFriendRequest:
-			response, err = frh.svc.GetAllReceived(ctx, in.ProfileID)
-		default:
-			err = ungerr.BadRequestError("invalid path parameter")
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetAllFriendRequestsOutput{Body: httpapi.NewEnvelope(response)}, nil
-	})
-}
-
 type FriendRequestIDInput struct {
 	httpapi.AuthInput
 	FriendRequestID uuid.UUID `path:"friendRequestID"`
-}
-
-type CancelFriendRequestOutput struct{}
-
-// RegisterCancel registers DELETE /api/v1/friend-requests/sent/{friendRequestID} on the Huma API.
-func (frh *FriendshipRequestHandler) RegisterCancel(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "cancel-friend-request",
-		Method:        http.MethodDelete,
-		Path:          fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.SentFriendRequest),
-		Summary:       "Cancel a sent friend request",
-		Tags:          []string{"friend-requests"},
-		DefaultStatus: http.StatusNoContent,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *FriendRequestIDInput) (*CancelFriendRequestOutput, error) {
-		if err := frh.svc.Cancel(ctx, in.ProfileID, in.FriendRequestID); err != nil {
-			return nil, err
-		}
-
-		return &CancelFriendRequestOutput{}, nil
-	})
-}
-
-type IgnoreFriendRequestOutput struct{}
-
-// RegisterIgnore registers DELETE /api/v1/friend-requests/received/{friendRequestID} on the Huma API.
-func (frh *FriendshipRequestHandler) RegisterIgnore(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "ignore-friend-request",
-		Method:        http.MethodDelete,
-		Path:          fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
-		Summary:       "Ignore a received friend request",
-		Tags:          []string{"friend-requests"},
-		DefaultStatus: http.StatusNoContent,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *FriendRequestIDInput) (*IgnoreFriendRequestOutput, error) {
-		if err := frh.svc.Ignore(ctx, in.ProfileID, in.FriendRequestID); err != nil {
-			return nil, err
-		}
-
-		return &IgnoreFriendRequestOutput{}, nil
-	})
 }
 
 type BlockFriendRequestInput struct {
@@ -145,60 +62,72 @@ type BlockFriendRequestInput struct {
 	Command         string    `query:"command"`
 }
 
-type BlockFriendRequestOutput struct{}
-
-// RegisterBlock registers PATCH /api/v1/friend-requests/received/{friendRequestID} on the Huma API.
-func (frh *FriendshipRequestHandler) RegisterBlock(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "block-friend-request",
-		Method:        http.MethodPatch,
-		Path:          fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
-		Summary:       "Block or unblock a friend request sender",
-		Tags:          []string{"friend-requests"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *BlockFriendRequestInput) (*BlockFriendRequestOutput, error) {
-		var err error
-
-		switch in.Command {
-		case "block":
-			err = frh.svc.Block(ctx, in.ProfileID, in.FriendRequestID)
-		case "unblock":
-			err = frh.svc.Unblock(ctx, in.ProfileID, in.FriendRequestID)
-		default:
-			err = ungerr.BadRequestError(fmt.Sprintf("unknown command: %s", in.Command))
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		return &BlockFriendRequestOutput{}, nil
-	})
-}
-
-type AcceptFriendRequestOutput struct {
-	Body httpapi.Envelope[dto.FriendshipResponse]
-}
-
-// RegisterAccept registers POST /api/v1/friend-requests/received/{friendRequestID} on the Huma API.
-func (frh *FriendshipRequestHandler) RegisterAccept(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "accept-friend-request",
-		Method:        http.MethodPost,
-		Path:          fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
-		Summary:       "Accept a received friend request",
-		Tags:          []string{"friend-requests"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *FriendRequestIDInput) (*AcceptFriendRequestOutput, error) {
-		res, err := frh.svc.Accept(ctx, in.ProfileID, in.FriendRequestID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &AcceptFriendRequestOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
+// Routes returns every route FriendshipRequestHandler exposes via
+// endpoint.Endpoint/endpoint.NoBodyEndpoint that shares protectedMW, for
+// registration via endpoint.RegisterAll. Send is returned separately
+// (SendRoutes) because it needs profilesMW instead. GetAll used to be
+// hand-written, for building a manual ungerr.BadRequestError on an
+// unrecognized path value, but that validation now lives in
+// service.FriendshipRequestService.GetAllByType, so GetAll fits here
+// alongside Accept.
+func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[FriendRequestIDInput, dto.FriendshipResponse]{
+			OperationID: "accept-friend-request",
+			Method:      http.MethodPost,
+			Path:        fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
+			Summary:     "Accept a received friend request",
+			Tags:        []string{"friend-requests"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in FriendRequestIDInput) (dto.FriendshipResponse, error) {
+				return frh.svc.Accept(ctx, in.ProfileID, in.FriendRequestID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetAllFriendRequestsInput, []dto.FriendshipRequestResponse]{
+			OperationID: "get-friend-requests",
+			Method:      http.MethodGet,
+			Path:        fmt.Sprintf("/api/v1/friend-requests/{%s}", appconstant.PathFriendRequestType),
+			Summary:     "Get all friend requests (sent or received)",
+			Tags:        []string{"friend-requests"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllFriendRequestsInput) ([]dto.FriendshipRequestResponse, error) {
+				return frh.svc.GetAllByType(ctx, in.ProfileID, in.RequestType)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[FriendRequestIDInput]{
+			OperationID: "cancel-friend-request",
+			Method:      http.MethodDelete,
+			Path:        fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.SentFriendRequest),
+			Summary:     "Cancel a sent friend request",
+			Tags:        []string{"friend-requests"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in FriendRequestIDInput) error {
+				return frh.svc.Cancel(ctx, in.ProfileID, in.FriendRequestID)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[FriendRequestIDInput]{
+			OperationID: "ignore-friend-request",
+			Method:      http.MethodDelete,
+			Path:        fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
+			Summary:     "Ignore a received friend request",
+			Tags:        []string{"friend-requests"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in FriendRequestIDInput) error {
+				return frh.svc.Ignore(ctx, in.ProfileID, in.FriendRequestID)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[BlockFriendRequestInput]{
+			OperationID: "block-friend-request",
+			Method:      http.MethodPatch,
+			Path:        fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
+			Summary:     "Block or unblock a friend request sender",
+			Tags:        []string{"friend-requests"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in BlockFriendRequestInput) error {
+				return frh.svc.HandleBlockCommand(ctx, in.ProfileID, in.FriendRequestID, in.Command)
+			},
+		}),
+	}
 }

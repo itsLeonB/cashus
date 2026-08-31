@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type FriendshipHandler struct {
@@ -36,74 +36,8 @@ type CreateAnonymousFriendshipInput struct {
 	}
 }
 
-type CreateAnonymousFriendshipOutput struct {
-	Body httpapi.Envelope[dto.FriendshipResponse]
-}
-
-// RegisterCreateAnonymousFriendship registers POST /api/v1/friendships on the Huma API.
-func (fh *FriendshipHandler) RegisterCreateAnonymousFriendship(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "create-anonymous-friendship",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/friendships",
-		Summary:       "Create an anonymous friendship",
-		Tags:          []string{"friendships"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *CreateAnonymousFriendshipInput) (*CreateAnonymousFriendshipOutput, error) {
-		request := dto.NewAnonymousFriendshipRequest{
-			ProfileID: in.ProfileID,
-			Name:      in.Body.Name,
-		}
-
-		res, err := fh.friendshipService.CreateAnonymous(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return &CreateAnonymousFriendshipOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type GetAllFriendshipsInput struct {
 	httpapi.AuthInput
-}
-
-type GetAllFriendshipsOutput struct {
-	Body httpapi.Envelope[[]dto.FriendshipResponse]
-}
-
-// RegisterGetAll registers GET /api/v1/friendships on the Huma API.
-func (fh *FriendshipHandler) RegisterGetAll(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-friendships",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/friendships",
-		Summary:       "Get all friendships",
-		Tags:          []string{"friendships"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetAllFriendshipsInput) (*GetAllFriendshipsOutput, error) {
-		friendships, err := fh.friendshipService.GetAll(ctx, in.ProfileID)
-		if err != nil {
-			return nil, err
-		}
-
-		balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx, in.ProfileID)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range friendships {
-			if b, ok := balances[friendships[i].ProfileID]; ok {
-				friendships[i].BalancesPerCurrency = b
-			}
-		}
-
-		return &GetAllFriendshipsOutput{Body: httpapi.NewEnvelope(friendships)}, nil
-	})
 }
 
 type GetFriendshipDetailsInput struct {
@@ -111,27 +45,66 @@ type GetFriendshipDetailsInput struct {
 	FriendshipID uuid.UUID `path:"friendshipID"`
 }
 
-type GetFriendshipDetailsOutput struct {
-	Body httpapi.Envelope[dto.FriendDetailsResponse]
-}
+// Routes returns every route FriendshipHandler exposes, for registration via
+// endpoint.RegisterAll.
+func (fh *FriendshipHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[CreateAnonymousFriendshipInput, dto.FriendshipResponse]{
+			OperationID: "create-anonymous-friendship",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/friendships",
+			Summary:     "Create an anonymous friendship",
+			Tags:        []string{"friendships"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateAnonymousFriendshipInput) (dto.FriendshipResponse, error) {
+				request := dto.NewAnonymousFriendshipRequest{
+					ProfileID: in.ProfileID,
+					Name:      in.Body.Name,
+				}
 
-// RegisterGetDetails registers GET /api/v1/friendships/{friendshipID} on the Huma API.
-func (fh *FriendshipHandler) RegisterGetDetails(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-friendship-details",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/friendships/{friendshipID}",
-		Summary:       "Get friendship details",
-		Tags:          []string{"friendships"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetFriendshipDetailsInput) (*GetFriendshipDetailsOutput, error) {
-		res, err := fh.friendDetailsSvc.GetDetails(ctx, in.ProfileID, in.FriendshipID)
-		if err != nil {
-			return nil, err
-		}
+				return fh.friendshipService.CreateAnonymous(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetAllFriendshipsInput, []dto.FriendshipResponse]{
+			OperationID: "get-friendships",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/friendships",
+			Summary:     "Get all friendships",
+			Tags:        []string{"friendships"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllFriendshipsInput) ([]dto.FriendshipResponse, error) {
+				friendships, err := fh.friendshipService.GetAll(ctx, in.ProfileID)
+				if err != nil {
+					return nil, err
+				}
 
-		return &GetFriendshipDetailsOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
+				balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx, in.ProfileID)
+				if err != nil {
+					return nil, err
+				}
+
+				for i := range friendships {
+					if b, ok := balances[friendships[i].ProfileID]; ok {
+						friendships[i].BalancesPerCurrency = b
+					}
+				}
+
+				return friendships, nil
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetFriendshipDetailsInput, dto.FriendDetailsResponse]{
+			OperationID: "get-friendship-details",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/friendships/{friendshipID}",
+			Summary:     "Get friendship details",
+			Tags:        []string{"friendships"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetFriendshipDetailsInput) (dto.FriendDetailsResponse, error) {
+				return fh.friendDetailsSvc.GetDetails(ctx, in.ProfileID, in.FriendshipID)
+			},
+		}),
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 	"golang.org/x/time/rate"
@@ -34,33 +35,17 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddl
 		})),
 	}
 
-	handlers.Auth.RegisterRegister(api)
-	handlers.Auth.RegisterLogin(api, loginMW...)
-	handlers.Auth.RegisterMe(api, adminMW...)
+	endpoint.RegisterAll(api, handlers.Auth.RegisterRoutes())
+	endpoint.RegisterAll(api, handlers.Auth.LoginRoutes(), loginMW...)
+	endpoint.RegisterAll(api, handlers.Auth.Routes(), adminMW...)
 
-	handlers.Plan.RegisterCreate(api, adminMW...)
-	handlers.Plan.RegisterGetList(api, adminMW...)
-	handlers.Plan.RegisterGetOne(api, adminMW...)
-	handlers.Plan.RegisterUpdate(api, adminMW...)
-	handlers.Plan.RegisterDelete(api, adminMW...)
+	endpoint.RegisterAll(api, handlers.Plan.Routes(), adminMW...)
 
-	handlers.PlanVersion.RegisterCreate(api, adminMW...)
-	handlers.PlanVersion.RegisterGetList(api, adminMW...)
-	handlers.PlanVersion.RegisterGetOne(api, adminMW...)
-	handlers.PlanVersion.RegisterUpdate(api, adminMW...)
-	handlers.PlanVersion.RegisterDelete(api, adminMW...)
+	endpoint.RegisterAll(api, handlers.PlanVersion.Routes(), adminMW...)
 
-	handlers.Subscription.RegisterCreate(api, adminMW...)
-	handlers.Subscription.RegisterGetList(api, adminMW...)
-	handlers.Subscription.RegisterGetOne(api, adminMW...)
-	handlers.Subscription.RegisterUpdate(api, adminMW...)
-	handlers.Subscription.RegisterDelete(api, adminMW...)
+	endpoint.RegisterAll(api, handlers.Subscription.Routes(), adminMW...)
 
-	handlers.Payment.RegisterGetList(api, adminMW...)
-	handlers.Payment.RegisterGetOne(api, adminMW...)
-	handlers.Payment.RegisterUpdate(api, adminMW...)
-	handlers.Payment.RegisterDelete(api, adminMW...)
+	endpoint.RegisterAll(api, handlers.Payment.Routes(), adminMW...)
 
-	handlers.Profile.RegisterGetList(api, adminMW...)
-	handlers.Profile.RegisterGetOne(api, adminMW...)
+	endpoint.RegisterAll(api, handlers.Profile.Routes(), adminMW...)
 }

@@ -1,7 +1,6 @@
 ---
 name: backend-agent
 description: Use for ANY task that reads, writes, or reasons about code in backend/ — Go, Gin, GORM, database migrations, otel, Docker for the backend, or backend/Makefile targets. Trigger on mentions of Go, backend, API handlers, services, repositories, DTOs, migrations, or backend tests/lint/build. Do NOT use for frontend/ or root-level (Makefile, CI, CLAUDE.md) work.
-tools: Read, Edit, Write, Bash, Glob, Grep, Skill
 model: sonnet
 color: blue
 ---

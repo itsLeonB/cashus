@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -166,6 +168,20 @@ func (frs *friendshipRequestServiceImpl) getRequest(ctx context.Context, spec cr
 	return request, nil
 }
 
+// GetAllByType dispatches to GetAllSent or GetAllReceived based on
+// requestType. Moved down from the handler's RegisterGetAll so the handler
+// only needs to call this and pass the error through.
+func (frs *friendshipRequestServiceImpl) GetAllByType(ctx context.Context, userProfileID uuid.UUID, requestType string) ([]dto.FriendshipRequestResponse, error) {
+	switch requestType {
+	case appconstant.SentFriendRequest:
+		return frs.GetAllSent(ctx, userProfileID)
+	case appconstant.ReceivedFriendRequest:
+		return frs.GetAllReceived(ctx, userProfileID)
+	default:
+		return nil, ungerr.BadRequestError("invalid path parameter")
+	}
+}
+
 func (frs *friendshipRequestServiceImpl) GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.GetAllReceived")
 	defer span.End()
@@ -245,6 +261,20 @@ func (frs *friendshipRequestServiceImpl) Unblock(ctx context.Context, userProfil
 		_, err = frs.requestRepo.Update(ctx, request)
 		return err
 	})
+}
+
+// HandleBlockCommand dispatches to Block or Unblock based on command. Moved
+// down from the handler's RegisterBlock so the handler only needs to call
+// this and pass the error through.
+func (frs *friendshipRequestServiceImpl) HandleBlockCommand(ctx context.Context, userProfileID, reqID uuid.UUID, command string) error {
+	switch command {
+	case "block":
+		return frs.Block(ctx, userProfileID, reqID)
+	case "unblock":
+		return frs.Unblock(ctx, userProfileID, reqID)
+	default:
+		return ungerr.BadRequestError(fmt.Sprintf("unknown command: %s", command))
+	}
 }
 
 func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error) {

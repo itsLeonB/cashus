@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type DebtHandler struct {
@@ -31,124 +31,79 @@ type CreateDebtInput struct {
 	}
 }
 
-type CreateDebtOutput struct {
-	Body httpapi.Envelope[dto.DebtTransactionResponse]
-}
-
-// RegisterCreate registers POST /api/v1/debts on the Huma API.
-func (dh *DebtHandler) RegisterCreate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "create-debt",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/debts",
-		Summary:       "Record a new debt transaction",
-		Tags:          []string{"debts"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *CreateDebtInput) (*CreateDebtOutput, error) {
-		request := dto.NewDebtTransactionRequest{
-			UserProfileID:    in.ProfileID,
-			FriendProfileID:  in.Body.FriendProfileID,
-			Direction:        in.Body.Direction,
-			Currency:         in.Body.Currency,
-			Amount:           in.Body.Amount.Decimal,
-			TransferMethodID: in.Body.TransferMethodID,
-			Description:      in.Body.Description,
-		}
-
-		res, err := dh.debtService.RecordNewTransaction(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return &CreateDebtOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type GetAllDebtsInput struct {
 	httpapi.AuthInput
-}
-
-type GetAllDebtsOutput struct {
-	Body httpapi.Envelope[[]dto.DebtTransactionResponse]
-}
-
-// RegisterGetAll registers GET /api/v1/debts on the Huma API.
-func (dh *DebtHandler) RegisterGetAll(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-debts",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/debts",
-		Summary:       "Get all debt transactions",
-		Tags:          []string{"debts"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetAllDebtsInput) (*GetAllDebtsOutput, error) {
-		res, err := dh.debtService.GetTransactions(ctx, in.ProfileID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetAllDebtsOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
 }
 
 type GetDebtsSummaryInput struct {
 	httpapi.AuthInput
 }
 
-type GetDebtsSummaryOutput struct {
-	Body httpapi.Envelope[map[string]dto.FriendBalance]
-}
-
-// RegisterGetTransactionSummary registers GET /api/v1/debts/summary on the Huma API.
-func (dh *DebtHandler) RegisterGetTransactionSummary(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-debts-summary",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/debts/summary",
-		Summary:       "Get debt transaction summary",
-		Tags:          []string{"debts"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetDebtsSummaryInput) (*GetDebtsSummaryOutput, error) {
-		res, err := dh.debtService.GetTransactionSummary(ctx, in.ProfileID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetDebtsSummaryOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type GetRecentDebtsInput struct {
 	httpapi.AuthInput
 }
 
-type GetRecentDebtsOutput struct {
-	Body httpapi.Envelope[[]dto.DebtTransactionResponse]
-}
+// Routes returns every route DebtHandler exposes, for registration via
+// endpoint.RegisterAll.
+func (dh *DebtHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[CreateDebtInput, dto.DebtTransactionResponse]{
+			OperationID: "create-debt",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/debts",
+			Summary:     "Record a new debt transaction",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateDebtInput) (dto.DebtTransactionResponse, error) {
+				request := dto.NewDebtTransactionRequest{
+					UserProfileID:    in.ProfileID,
+					FriendProfileID:  in.Body.FriendProfileID,
+					Direction:        in.Body.Direction,
+					Currency:         in.Body.Currency,
+					Amount:           in.Body.Amount.Decimal,
+					TransferMethodID: in.Body.TransferMethodID,
+					Description:      in.Body.Description,
+				}
 
-// RegisterGetRecent registers GET /api/v1/debts/recent on the Huma API.
-func (dh *DebtHandler) RegisterGetRecent(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-recent-debts",
-		Method:        http.MethodGet,
-		Path:          "/api/v1/debts/recent",
-		Summary:       "Get recent debt transactions",
-		Tags:          []string{"debts"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetRecentDebtsInput) (*GetRecentDebtsOutput, error) {
-		res, err := dh.debtService.GetRecent(ctx, in.ProfileID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetRecentDebtsOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
+				return dh.debtService.RecordNewTransaction(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetAllDebtsInput, []dto.DebtTransactionResponse]{
+			OperationID: "get-debts",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/debts",
+			Summary:     "Get all debt transactions",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllDebtsInput) ([]dto.DebtTransactionResponse, error) {
+				return dh.debtService.GetTransactions(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetDebtsSummaryInput, map[string]dto.FriendBalance]{
+			OperationID: "get-debts-summary",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/debts/summary",
+			Summary:     "Get debt transaction summary",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetDebtsSummaryInput) (map[string]dto.FriendBalance, error) {
+				return dh.debtService.GetTransactionSummary(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetRecentDebtsInput, []dto.DebtTransactionResponse]{
+			OperationID: "get-recent-debts",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/debts/recent",
+			Summary:     "Get recent debt transactions",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetRecentDebtsInput) ([]dto.DebtTransactionResponse, error) {
+				return dh.debtService.GetRecent(ctx, in.ProfileID)
+			},
+		}),
+	}
 }

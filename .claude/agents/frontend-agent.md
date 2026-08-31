@@ -1,7 +1,6 @@
 ---
 name: frontend-agent
 description: Use for ANY task that reads, writes, or reasons about code in frontend/ — React, Vite, TypeScript, Tailwind, shadcn/ui, TanStack Query, or frontend build/lint/test tooling. Trigger on mentions of React, frontend, UI components, pages, hooks, Vite, or frontend tests/lint/build. Do NOT use for backend/ or root-level (Makefile, CI, CLAUDE.md) work.
-tools: Read, Edit, Write, Bash, Glob, Grep, Skill
 model: sonnet
 color: green
 ---

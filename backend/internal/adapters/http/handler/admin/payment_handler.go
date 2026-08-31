@@ -5,75 +5,88 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type PaymentHandler struct {
 	svc service.PaymentService
 }
 
+// Routes returns every route PaymentHandler exposes via endpoint.Endpoint,
+// for registration via endpoint.RegisterAll.
+func (ph *PaymentHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.NewList(endpoint.ListEndpoint[GetPaymentListInput, dto.PaymentResponse]{
+			OperationID: "get-admin-payments",
+			Method:      http.MethodGet,
+			Path:        "/admin/v1/payments",
+			Summary:     "Get all payments",
+			Tags:        []string{"admin-payments"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetPaymentListInput) ([]dto.PaymentResponse, error) {
+				return ph.svc.GetList(ctx)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetPaymentInput, dto.PaymentResponse]{
+			OperationID: "get-admin-payment",
+			Method:      http.MethodGet,
+			Path:        "/admin/v1/payments/{paymentID}",
+			Summary:     "Get a payment by ID",
+			Tags:        []string{"admin-payments"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetPaymentInput) (dto.PaymentResponse, error) {
+				return ph.svc.GetOne(ctx, in.PaymentID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[UpdatePaymentInput, dto.PaymentResponse]{
+			OperationID: "update-admin-payment",
+			Method:      http.MethodPut,
+			Path:        "/admin/v1/payments/{paymentID}",
+			Summary:     "Update a payment",
+			Tags:        []string{"admin-payments"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UpdatePaymentInput) (dto.PaymentResponse, error) {
+				request := dto.UpdatePaymentRequest{
+					ID:       in.PaymentID,
+					Status:   in.Body.Status,
+					Amount:   in.Body.Amount.Decimal,
+					Currency: in.Body.Currency,
+					StartsAt: in.Body.StartsAt,
+					EndsAt:   in.Body.EndsAt,
+					PaidAt:   in.Body.PaidAt,
+				}
+
+				return ph.svc.Update(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[DeletePaymentInput, dto.PaymentResponse]{
+			OperationID: "delete-admin-payment",
+			Method:      http.MethodDelete,
+			Path:        "/admin/v1/payments/{paymentID}",
+			Summary:     "Delete a payment",
+			Tags:        []string{"admin-payments"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in DeletePaymentInput) (dto.PaymentResponse, error) {
+				return ph.svc.Delete(ctx, in.PaymentID)
+			},
+		}),
+	}
+}
+
 type GetPaymentListInput struct {
 	httpapi.AdminAuthInput
-}
-
-type GetPaymentListOutput struct {
-	XTotalCount int `header:"X-Total-Count"`
-	Body        httpapi.Envelope[[]dto.PaymentResponse]
-}
-
-// RegisterGetList registers GET /admin/v1/payments on the Huma API.
-func (ph *PaymentHandler) RegisterGetList(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-admin-payments",
-		Method:        http.MethodGet,
-		Path:          "/admin/v1/payments",
-		Summary:       "Get all payments",
-		Tags:          []string{"admin-payments"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetPaymentListInput) (*GetPaymentListOutput, error) {
-		res, err := ph.svc.GetList(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetPaymentListOutput{XTotalCount: len(res), Body: httpapi.NewEnvelope(res)}, nil
-	})
 }
 
 type GetPaymentInput struct {
 	httpapi.AdminAuthInput
 	PaymentID uuid.UUID `path:"paymentID"`
-}
-
-type GetPaymentOutput struct {
-	Body httpapi.Envelope[dto.PaymentResponse]
-}
-
-// RegisterGetOne registers GET /admin/v1/payments/{paymentID} on the Huma API.
-func (ph *PaymentHandler) RegisterGetOne(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "get-admin-payment",
-		Method:        http.MethodGet,
-		Path:          "/admin/v1/payments/{paymentID}",
-		Summary:       "Get a payment by ID",
-		Tags:          []string{"admin-payments"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *GetPaymentInput) (*GetPaymentOutput, error) {
-		res, err := ph.svc.GetOne(ctx, in.PaymentID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &GetPaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
 }
 
 type UpdatePaymentInput struct {
@@ -89,67 +102,7 @@ type UpdatePaymentInput struct {
 	}
 }
 
-type UpdatePaymentOutput struct {
-	Body httpapi.Envelope[dto.PaymentResponse]
-}
-
-// RegisterUpdate registers PUT /admin/v1/payments/{paymentID} on the Huma API.
-func (ph *PaymentHandler) RegisterUpdate(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "update-admin-payment",
-		Method:        http.MethodPut,
-		Path:          "/admin/v1/payments/{paymentID}",
-		Summary:       "Update a payment",
-		Tags:          []string{"admin-payments"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *UpdatePaymentInput) (*UpdatePaymentOutput, error) {
-		request := dto.UpdatePaymentRequest{
-			ID:       in.PaymentID,
-			Status:   in.Body.Status,
-			Amount:   in.Body.Amount.Decimal,
-			Currency: in.Body.Currency,
-			StartsAt: in.Body.StartsAt,
-			EndsAt:   in.Body.EndsAt,
-			PaidAt:   in.Body.PaidAt,
-		}
-
-		res, err := ph.svc.Update(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return &UpdatePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
-}
-
 type DeletePaymentInput struct {
 	httpapi.AdminAuthInput
 	PaymentID uuid.UUID `path:"paymentID"`
-}
-
-type DeletePaymentOutput struct {
-	Body httpapi.Envelope[dto.PaymentResponse]
-}
-
-// RegisterDelete registers DELETE /admin/v1/payments/{paymentID} on the Huma API.
-func (ph *PaymentHandler) RegisterDelete(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "delete-admin-payment",
-		Method:        http.MethodDelete,
-		Path:          "/admin/v1/payments/{paymentID}",
-		Summary:       "Delete a payment",
-		Tags:          []string{"admin-payments"},
-		DefaultStatus: http.StatusOK,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *DeletePaymentInput) (*DeletePaymentOutput, error) {
-		res, err := ph.svc.Delete(ctx, in.PaymentID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &DeletePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
 }

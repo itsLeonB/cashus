@@ -6,9 +6,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type PaymentHandler struct {
@@ -27,7 +27,14 @@ type HandleMidtransNotificationInput struct {
 
 type HandleMidtransNotificationOutput struct{}
 
-// RegisterNotification registers POST /api/v1/payments/midtrans/notifications on the Huma API.
+// RegisterNotification registers POST /api/v1/payments/midtrans/notifications
+// on the Huma API. Left as endpoint.NoBodyEndpoint-shaped but hand-written
+// (not migrated) on purpose: Midtrans's webhook-ack contract isn't
+// documented anywhere in this repo, and this codebase can't reach Midtrans's
+// docs to confirm it tolerates 204 in place of the 200 it gets today.
+// Converting would only change the status code (Output has no Body field
+// either way), but until that's verified, changing the status Midtrans sees
+// is not a risk worth taking silently — flagged for a human decision.
 func (ph *PaymentHandler) RegisterNotification(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
 	huma.Register(api, huma.Operation{
 		OperationID:   "handle-midtrans-notification",
@@ -58,27 +65,23 @@ type MakePaymentInput struct {
 	SubscriptionID uuid.UUID `path:"subscriptionID"`
 }
 
-type MakePaymentOutput struct {
-	Body httpapi.Envelope[dto.PaymentResponse]
-}
-
-// RegisterMakePayment registers POST /api/v1/subscriptions/{subscriptionID} on the Huma API.
-func (ph *PaymentHandler) RegisterMakePayment(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
-	huma.Register(api, huma.Operation{
-		OperationID:   "make-payment",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/subscriptions/{subscriptionID}",
-		Summary:       "Make a payment for a subscription",
-		Tags:          []string{"payments"},
-		DefaultStatus: http.StatusCreated,
-		Security:      []map[string][]string{{"BearerAuth": {}}},
-		Middlewares:   mw,
-	}, func(ctx context.Context, in *MakePaymentInput) (*MakePaymentOutput, error) {
-		res, err := ph.svc.MakePayment(ctx, in.SubscriptionID)
-		if err != nil {
-			return nil, err
-		}
-
-		return &MakePaymentOutput{Body: httpapi.NewEnvelope(res)}, nil
-	})
+// Routes returns every route PaymentHandler exposes via endpoint.Endpoint,
+// for registration via endpoint.RegisterAll. RegisterNotification is
+// registered separately (hand-written) because it's an unauthenticated
+// webhook with a bodyless response.
+func (ph *PaymentHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[MakePaymentInput, dto.PaymentResponse]{
+			OperationID: "make-payment",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/subscriptions/{subscriptionID}",
+			Summary:     "Make a payment for a subscription",
+			Tags:        []string{"payments"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in MakePaymentInput) (dto.PaymentResponse, error) {
+				return ph.svc.MakePayment(ctx, in.SubscriptionID)
+			},
+		}),
+	}
 }

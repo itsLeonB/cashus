@@ -21,6 +21,16 @@ type Decimal struct {
 }
 
 // Schema implements huma.SchemaProvider.
+//
+// decimal.Decimal.UnmarshalJSON (see shopspring/decimal) accepts both a raw
+// JSON number and a quoted numeric string (e.g. "10.50"), so the schema must
+// accept both too, or huma's request validation would reject one of the two
+// forms decimal.Decimal can actually parse.
 func (Decimal) Schema(huma.Registry) *huma.Schema {
-	return &huma.Schema{Type: huma.TypeNumber}
+	return &huma.Schema{
+		AnyOf: []*huma.Schema{
+			{Type: huma.TypeNumber},
+			{Type: huma.TypeString},
+		},
+	}
 }

@@ -14,7 +14,6 @@ func CheckPasswordMatch(password, confirmation string) []error {
 		return []error{&huma.ErrorDetail{
 			Location: "body.passwordConfirmation",
 			Message:  "must match password",
-			Value:    confirmation,
 		}}
 	}
 

@@ -52,7 +52,7 @@
         "--context",
         "claude-code",
         "--project",
-        "${pwd}"
+        "${CLAUDE_PROJECT_DIR:-.}"
       ]
     },
     "context7": {

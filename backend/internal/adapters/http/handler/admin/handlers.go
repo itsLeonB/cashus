@@ -3,7 +3,6 @@ package admin
 import (
 	"github.com/itsLeonB/cashback/internal/provider"
 	adminProvider "github.com/itsLeonB/cashback/internal/provider/admin"
-	"github.com/itsLeonB/go-authkit/authgin"
 )
 
 type Handlers struct {
@@ -17,7 +16,7 @@ type Handlers struct {
 
 func ProvideHandlers(adminServices *adminProvider.Services, adminRepos *adminProvider.Repositories, domainServices *provider.Services) *Handlers {
 	return &Handlers{
-		AuthHandler{stateless: authgin.NewStatelessHandler(adminServices.Kit), userRepo: adminRepos.User},
+		AuthHandler{kit: adminServices.Kit, userRepo: adminRepos.User},
 		PlanHandler{domainServices.Plan},
 		PlanVersionHandler{domainServices.PlanVersion},
 		SubscriptionHandler{domainServices.Subscription},

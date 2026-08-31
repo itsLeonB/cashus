@@ -13,11 +13,10 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// RegisterAPIRoutes wires up both the remaining ginkgo/gin routes and the
-// (currently canary-only) Huma operations. Huma is bound at the engine root,
-// so operations that need the same auth+CSRF protection as
-// `protectedRoutes` below must have those gin middlewares bridged onto them
-// individually via httpapi.Bridge.
+// RegisterAPIRoutes wires up every /api/v1 operation on the Huma API. Huma
+// is bound at the engine root, so operations that need the same auth+CSRF
+// protection as `protectedMW` below must have those gin middlewares bridged
+// onto them individually via httpapi.Bridge.
 func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc, api huma.API) {
 	protectedMW := []func(huma.Context, func(huma.Context)){
 		httpapi.Bridge(authMiddleware),
@@ -97,45 +96,46 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 	handlers.PushSubscription.RegisterSubscribe(api, protectedMW...)
 	handlers.PushSubscription.RegisterUnsubscribe(api, protectedMW...)
 
-	apiRoutes := router.Group("/api")
-	{
-		v1 := apiRoutes.Group("/v1")
-		{
-			authRoutes := v1.Group("/auth")
-			authRoutes.Use(sentinelGin.RateLimit(httpserver.RateLimitConfig{
-				Limit:   rate.Limit(20.0 / 60),
-				Burst:   5,
-				KeyFunc: httpserver.KeyFuncByIP(),
-			}))
-			{
-				authRoutes.POST("/register", handlers.Auth.Register())
-				authRoutes.POST("/login", handlers.Auth.Login())
-				authRoutes.PUT("/refresh", handlers.Auth.RefreshToken())
-				authRoutes.GET("/:provider", handlers.Auth.OAuthLogin())
-				authRoutes.GET("/:provider/callback", handlers.Auth.OAuthCallback())
-				authRoutes.GET("/verify-registration", handlers.Auth.VerifyRegistration())
-				authRoutes.POST("/password-reset",
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(3.0 / 900),
-						Burst:   3,
-						KeyFunc: httpserver.KeyFuncByIP(),
-					}),
-					handlers.Auth.SendPasswordReset(),
-				)
-				authRoutes.PATCH("/reset-password",
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(5.0 / 900),
-						Burst:   5,
-						KeyFunc: httpserver.KeyFuncByIP(),
-					}),
-					handlers.Auth.ResetPassword(),
-				)
-			}
-
-			protectedRoutes := v1.Group("/", authMiddleware, authgin.CSRFMiddleware())
-			{
-				protectedRoutes.DELETE("/auth/logout", handlers.Auth.Logout())
-			}
-		}
+	// authRateMW mirrors the rate limit the whole /api/v1/auth group used to
+	// share as a gin route-group middleware (20/60 per IP): the
+	// sentinelGin.RateLimit middleware (and its bucket store) is constructed
+	// once here and bridged once, then reused unchanged across every op
+	// below so they keep sharing one limiter, not one each.
+	authRateMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			Limit:   rate.Limit(20.0 / 60),
+			Burst:   5,
+			KeyFunc: httpserver.KeyFuncByIP(),
+		})),
 	}
+	passwordResetMW := withRateLimit(authRateMW, sentinelGin.RateLimit(httpserver.RateLimitConfig{
+		Limit:   rate.Limit(3.0 / 900),
+		Burst:   3,
+		KeyFunc: httpserver.KeyFuncByIP(),
+	}))
+	resetPasswordMW := withRateLimit(authRateMW, sentinelGin.RateLimit(httpserver.RateLimitConfig{
+		Limit:   rate.Limit(5.0 / 900),
+		Burst:   5,
+		KeyFunc: httpserver.KeyFuncByIP(),
+	}))
+
+	handlers.Auth.RegisterRegister(api, authRateMW...)
+	handlers.Auth.RegisterLogin(api, authRateMW...)
+	handlers.Auth.RegisterOAuthLogin(api, authRateMW...)
+	handlers.Auth.RegisterOAuthCallback(api, authRateMW...)
+	handlers.Auth.RegisterVerifyRegistration(api, authRateMW...)
+	handlers.Auth.RegisterSendPasswordReset(api, passwordResetMW...)
+	handlers.Auth.RegisterResetPassword(api, resetPasswordMW...)
+	handlers.Auth.RegisterRefreshToken(api, authRateMW...)
+
+	// Logout is not under the rate-limited /auth group above (it never was,
+	// even before this migration); it's protected the same way as every
+	// other protected route.
+	handlers.Auth.RegisterLogout(api, protectedMW...)
+}
+
+// withRateLimit appends an extra bridged gin middleware onto a copy of base,
+// without mutating base or its backing array.
+func withRateLimit(base []func(huma.Context, func(huma.Context)), extra gin.HandlerFunc) []func(huma.Context, func(huma.Context)) {
+	return append(append([]func(huma.Context, func(huma.Context)){}, base...), httpapi.Bridge(extra))
 }

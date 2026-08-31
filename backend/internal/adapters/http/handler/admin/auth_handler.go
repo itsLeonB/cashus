@@ -5,33 +5,99 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/gin-gonic/gin"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	adminEntity "github.com/itsLeonB/cashback/internal/domain/entity/admin"
-	"github.com/itsLeonB/go-authkit/authgin"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type AuthHandler struct {
-	stateless *authgin.StatelessHandler
-	userRepo  crud.Repository[adminEntity.User]
+	kit      *authkit.AuthKit
+	userRepo crud.Repository[adminEntity.User]
 }
 
-// HandleRegister delegates to authgin.StatelessHandler (an external
-// library), so it is intentionally left as a native gin route rather than
-// migrated to Huma.
-func (ah *AuthHandler) HandleRegister() gin.HandlerFunc {
-	return ah.stateless.Register()
+type AdminRegisterInput struct {
+	Body struct {
+		Email                string `json:"email" format:"email"`
+		Password             string `json:"password"`
+		PasswordConfirmation string `json:"passwordConfirmation"`
+	}
 }
 
-// HandleLogin delegates to authgin.StatelessHandler (an external library),
-// so it is intentionally left as a native gin route rather than migrated to
-// Huma.
-func (ah *AuthHandler) HandleLogin() gin.HandlerFunc {
-	return ah.stateless.Login()
+// Resolve implements huma.Resolver.
+func (i *AdminRegisterInput) Resolve(ctx huma.Context) []error {
+	return httpapi.CheckPasswordMatch(i.Body.Password, i.Body.PasswordConfirmation)
+}
+
+type adminVerifiedBody struct {
+	Verified bool `json:"verified"`
+}
+
+type AdminRegisterOutput struct {
+	Body httpapi.Envelope[adminVerifiedBody]
+}
+
+// RegisterRegister registers POST /admin/v1/auth/register on the Huma API,
+// replacing authgin.StatelessHandler.Register.
+func (ah *AuthHandler) RegisterRegister(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "admin-auth-register",
+		Method:        http.MethodPost,
+		Path:          "/admin/v1/auth/register",
+		Summary:       "Register a new admin user",
+		Tags:          []string{"admin-auth"},
+		DefaultStatus: http.StatusCreated,
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *AdminRegisterInput) (*AdminRegisterOutput, error) {
+		verified, err := ah.kit.Register(ctx, in.Body.Email, in.Body.Password, "")
+		if err != nil {
+			return nil, httpapi.MapAuthErr(err)
+		}
+
+		return &AdminRegisterOutput{Body: httpapi.NewEnvelope(adminVerifiedBody{Verified: verified})}, nil
+	})
+}
+
+type AdminLoginInput struct {
+	Body struct {
+		Email    string `json:"email" format:"email"`
+		Password string `json:"password"`
+	}
+}
+
+type adminBearerTokenBody struct {
+	Type  string `json:"type"`
+	Token string `json:"token"`
+}
+
+type AdminLoginOutput struct {
+	Body httpapi.Envelope[adminBearerTokenBody]
+}
+
+// RegisterLogin registers POST /admin/v1/auth/login on the Huma API,
+// replacing authgin.StatelessHandler.Login. Unlike the main API, admin auth
+// is stateless: the access token is returned in the JSON body rather than
+// set as a cookie.
+func (ah *AuthHandler) RegisterLogin(api huma.API, mw ...func(huma.Context, func(huma.Context))) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "admin-auth-login",
+		Method:        http.MethodPost,
+		Path:          "/admin/v1/auth/login",
+		Summary:       "Login as an admin user",
+		Tags:          []string{"admin-auth"},
+		DefaultStatus: http.StatusOK,
+		Middlewares:   mw,
+	}, func(ctx context.Context, in *AdminLoginInput) (*AdminLoginOutput, error) {
+		tokens, err := ah.kit.Login(ctx, in.Body.Email, in.Body.Password)
+		if err != nil {
+			return nil, httpapi.MapAuthErr(err)
+		}
+
+		return &AdminLoginOutput{Body: httpapi.NewEnvelope(adminBearerTokenBody{Type: "Bearer", Token: tokens.AccessToken})}, nil
+	})
 }
 
 type GetAdminMeInput struct {

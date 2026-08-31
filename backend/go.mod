@@ -1,8 +1,6 @@
 module github.com/itsLeonB/cashback
 
-go 1.25.0
-
-toolchain go1.26.6
+go 1.26
 
 require (
 	cloud.google.com/go/storage v1.58.0
@@ -19,7 +17,7 @@ require (
 	github.com/itsLeonB/ginkgo v0.6.1
 	github.com/itsLeonB/go-authkit v0.1.1
 	github.com/itsLeonB/go-crud v1.4.0
-	github.com/itsLeonB/ungerr v0.4.1-0.20260829075156-8c5c3b2c4321
+	github.com/itsLeonB/ungerr v0.5.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kroma-labs/sentinel-go v0.3.4

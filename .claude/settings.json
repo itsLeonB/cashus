@@ -44,8 +44,6 @@
     ]
   },
   "enabledPlugins": {
-    "vercel@claude-plugins-official": true,
-    "serena@claude-plugins-official": true,
-    "hookify@claude-plugins-official": true
+    "vercel@claude-plugins-official": true
   }
 }

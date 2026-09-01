@@ -8,7 +8,6 @@ package provider
 
 import (
 	"github.com/google/wire"
-	admin2 "github.com/itsLeonB/cashback/internal/core/config/admin"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
 )
 
@@ -86,7 +85,7 @@ func InitializeProviders() (*Providers, func(), error) {
 		return nil, nil, err
 	}
 	adminRepositories := admin.ProvideRepositories(db, transactor)
-	config := _wireConfigValue
+	config := ProvideAdminConfig()
 	adminServices, err := admin.ProvideServices(adminRepositories, config)
 	if err != nil {
 		cleanup8()
@@ -119,18 +118,21 @@ func InitializeProviders() (*Providers, func(), error) {
 	}, nil
 }
 
-var (
-	_wireConfigValue = admin2.Global
-)
-
 // wire.go:
 
 // ProviderSet composes every provider set in this package plus the admin
 // sub-package's, and assembles the top-level Providers struct from them.
+//
+// The admin config is supplied via ProvideAdminConfig, a normal runtime
+// provider function, not wire.Value(adminConfig.Global): wire.Value would
+// capture admin.Global through a package-level var initializer that runs at
+// package-init time, before main() calls config.Load() (which is what
+// actually populates admin.Global) — permanently freezing it at nil. See
+// ProvideAdminConfig's doc comment for the full explanation.
 var ProviderSet = wire.NewSet(
 	DataSourceSet,
 	TransactorSet,
 	RepositorySet,
 	CoreServiceSet,
-	ServiceSet, admin.ProviderSet, wire.Value(admin2.Global), wire.FieldsOf(new(*DataSources), "Gorm"), wire.Struct(new(Providers), "*"),
+	ServiceSet, admin.ProviderSet, ProvideAdminConfig, wire.FieldsOf(new(*DataSources), "Gorm"), wire.Struct(new(Providers), "*"),
 )

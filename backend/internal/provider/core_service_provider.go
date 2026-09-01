@@ -89,6 +89,18 @@ func ProvideOCRClient() (ocr.OCRService, func(), error) {
 // connection; wire calls this cleanup before any of its own inputs' cleanups
 // on both a graceful full shutdown and a later sub-resource's construction
 // failure, which subsumes the old hand-rolled nc.Close()-on-failure branch.
+//
+// Note Drain() is not a synchronous replacement for the old Close(): it
+// spawns an internal goroutine bounded by nats.go's DrainTimeout (30s by
+// default) and returns immediately, so on this codebase's failure paths
+// (every caller logs and os.Exit(1)s right after a construction error) the
+// drain goroutine is likely killed mid-flight rather than completing —
+// effectively best-effort, not a guarantee strictly stronger than the old
+// Close(). Practical impact is low here (no subscriptions or pending
+// publishes exist yet at construction time, and the OS reclaims the socket
+// on exit regardless), and the same async-vs-exit race already existed
+// pre-wire on the graceful full-shutdown path, so this is left as-is rather
+// than reintroducing a separate Close()-based failure branch.
 func ProvideNATSConn() (*nats.Conn, func(), error) {
 	nc, err := nats.Connect(config.Global.Url)
 	if err != nil {

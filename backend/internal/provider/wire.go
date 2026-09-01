@@ -4,12 +4,18 @@ package provider
 
 import (
 	"github.com/google/wire"
-	adminConfig "github.com/itsLeonB/cashback/internal/core/config/admin"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
 )
 
 // ProviderSet composes every provider set in this package plus the admin
 // sub-package's, and assembles the top-level Providers struct from them.
+//
+// The admin config is supplied via ProvideAdminConfig, a normal runtime
+// provider function, not wire.Value(adminConfig.Global): wire.Value would
+// capture admin.Global through a package-level var initializer that runs at
+// package-init time, before main() calls config.Load() (which is what
+// actually populates admin.Global) — permanently freezing it at nil. See
+// ProvideAdminConfig's doc comment for the full explanation.
 var ProviderSet = wire.NewSet(
 	DataSourceSet,
 	TransactorSet,
@@ -17,7 +23,7 @@ var ProviderSet = wire.NewSet(
 	CoreServiceSet,
 	ServiceSet,
 	admin.ProviderSet,
-	wire.Value(adminConfig.Global),
+	ProvideAdminConfig,
 	wire.FieldsOf(new(*DataSources), "Gorm"),
 	wire.Struct(new(Providers), "*"),
 )

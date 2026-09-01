@@ -3,32 +3,38 @@ package provider
 import (
 	"database/sql"
 
+	"github.com/google/wire"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider/datasource"
 	"github.com/itsLeonB/ungerr"
 	"gorm.io/gorm"
 )
+
+// DataSourceSet is the wire provider set for the DataSources.
+var DataSourceSet = wire.NewSet(ProvideDataSource)
 
 type DataSources struct {
 	Gorm *gorm.DB
 	SQL  *sql.DB
 }
 
-func (ds *DataSources) Shutdown() error {
-	if err := ds.SQL.Close(); err != nil {
-		return ungerr.Wrap(err, "error closing SQL db")
-	}
-	return nil
-}
-
-func ProvideDataSource() (*DataSources, error) {
+func ProvideDataSource() (*DataSources, func(), error) {
 	gormDB, sqlDB, err := datasource.ProvideAndConfigureSQL(config.Global.DB)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &DataSources{
+	ds := &DataSources{
 		Gorm: gormDB,
 		SQL:  sqlDB,
-	}, nil
+	}
+
+	cleanup := func() {
+		if err := ds.SQL.Close(); err != nil {
+			logger.Error(ungerr.Wrap(err, "error closing SQL db"))
+		}
+	}
+
+	return ds, cleanup, nil
 }

@@ -61,6 +61,10 @@
       "headers": {
         "Authorization": "Bearer ${CONTEXT7_API_KEY}"
       }
+    },
+    "graphify": {
+      "type": "http",
+      "url": "https://api.graphify.com/mcp"
     }
   }
 }

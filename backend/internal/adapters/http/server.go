@@ -12,7 +12,7 @@ import (
 )
 
 func Setup(configs config.Config) (*httpserver.Server, func(), error) {
-	providers, err := provider.All()
+	providers, cleanup, err := provider.InitializeProviders()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -25,19 +25,19 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 
 	skipPaths := []string{"/ping", "/livez", "/readyz", "/metrics", "/favicon.ico"}
 	if err = setupSentinel(r, skipPaths, zerologger); err != nil {
+		cleanup()
 		return nil, nil, err
 	}
 
 	routesShutdown, err := RegisterRoutes(r, configs, providers.Services, providers.AdminServices, providers.AdminRepos)
 	if err != nil {
+		cleanup()
 		return nil, nil, err
 	}
 
 	shutdownFunc := func() {
 		routesShutdown()
-		if err := providers.Shutdown(); err != nil {
-			logger.Error(err)
-		}
+		cleanup()
 	}
 
 	httpCfg := httpserver.ProductionConfig()

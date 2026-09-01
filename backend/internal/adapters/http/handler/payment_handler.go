@@ -6,6 +6,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/endpoint"
@@ -62,6 +63,7 @@ func (ph *PaymentHandler) RegisterNotification(api huma.API, mw ...func(huma.Con
 }
 
 type MakePaymentInput struct {
+	httpapi.AuthInput
 	SubscriptionID uuid.UUID `path:"subscriptionID"`
 }
 
@@ -80,7 +82,7 @@ func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
 			ServiceFunc: func(ctx context.Context, in MakePaymentInput) (dto.PaymentResponse, error) {
-				return ph.svc.MakePayment(ctx, in.SubscriptionID)
+				return ph.svc.MakePayment(ctx, in.ProfileID, in.SubscriptionID)
 			},
 		}),
 	}

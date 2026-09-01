@@ -161,12 +161,16 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted(msg))
 }
 
-func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) (dto.ExpenseBillResponse, error) {
+func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, profileID, expenseID, billID uuid.UUID) (dto.ExpenseBillResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.TriggerParsing")
 	defer span.End()
 
 	var response dto.ExpenseBillResponse
 	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		if _, err := ebs.expenseSvc.GetUnconfirmedForUpdate(ctx, profileID, expenseID); err != nil {
+			return err
+		}
+
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = billID
 		spec.Model.GroupExpenseID = expenseID
@@ -189,8 +193,8 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 				return err
 			}
 
-			response, err = ebs.toResponse(updated)
-			return err
+			response = mapper.ExpenseBillToResponse(updated, "")
+			return nil
 		}
 
 		if bill.ExtractedText == "" {
@@ -214,23 +218,11 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 			return err
 		}
 
-		response, err = ebs.toResponse(updated)
-		return err
+		response = mapper.ExpenseBillToResponse(updated, "")
+		return nil
 	})
 
 	return response, err
-}
-
-// toResponse resolves bill's signed image URL and maps it to
-// dto.ExpenseBillResponse, matching the billURL pattern
-// GroupExpenseService.GetDetails uses before mapper.GroupExpenseToResponse.
-func (ebs *expenseBillServiceImpl) toResponse(bill expenses.ExpenseBill) (dto.ExpenseBillResponse, error) {
-	url, err := ebs.imageSvc.GetURL(ObjectKeyToFileID(bill.ImageName))
-	if err != nil {
-		return dto.ExpenseBillResponse{}, err
-	}
-
-	return mapper.ExpenseBillToResponse(bill, url), nil
 }
 
 func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {

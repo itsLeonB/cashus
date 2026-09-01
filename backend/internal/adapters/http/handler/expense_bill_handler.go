@@ -65,7 +65,7 @@ func (geh *ExpenseBillHandler) Routes() []endpoint.Registrable {
 			SuccessCode: http.StatusOK,
 			Secured:     true,
 			ServiceFunc: func(ctx context.Context, in TriggerExpenseBillParsingInput) (dto.ExpenseBillResponse, error) {
-				return geh.expenseBillService.TriggerParsing(ctx, in.GroupExpenseID, in.ExpenseBillID)
+				return geh.expenseBillService.TriggerParsing(ctx, in.ProfileID, in.GroupExpenseID, in.ExpenseBillID)
 			},
 		}),
 	}

@@ -67,6 +67,14 @@ func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 	resp := api.Get("/test/redirect/success")
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.Code)
 	assert.Equal(t, "https://example.com/oauth", resp.Header().Get("Location"))
+
+	op := api.OpenAPI().Paths["/test/redirect/success"].Get
+	docResp, ok := op.Responses["307"]
+	assert.True(t, ok, "expected documented 307 response")
+	if ok {
+		_, hasLocation := docResp.Headers["Location"]
+		assert.True(t, hasLocation, "expected documented Location header")
+	}
 }
 
 // TestRegisterRedirect_ErrorPassesThroughUntouched mirrors

@@ -147,7 +147,7 @@ type OtherFeeService interface {
 type ExpenseBillService interface {
 	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
 	Cleanup(ctx context.Context) error
-	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) (dto.ExpenseBillResponse, error)
+	TriggerParsing(ctx context.Context, profileID, expenseID, billID uuid.UUID) (dto.ExpenseBillResponse, error)
 	SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error)
 }
 

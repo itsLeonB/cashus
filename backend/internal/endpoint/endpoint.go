@@ -208,12 +208,13 @@ type redirectOutput struct {
 // Status is always http.StatusTemporaryRedirect.
 func RegisterRedirect[Req any](api huma.API, e RedirectEndpoint[Req], mw ...func(huma.Context, func(huma.Context))) {
 	op := huma.Operation{
-		OperationID: e.OperationID,
-		Method:      e.Method,
-		Path:        e.Path,
-		Summary:     e.Summary,
-		Tags:        e.Tags,
-		Middlewares: mergeMiddlewares(mw, e.Middlewares),
+		OperationID:   e.OperationID,
+		Method:        e.Method,
+		Path:          e.Path,
+		Summary:       e.Summary,
+		Tags:          e.Tags,
+		DefaultStatus: http.StatusTemporaryRedirect,
+		Middlewares:   mergeMiddlewares(mw, e.Middlewares),
 	}
 
 	if e.Secured {

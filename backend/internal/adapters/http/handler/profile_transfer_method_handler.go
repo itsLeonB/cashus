@@ -1,91 +1,106 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type ProfileTransferMethodHandler struct {
 	svc service.ProfileTransferMethodService
 }
 
-// HandleAdd godoc
-// @Summary      Add a transfer method to profile
-// @Tags         profile-transfer-methods
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.NewProfileTransferMethodRequest true "New profile transfer method payload"
-// @Success      201  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /profile/transfer-methods [post]
-func (ptmh *ProfileTransferMethodHandler) HandleAdd() gin.HandlerFunc {
-	return server.Handler("ProfileTransferMethodHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.NewProfileTransferMethodRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.ProfileID = profileID
-
-		return nil, ptmh.svc.Add(ctx.Request.Context(), req)
-	})
+type AddProfileTransferMethodInput struct {
+	httpapi.AuthInput
+	Body struct {
+		TransferMethodID uuid.UUID `json:"transferMethodId"`
+		AccountName      string    `json:"accountName" minLength:"3"`
+		AccountNumber    string    `json:"accountNumber" minLength:"3"`
+	}
 }
 
-// HandleGetAllOwned godoc
-// @Summary      Get all transfer methods owned by current profile
-// @Tags         profile-transfer-methods
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.ProfileTransferMethodResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profile/transfer-methods [get]
-func (ptmh *ProfileTransferMethodHandler) HandleGetAllOwned() gin.HandlerFunc {
-	return server.Handler("ProfileTransferMethodHandler.HandleGetAllOwned", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+// add builds the service request from in and delegates to svc.Add. Pulled
+// out of the Routes() ServiceFunc closure since it's more than a plain
+// passthrough (it assembles dto.NewProfileTransferMethodRequest first),
+// matching handler.AuthHandler.logout's reasoning for extracting non-trivial
+// logic into a private method.
+func (ptmh *ProfileTransferMethodHandler) add(ctx context.Context, in AddProfileTransferMethodInput) (dto.ProfileTransferMethodResponse, error) {
+	req := dto.NewProfileTransferMethodRequest{
+		ProfileID:        in.ProfileID,
+		TransferMethodID: in.Body.TransferMethodID,
+		AccountName:      in.Body.AccountName,
+		AccountNumber:    in.Body.AccountNumber,
+	}
 
-		return ptmh.svc.GetAllByProfileID(ctx.Request.Context(), profileID)
-	})
+	return ptmh.svc.Add(ctx, req)
 }
 
-// HandleGetAllByFriendProfileID godoc
-// @Summary      Get all transfer methods of a friend profile
-// @Tags         profile-transfer-methods
-// @Security     BearerAuth
-// @Produce      json
-// @Param        profileId path string true "Friend profile ID"
-// @Success      200  {object}  response.JSONResponse[[]dto.ProfileTransferMethodResponse]
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /profiles/{profileId}/transfer-methods [get]
-func (ptmh *ProfileTransferMethodHandler) HandleGetAllByFriendProfileID() gin.HandlerFunc {
-	return server.Handler("ProfileTransferMethodHandler.HandleGetAllByFriendProfileID", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type GetAllOwnedProfileTransferMethodsInput struct {
+	httpapi.AuthInput
+}
 
-		friendProfileID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextProfileID.String())
-		if err != nil {
-			return nil, err
-		}
+// Routes returns the ProfileTransferMethodHandler routes that share
+// protectedMW, for registration via endpoint.RegisterAll.
+// GetAllByFriendProfileIDRoutes is registered separately because it's
+// rate-limited with profilesMW rather than protectedMW.
+func (ptmh *ProfileTransferMethodHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetAllOwnedProfileTransferMethodsInput, []dto.ProfileTransferMethodResponse]{
+			OperationID: "get-all-owned-profile-transfer-methods",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/profile/transfer-methods",
+			Summary:     "Get all transfer methods owned by current profile",
+			Tags:        []string{"profile-transfer-methods"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllOwnedProfileTransferMethodsInput) ([]dto.ProfileTransferMethodResponse, error) {
+				return ptmh.svc.GetAllByProfileID(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[AddProfileTransferMethodInput, dto.ProfileTransferMethodResponse]{
+			OperationID: "add-profile-transfer-method",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/profile/transfer-methods",
+			Summary:     "Add a transfer method to profile",
+			Tags:        []string{"profile-transfer-methods"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: ptmh.add,
+		}),
+	}
+}
 
-		return ptmh.svc.GetAllByFriendProfileID(ctx.Request.Context(), userProfileID, friendProfileID)
-	})
+type GetAllProfileTransferMethodsByFriendProfileIDInput struct {
+	httpapi.AuthInput
+	FriendProfileID uuid.UUID `path:"profileID"`
+}
+
+// GetAllByFriendProfileIDRoutes returns
+// get-all-profile-transfer-methods-by-friend-profile-id on its own, so
+// routes/api_routes.go can register it with profilesMW instead of sharing
+// Routes()'s protectedMW group: it's rate-limited like
+// FriendshipRequestHandler.SendRoutes and ProfileHandler.SearchRoutes, using
+// the same shared limiter instance. This route returns a real response body
+// (the friend's transfer methods), so it fits endpoint.Endpoint, not
+// endpoint.NoBodyEndpoint.
+func (ptmh *ProfileTransferMethodHandler) GetAllByFriendProfileIDRoutes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetAllProfileTransferMethodsByFriendProfileIDInput, []dto.ProfileTransferMethodResponse]{
+			OperationID: "get-all-profile-transfer-methods-by-friend-profile-id",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/profiles/{profileID}/transfer-methods",
+			Summary:     "Get all transfer methods of a friend profile",
+			Tags:        []string{"profile-transfer-methods"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllProfileTransferMethodsByFriendProfileIDInput) ([]dto.ProfileTransferMethodResponse, error) {
+				return ptmh.svc.GetAllByFriendProfileID(ctx, in.ProfileID, in.FriendProfileID)
+			},
+		}),
+	}
 }

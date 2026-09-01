@@ -88,7 +88,7 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 				return err
 			}
 			if !existing.IsZero() {
-				response = mapper.ProfileToResponse(existing, "", dto.SubscriptionResponse{})
+				response = mapper.ProfileToResponse(existing, "", dto.SubscriptionLimitsResponse{})
 				return nil
 			}
 		}
@@ -122,7 +122,7 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 			}
 		}
 
-		response = mapper.ProfileToResponse(insertedProfile, "", dto.SubscriptionResponse{})
+		response = mapper.ProfileToResponse(insertedProfile, "", dto.SubscriptionLimitsResponse{})
 
 		return nil
 	})
@@ -182,7 +182,7 @@ func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse
 			email = user.Email
 		}
 
-		responses = append(responses, mapper.ProfileToResponse(profile, email, dto.SubscriptionResponse{}))
+		responses = append(responses, mapper.ProfileToResponse(profile, email, dto.SubscriptionLimitsResponse{}))
 	}
 
 	return responses, nil
@@ -207,7 +207,7 @@ func (ps *profileServiceImpl) GetAllReal(ctx context.Context) ([]dto.ProfileResp
 			continue
 		}
 
-		responses = append(responses, mapper.ProfileToResponse(profile, user.Email, dto.SubscriptionResponse{}))
+		responses = append(responses, mapper.ProfileToResponse(profile, user.Email, dto.SubscriptionLimitsResponse{}))
 	}
 
 	return responses, nil
@@ -280,7 +280,7 @@ func (ps *profileServiceImpl) Update(ctx context.Context, req dto.UpdateProfileR
 			return err
 		}
 
-		response = mapper.ProfileToResponse(updatedProfile, "", dto.SubscriptionResponse{})
+		response = mapper.ProfileToResponse(updatedProfile, "", dto.SubscriptionLimitsResponse{})
 		return nil
 	})
 	return response, err
@@ -339,7 +339,7 @@ func (ps *profileServiceImpl) GetByEmail(ctx context.Context, email string) (dto
 		return dto.ProfileResponse{}, ungerr.NotFoundError("user is not found")
 	}
 
-	return mapper.ProfileToResponse(user.Profile, user.Email, dto.SubscriptionResponse{}), nil
+	return mapper.ProfileToResponse(user.Profile, user.Email, dto.SubscriptionLimitsResponse{}), nil
 }
 
 // MergeAnonymousProfile physically merges an anonymous placeholder profile into a real,
@@ -445,7 +445,7 @@ func (ps *profileServiceImpl) GetByIDs(ctx context.Context, ids []uuid.UUID) (ma
 
 	profileMap := make(map[uuid.UUID]dto.ProfileResponse, len(profiles))
 	for _, profile := range profiles {
-		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", dto.SubscriptionResponse{})
+		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", dto.SubscriptionLimitsResponse{})
 	}
 
 	// ensure all requested IDs exist

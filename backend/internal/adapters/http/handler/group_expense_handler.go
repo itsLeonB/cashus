@@ -1,16 +1,15 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type groupExpenseHandler struct {
@@ -25,202 +24,155 @@ func newGroupExpenseHandler(
 	}
 }
 
-// HandleCreateDraft godoc
-// @Summary      Create a draft group expense
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.NewDraftRequest true "New draft payload"
-// @Success      201  {object}  response.JSONResponse[dto.GroupExpenseResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses [post]
-func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleCreateDraft", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.NewDraftRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.UserProfileID = userProfileID
-
-		return geh.groupExpenseService.CreateDraft(ctx.Request.Context(), req)
-	})
+type CreateGroupExpenseDraftInput struct {
+	httpapi.AuthInput
+	Body struct {
+		Description string `json:"description,omitempty"`
+		Currency    string `json:"currency" minLength:"3" maxLength:"3"`
+	}
 }
 
-// HandleGetAll godoc
-// @Summary      Get all group expenses
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Produce      json
-// @Param        status    query string false "Filter by status"
-// @Param        ownership query string false "Filter by ownership (default: owned)"
-// @Success      200  {object}  response.JSONResponse[[]dto.GroupExpenseResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses [get]
-func (geh *groupExpenseHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		status := expenses.ExpenseStatus(ctx.Query("status"))
-		ownership := expenses.ExpenseOwnership(ctx.Query("ownership"))
-
-		if ownership == "" {
-			ownership = expenses.OwnedExpense
-		}
-
-		groupExpenses, err := geh.groupExpenseService.GetAll(ctx.Request.Context(), userProfileID, ownership, status)
-		if err != nil {
-			return nil, err
-		}
-
-		return groupExpenses, nil
-	})
+type GetAllGroupExpensesInput struct {
+	httpapi.AuthInput
+	Status    expenses.ExpenseStatus    `query:"status"`
+	Ownership expenses.ExpenseOwnership `query:"ownership"`
 }
 
-// HandleGetDetails godoc
-// @Summary      Get group expense details
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Success      200  {object}  response.JSONResponse[dto.GroupExpenseResponse]
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId} [get]
-func (geh *groupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleGetDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return geh.groupExpenseService.GetDetails(ctx.Request.Context(), groupExpenseID, userProfileID)
-	})
+type GetGroupExpenseDetailsInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 }
 
-// HandleConfirmDraft godoc
-// @Summary      Confirm a draft group expense
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Produce      json
-// @Param        groupExpenseId path  string true  "Group expense ID"
-// @Param        dry-run        query string false "Set to true for dry run"
-// @Success      200  {object}  response.JSONResponse[dto.ExpenseConfirmationResponse]
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/confirmed [patch]
-func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleConfirmDraft", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		var dryRun bool
-		if ctx.Query("dry-run") == "true" {
-			dryRun = true
-		}
-
-		return geh.groupExpenseService.ConfirmDraft(ctx.Request.Context(), groupExpenseID, userProfileID, dryRun)
-	})
+type ConfirmGroupExpenseDraftInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	DryRun         bool      `query:"dry-run"`
 }
 
-// HandleDelete godoc
-// @Summary      Delete a group expense
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Success      204
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId} [delete]
-func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleDelete", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, geh.groupExpenseService.Delete(ctx.Request.Context(), userProfileID, expenseID)
-	})
+type GetRecentGroupExpensesInput struct {
+	httpapi.AuthInput
 }
 
-// HandleSyncParticipants godoc
-// @Summary      Sync participants of a group expense
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        body body dto.ExpenseParticipantsRequest true "Participants payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/participants [put]
-func (geh *groupExpenseHandler) HandleSyncParticipants() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleSyncParticipants", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.ExpenseParticipantsRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.UserProfileID = userProfileID
-		req.GroupExpenseID = expenseID
-
-		return nil, geh.groupExpenseService.SyncParticipants(ctx.Request.Context(), req)
-	})
+type DeleteGroupExpenseInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 }
 
-// HandleGetRecent godoc
-// @Summary      Get recent group expenses
-// @Tags         group-expenses
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.GroupExpenseResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/recent [get]
-func (geh *groupExpenseHandler) HandleGetRecent() gin.HandlerFunc {
-	return server.Handler("GroupExpenseHandler.HandleGetRecent", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type SyncGroupExpenseParticipantsInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	Body           struct {
+		ParticipantProfileIDs []uuid.UUID             `json:"participantProfileIds" minItems:"1"`
+		ProxyByProfileIDs     map[uuid.UUID]uuid.UUID `json:"proxyByProfileIds,omitempty"`
+		PayerProfileID        uuid.UUID               `json:"payerProfileId"`
+	}
+}
 
-		return geh.groupExpenseService.GetRecent(ctx.Request.Context(), profileID)
-	})
+// Routes returns every route groupExpenseHandler exposes via
+// endpoint.Endpoint / endpoint.NoBodyEndpoint, for registration via
+// endpoint.RegisterAll.
+func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[CreateGroupExpenseDraftInput, dto.GroupExpenseResponse]{
+			OperationID: "create-group-expense-draft",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/group-expenses",
+			Summary:     "Create a draft group expense",
+			Tags:        []string{"group-expenses"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateGroupExpenseDraftInput) (dto.GroupExpenseResponse, error) {
+				request := dto.NewDraftRequest{
+					UserProfileID: in.ProfileID,
+					Description:   in.Body.Description,
+					Currency:      in.Body.Currency,
+				}
+
+				return geh.groupExpenseService.CreateDraft(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetAllGroupExpensesInput, []dto.GroupExpenseResponse]{
+			OperationID: "get-group-expenses",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/group-expenses",
+			Summary:     "Get all group expenses",
+			Tags:        []string{"group-expenses"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
+				ownership := in.Ownership
+				if ownership == "" {
+					ownership = expenses.OwnedExpense
+				}
+
+				return geh.groupExpenseService.GetAll(ctx, in.ProfileID, ownership, in.Status)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetGroupExpenseDetailsInput, dto.GroupExpenseResponse]{
+			OperationID: "get-group-expense-details",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}",
+			Summary:     "Get group expense details",
+			Tags:        []string{"group-expenses"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetGroupExpenseDetailsInput) (dto.GroupExpenseResponse, error) {
+				return geh.groupExpenseService.GetDetails(ctx, in.GroupExpenseID, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[ConfirmGroupExpenseDraftInput, dto.ExpenseConfirmationResponse]{
+			OperationID: "confirm-group-expense-draft",
+			Method:      http.MethodPatch,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/confirmed",
+			Summary:     "Confirm a draft group expense",
+			Tags:        []string{"group-expenses"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in ConfirmGroupExpenseDraftInput) (dto.ExpenseConfirmationResponse, error) {
+				return geh.groupExpenseService.ConfirmDraft(ctx, in.GroupExpenseID, in.ProfileID, in.DryRun)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetRecentGroupExpensesInput, []dto.GroupExpenseResponse]{
+			OperationID: "get-recent-group-expenses",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/group-expenses/recent",
+			Summary:     "Get recent group expenses",
+			Tags:        []string{"group-expenses"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetRecentGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
+				return geh.groupExpenseService.GetRecent(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[DeleteGroupExpenseInput]{
+			OperationID: "delete-group-expense",
+			Method:      http.MethodDelete,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}",
+			Summary:     "Delete a group expense",
+			Tags:        []string{"group-expenses"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in DeleteGroupExpenseInput) error {
+				return geh.groupExpenseService.Delete(ctx, in.ProfileID, in.GroupExpenseID)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SyncGroupExpenseParticipantsInput]{
+			OperationID: "sync-group-expense-participants",
+			Method:      http.MethodPut,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/participants",
+			Summary:     "Sync participants of a group expense",
+			Tags:        []string{"group-expenses"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in SyncGroupExpenseParticipantsInput) error {
+				request := dto.ExpenseParticipantsRequest{
+					ParticipantProfileIDs: in.Body.ParticipantProfileIDs,
+					ProxyByProfileIDs:     in.Body.ProxyByProfileIDs,
+					PayerProfileID:        in.Body.PayerProfileID,
+					UserProfileID:         in.ProfileID,
+					GroupExpenseID:        in.GroupExpenseID,
+				}
+
+				return geh.groupExpenseService.SyncParticipants(ctx, request)
+			},
+		}),
+	}
 }

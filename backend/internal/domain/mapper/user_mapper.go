@@ -9,6 +9,6 @@ func UserToResponse(user users.User) dto.UserResponse {
 	return dto.UserResponse{
 		BaseDTO: BaseToDTO(user.BaseEntity),
 		Email:   user.Email,
-		Profile: ProfileToResponse(user.Profile, user.Email, dto.SubscriptionResponse{}),
+		Profile: ProfileToResponse(user.Profile, user.Email, dto.SubscriptionLimitsResponse{}),
 	}
 }

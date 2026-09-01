@@ -1,26 +1,34 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type PlanHandler struct {
 	svc service.PlanVersionService
 }
 
-// HandleGetActive godoc
-// @Summary      Get active subscription plans
-// @Tags         plans
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]monetization.PlanVersionResponse]
-// @Router       /plans [get]
-func (ph *PlanHandler) HandleGetActive() gin.HandlerFunc {
-	return server.Handler("PlanHandler.HandleGetActive", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		return ph.svc.GetActive(ctx.Request.Context())
-	})
+type GetActivePlansInput struct{}
+
+// Routes returns every route PlanHandler exposes, for registration via
+// endpoint.RegisterAll.
+func (ph *PlanHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetActivePlansInput, []dto.PlanVersionResponse]{
+			OperationID: "get-active-plans",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/plans",
+			Summary:     "Get active subscription plans",
+			Tags:        []string{"plans"},
+			SuccessCode: http.StatusOK,
+			ServiceFunc: func(ctx context.Context, in GetActivePlansInput) ([]dto.PlanVersionResponse, error) {
+				return ph.svc.GetActive(ctx)
+			},
+		}),
+	}
 }

@@ -28,13 +28,13 @@ func NewSubscriptionLimitService(
 	}
 }
 
-func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionLimitsResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SubscriptionLimitService.GetCurrent")
 	defer span.End()
 
 	currentSubs, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID, true)
 	if err != nil {
-		return dto.SubscriptionResponse{}, err
+		return dto.SubscriptionLimitsResponse{}, err
 	}
 
 	now := time.Now()
@@ -42,15 +42,15 @@ func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID u
 
 	dailyLimits, err := sls.getDailyUploadLimit(ctx, int(currentSubs.PlanVersion.BillUploadsDaily), profileID, year, int(month), day)
 	if err != nil {
-		return dto.SubscriptionResponse{}, err
+		return dto.SubscriptionLimitsResponse{}, err
 	}
 
 	monthlyLimits, err := sls.getMonthlyUploadLimit(ctx, int(currentSubs.PlanVersion.BillUploadsMonthly), profileID, year, month)
 	if err != nil {
-		return dto.SubscriptionResponse{}, err
+		return dto.SubscriptionLimitsResponse{}, err
 	}
 
-	return dto.SubscriptionResponse{
+	return dto.SubscriptionLimitsResponse{
 		Plan: currentSubs.PlanVersion.Plan.Name,
 		Limits: dto.Limits{
 			Uploads: dto.UploadLimits{

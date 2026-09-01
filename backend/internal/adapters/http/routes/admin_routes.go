@@ -1,69 +1,51 @@
 package routes
 
 import (
-	"fmt"
-
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
+	"github.com/itsLeonB/cashback/internal/endpoint"
+	"github.com/kroma-labs/sentinel-go/httpserver"
+	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
+	"golang.org/x/time/rate"
 )
 
-func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddleware gin.HandlerFunc) {
-	adminRoutes := router.Group("/admin")
-	{
-		v1 := adminRoutes.Group("/v1")
-		{
-			authRoutes := v1.Group("/auth")
-			{
-				authRoutes.POST("/register", handlers.Auth.HandleRegister())
-				authRoutes.POST("/login", handlers.Auth.HandleLogin())
-			}
-
-			protectedRoutes := v1.Group("/", authMiddleware)
-			{
-				protectedRoutes.GET("/auth/me", handlers.Auth.HandleMe())
-
-				planRoutes := protectedRoutes.Group("/plans")
-				{
-					planRoutes.POST("", handlers.Plan.HandleCreate())
-					planRoutes.GET("", handlers.Plan.HandleGetList())
-					planRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleGetOne())
-					planRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleUpdate())
-					planRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleDelete())
-				}
-
-				planVersionRoutes := protectedRoutes.Group("/plan-versions")
-				{
-					planVersionRoutes.POST("", handlers.PlanVersion.HandleCreate())
-					planVersionRoutes.GET("", handlers.PlanVersion.HandleGetList())
-					planVersionRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleGetOne())
-					planVersionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleUpdate())
-					planVersionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleDelete())
-				}
-
-				subscriptionRoutes := protectedRoutes.Group("/subscriptions")
-				{
-					subscriptionRoutes.POST("", handlers.Subscription.HandleCreate())
-					subscriptionRoutes.GET("", handlers.Subscription.HandleGetList())
-					subscriptionRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleGetOne())
-					subscriptionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleUpdate())
-					subscriptionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleDelete())
-				}
-
-				paymentRoutes := protectedRoutes.Group("/payments")
-				{
-					paymentRoutes.GET("", handlers.Payment.HandleGetList())
-					paymentRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleGetOne())
-					paymentRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleUpdate())
-					paymentRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleDelete())
-				}
-
-				profileRoutes := protectedRoutes.Group("/profiles")
-				{
-					profileRoutes.GET("", handlers.Profile.HandleGetList())
-					profileRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProfileID.String()), handlers.Profile.HandleGetOne())
-				}
-			}
-		}
+// RegisterAdminRoutes wires up every admin operation on the Huma API. Huma
+// is bound at the engine root, so every protected admin operation must have
+// the admin auth gin middleware bridged onto it individually via
+// httpapi.Bridge.
+func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddleware gin.HandlerFunc, api huma.API) {
+	adminMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(authMiddleware),
 	}
+
+	// Register is intentionally left unauthenticated and unrestricted here:
+	// it's the one-time admin-bootstrap endpoint, self-limiting via the
+	// authkit BeforeRegister hook (see internal/provider/admin) which
+	// forbids registration once any admin user exists. Login stays
+	// unauthenticated too (there's no session yet to bridge), but gets a
+	// per-IP rate limit to slow down credential-stuffing/brute-force
+	// attempts, mirroring the /api/v1/auth login rate limit.
+	loginMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			Limit:   rate.Limit(20.0 / 60),
+			Burst:   5,
+			KeyFunc: httpserver.KeyFuncByIP(),
+		})),
+	}
+
+	endpoint.RegisterAll(api, handlers.Auth.RegisterRoutes())
+	endpoint.RegisterAll(api, handlers.Auth.LoginRoutes(), loginMW...)
+	endpoint.RegisterAll(api, handlers.Auth.Routes(), adminMW...)
+
+	endpoint.RegisterAll(api, handlers.Plan.Routes(), adminMW...)
+
+	endpoint.RegisterAll(api, handlers.PlanVersion.Routes(), adminMW...)
+
+	endpoint.RegisterAll(api, handlers.Subscription.Routes(), adminMW...)
+
+	endpoint.RegisterAll(api, handlers.Payment.Routes(), adminMW...)
+
+	endpoint.RegisterAll(api, handlers.Profile.Routes(), adminMW...)
 }

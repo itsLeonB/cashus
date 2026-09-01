@@ -9,7 +9,7 @@ import (
 )
 
 type Handlers struct {
-	Auth                  *authgin.Handler
+	Auth                  *AuthHandler
 	Friendship            *FriendshipHandler
 	FriendshipRequest     *FriendshipRequestHandler
 	Profile               *ProfileHandler
@@ -37,10 +37,7 @@ func (h *Handlers) Shutdown() {
 func ProvideHandlers(services *provider.Services, transport *authgin.CookieTransport) *Handlers {
 	emailLimiter := middlewares.NewValueLimiter(3.0/3600, 3, time.Hour)
 
-	authHandler := authgin.NewHandler(services.AuthKit, transport, authgin.HandlerConfig{
-		Captcha: services.Captcha,
-		Limiter: emailLimiter,
-	})
+	authHandler := NewAuthHandler(services.AuthKit, transport, services.Captcha, emailLimiter)
 
 	return &Handlers{
 		Auth:                  authHandler,

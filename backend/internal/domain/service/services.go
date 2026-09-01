@@ -50,14 +50,23 @@ type FriendshipService interface {
 }
 
 type FriendshipRequestService interface {
-	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error
+	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipRequestResponse, error)
 	GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
 	Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
 	Ignore(ctx context.Context, userProfileID, reqID uuid.UUID) error
-	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
-	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Block(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipRequestResponse, error)
+	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipRequestResponse, error)
 	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
+
+	// GetAllByType dispatches to GetAllSent or GetAllReceived based on
+	// requestType, returning ungerr.BadRequestError for any other value.
+	// This is the validation that used to live in the handler's RegisterGetAll.
+	GetAllByType(ctx context.Context, userProfileID uuid.UUID, requestType string) ([]dto.FriendshipRequestResponse, error)
+	// HandleBlockCommand dispatches to Block or Unblock based on command,
+	// returning ungerr.BadRequestError for any other value. This is the
+	// validation that used to live in the handler's RegisterBlock.
+	HandleBlockCommand(ctx context.Context, userProfileID, reqID uuid.UUID, command string) (dto.FriendshipRequestResponse, error)
 
 	ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error)
 }
@@ -138,17 +147,17 @@ type OtherFeeService interface {
 type ExpenseBillService interface {
 	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
 	Cleanup(ctx context.Context) error
-	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
+	TriggerParsing(ctx context.Context, profileID, expenseID, billID uuid.UUID) (dto.ExpenseBillResponse, error)
 	SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error)
 }
 
 type SubscriptionLimitService interface {
-	GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
+	GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionLimitsResponse, error)
 	CheckUploadLimit(ctx context.Context, profileID uuid.UUID) error
 }
 
 type ProfileTransferMethodService interface {
-	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
+	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) (dto.ProfileTransferMethodResponse, error)
 	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
 	GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
 }

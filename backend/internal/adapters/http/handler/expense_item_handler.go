@@ -1,14 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type ExpenseItemHandler struct {
@@ -23,155 +23,124 @@ func NewExpenseItemHandler(
 	}
 }
 
-// HandleAdd godoc
-// @Summary      Add an item to a group expense
-// @Tags         expense-items
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        body body dto.NewExpenseItemRequest true "New expense item payload"
-// @Success      201  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/items [post]
-func (geh *ExpenseItemHandler) HandleAdd() gin.HandlerFunc {
-	return server.Handler("ExpenseItemHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.NewExpenseItemRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.UserProfileID = userProfileID
-		request.GroupExpenseID = groupExpenseID
-
-		return nil, geh.expenseItemSvc.Add(ctx.Request.Context(), request)
-	})
+type AddExpenseItemInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	Body           struct {
+		Name     string          `json:"name" minLength:"3"`
+		Amount   httpapi.Decimal `json:"amount" required:"true"`
+		Quantity int             `json:"quantity" minimum:"1"`
+	}
 }
 
-// HandleUpdate godoc
-// @Summary      Update an expense item
-// @Tags         expense-items
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        expenseItemId  path string true "Expense item ID"
-// @Param        body body dto.UpdateExpenseItemRequest true "Update expense item payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/items/{expenseItemId} [put]
-func (geh *ExpenseItemHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("ExpenseItemHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		expenseItemID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseItemID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.UpdateExpenseItemRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.UserProfileID = userProfileID
-		request.GroupExpenseID = groupExpenseID
-		request.ID = expenseItemID
-
-		return nil, geh.expenseItemSvc.Update(ctx.Request.Context(), request)
-	})
+type UpdateExpenseItemInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
+	Body           struct {
+		Name     string          `json:"name" minLength:"3"`
+		Amount   httpapi.Decimal `json:"amount" required:"true"`
+		Quantity int             `json:"quantity" minimum:"1"`
+	}
 }
 
-// HandleRemove godoc
-// @Summary      Remove an expense item
-// @Tags         expense-items
-// @Security     BearerAuth
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        expenseItemId  path string true "Expense item ID"
-// @Success      204
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/items/{expenseItemId} [delete]
-func (geh *ExpenseItemHandler) HandleRemove() gin.HandlerFunc {
-	return server.Handler("ExpenseItemHandler.HandleRemove", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		expenseItemID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseItemID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, geh.expenseItemSvc.Remove(ctx.Request.Context(), groupExpenseID, expenseItemID, userProfileID)
-	})
+type RemoveExpenseItemInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
 }
 
-// HandleSyncParticipants godoc
-// @Summary      Sync participants of an expense item
-// @Tags         expense-items
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        groupExpenseId path string true "Group expense ID"
-// @Param        expenseItemId  path string true "Expense item ID"
-// @Param        body body dto.SyncItemParticipantsRequest true "Participants payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /group-expenses/{groupExpenseId}/items/{expenseItemId}/participants [put]
-func (geh *ExpenseItemHandler) HandleSyncParticipants() gin.HandlerFunc {
-	return server.Handler("ExpenseItemHandler.HandleSyncParticipants", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type SyncExpenseItemParticipantsInput struct {
+	httpapi.AuthInput
+	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
+	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
+	Body           struct {
+		Participants []struct {
+			ProfileID uuid.UUID `json:"profileId"`
+			Weight    int       `json:"weight,omitempty"`
+		} `json:"participants"`
+	}
+}
 
-		groupExpenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
+// Routes returns every route ExpenseItemHandler exposes via
+// endpoint.NoBodyEndpoint, for registration via endpoint.RegisterAll.
+func (geh *ExpenseItemHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[AddExpenseItemInput]{
+			OperationID: "add-expense-item",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/items",
+			Summary:     "Add an item to a group expense",
+			Tags:        []string{"expense-items"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in AddExpenseItemInput) error {
+				request := dto.NewExpenseItemRequest{
+					UserProfileID:  in.ProfileID,
+					GroupExpenseID: in.GroupExpenseID,
+					Name:           in.Body.Name,
+					Amount:         in.Body.Amount.Decimal,
+					Quantity:       in.Body.Quantity,
+				}
 
-		expenseItemID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseItemID.String())
-		if err != nil {
-			return nil, err
-		}
+				return geh.expenseItemSvc.Add(ctx, request)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[UpdateExpenseItemInput]{
+			OperationID: "update-expense-item",
+			Method:      http.MethodPut,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/items/{expenseItemID}",
+			Summary:     "Update an expense item",
+			Tags:        []string{"expense-items"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UpdateExpenseItemInput) error {
+				request := dto.UpdateExpenseItemRequest{
+					UserProfileID:  in.ProfileID,
+					ID:             in.ExpenseItemID,
+					GroupExpenseID: in.GroupExpenseID,
+					Name:           in.Body.Name,
+					Amount:         in.Body.Amount.Decimal,
+					Quantity:       in.Body.Quantity,
+				}
 
-		request, err := server.BindJSON[dto.SyncItemParticipantsRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
+				return geh.expenseItemSvc.Update(ctx, request)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[RemoveExpenseItemInput]{
+			OperationID: "remove-expense-item",
+			Method:      http.MethodDelete,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/items/{expenseItemID}",
+			Summary:     "Remove an expense item",
+			Tags:        []string{"expense-items"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in RemoveExpenseItemInput) error {
+				return geh.expenseItemSvc.Remove(ctx, in.GroupExpenseID, in.ExpenseItemID, in.ProfileID)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SyncExpenseItemParticipantsInput]{
+			OperationID: "sync-expense-item-participants",
+			Method:      http.MethodPut,
+			Path:        "/api/v1/group-expenses/{groupExpenseID}/items/{expenseItemID}/participants",
+			Summary:     "Sync participants of an expense item",
+			Tags:        []string{"expense-items"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in SyncExpenseItemParticipantsInput) error {
+				participants := make([]dto.ItemParticipantRequest, 0, len(in.Body.Participants))
+				for _, p := range in.Body.Participants {
+					participants = append(participants, dto.ItemParticipantRequest{
+						ProfileID: p.ProfileID,
+						Weight:    p.Weight,
+					})
+				}
 
-		request.ProfileID = userProfileID
-		request.ID = expenseItemID
-		request.GroupExpenseID = groupExpenseID
+				request := dto.SyncItemParticipantsRequest{
+					ProfileID:      in.ProfileID,
+					ID:             in.ExpenseItemID,
+					GroupExpenseID: in.GroupExpenseID,
+					Participants:   participants,
+				}
 
-		return nil, geh.expenseItemSvc.SyncParticipants(ctx.Request.Context(), request)
-	})
+				return geh.expenseItemSvc.SyncParticipants(ctx, request)
+			},
+		}),
+	}
 }

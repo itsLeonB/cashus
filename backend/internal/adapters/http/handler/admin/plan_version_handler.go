@@ -1,81 +1,153 @@
 package admin
 
 import (
-	"fmt"
+	"context"
 	"net/http"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type PlanVersionHandler struct {
 	svc service.PlanVersionService
 }
 
-func (pvh *PlanVersionHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler("PlanVersionHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		req, err := server.BindJSON[dto.NewPlanVersionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return pvh.svc.Create(ctx.Request.Context(), req)
-	})
+type CreatePlanVersionInput struct {
+	httpapi.AdminAuthInput
+	Body struct {
+		PlanID             uuid.UUID       `json:"planId"`
+		PriceAmount        httpapi.Decimal `json:"priceAmount"`
+		PriceCurrency      string          `json:"priceCurrency" minLength:"3" maxLength:"3"`
+		BillingInterval    string          `json:"billingInterval" enum:"monthly,yearly"`
+		BillUploadsDaily   uint            `json:"billUploadsDaily,omitempty"`
+		BillUploadsMonthly uint            `json:"billUploadsMonthly,omitempty"`
+		EffectiveFrom      time.Time       `json:"effectiveFrom"`
+		EffectiveTo        time.Time       `json:"effectiveTo,omitempty"`
+		IsDefault          bool            `json:"isDefault,omitempty"`
+	}
 }
 
-func (pvh *PlanVersionHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler("PlanVersionHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		planVersions, err := pvh.svc.GetList(ctx.Request.Context())
-		if err != nil {
-			return nil, err
-		}
-
-		ctx.Header("X-Total-Count", fmt.Sprint(len(planVersions)))
-
-		return planVersions, nil
-	})
+type GetPlanVersionListInput struct {
+	httpapi.AdminAuthInput
 }
 
-func (pvh *PlanVersionHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler("PlanVersionHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return pvh.svc.GetOne(ctx.Request.Context(), id)
-	})
+type GetPlanVersionInput struct {
+	httpapi.AdminAuthInput
+	PlanVersionID uuid.UUID `path:"planVersionID"`
 }
 
-func (pvh *PlanVersionHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("PlanVersionHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.UpdatePlanVersionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.ID = id
-
-		return pvh.svc.Update(ctx.Request.Context(), req)
-	})
+type UpdatePlanVersionInput struct {
+	httpapi.AdminAuthInput
+	PlanVersionID uuid.UUID `path:"planVersionID"`
+	Body          struct {
+		PlanID             uuid.UUID       `json:"planId"`
+		PriceAmount        httpapi.Decimal `json:"priceAmount"`
+		PriceCurrency      string          `json:"priceCurrency" minLength:"3" maxLength:"3"`
+		BillingInterval    string          `json:"billingInterval" enum:"monthly,yearly"`
+		BillUploadsDaily   uint            `json:"billUploadsDaily,omitempty"`
+		BillUploadsMonthly uint            `json:"billUploadsMonthly,omitempty"`
+		EffectiveFrom      time.Time       `json:"effectiveFrom"`
+		EffectiveTo        time.Time       `json:"effectiveTo,omitempty"`
+		IsDefault          bool            `json:"isDefault,omitempty"`
+	}
 }
 
-func (pvh *PlanVersionHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler("PlanVersionHandler.HandleDelete", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
-		if err != nil {
-			return nil, err
-		}
+type DeletePlanVersionInput struct {
+	httpapi.AdminAuthInput
+	PlanVersionID uuid.UUID `path:"planVersionID"`
+}
 
-		return pvh.svc.Delete(ctx.Request.Context(), id)
-	})
+// Routes returns every route PlanVersionHandler exposes via
+// endpoint.Endpoint, for registration via endpoint.RegisterAll.
+func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.NewList(endpoint.ListEndpoint[GetPlanVersionListInput, dto.PlanVersionResponse]{
+			OperationID: "get-admin-plan-versions",
+			Method:      http.MethodGet,
+			Path:        "/admin/v1/plan-versions",
+			Summary:     "Get all plan versions",
+			Tags:        []string{"admin-plan-versions"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetPlanVersionListInput) ([]dto.PlanVersionResponse, error) {
+				return pvh.svc.GetList(ctx)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[CreatePlanVersionInput, dto.PlanVersionResponse]{
+			OperationID: "create-admin-plan-version",
+			Method:      http.MethodPost,
+			Path:        "/admin/v1/plan-versions",
+			Summary:     "Create a plan version",
+			Tags:        []string{"admin-plan-versions"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreatePlanVersionInput) (dto.PlanVersionResponse, error) {
+				request := dto.NewPlanVersionRequest{
+					PlanID:             in.Body.PlanID,
+					PriceAmount:        in.Body.PriceAmount.Decimal,
+					PriceCurrency:      in.Body.PriceCurrency,
+					BillingInterval:    in.Body.BillingInterval,
+					BillUploadsDaily:   in.Body.BillUploadsDaily,
+					BillUploadsMonthly: in.Body.BillUploadsMonthly,
+					EffectiveFrom:      in.Body.EffectiveFrom,
+					EffectiveTo:        in.Body.EffectiveTo,
+					IsDefault:          in.Body.IsDefault,
+				}
+
+				return pvh.svc.Create(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetPlanVersionInput, dto.PlanVersionResponse]{
+			OperationID: "get-admin-plan-version",
+			Method:      http.MethodGet,
+			Path:        "/admin/v1/plan-versions/{planVersionID}",
+			Summary:     "Get a plan version by ID",
+			Tags:        []string{"admin-plan-versions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetPlanVersionInput) (dto.PlanVersionResponse, error) {
+				return pvh.svc.GetOne(ctx, in.PlanVersionID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[UpdatePlanVersionInput, dto.PlanVersionResponse]{
+			OperationID: "update-admin-plan-version",
+			Method:      http.MethodPut,
+			Path:        "/admin/v1/plan-versions/{planVersionID}",
+			Summary:     "Update a plan version",
+			Tags:        []string{"admin-plan-versions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UpdatePlanVersionInput) (dto.PlanVersionResponse, error) {
+				request := dto.UpdatePlanVersionRequest{
+					ID:                 in.PlanVersionID,
+					PlanID:             in.Body.PlanID,
+					PriceAmount:        in.Body.PriceAmount.Decimal,
+					PriceCurrency:      in.Body.PriceCurrency,
+					BillingInterval:    in.Body.BillingInterval,
+					BillUploadsDaily:   in.Body.BillUploadsDaily,
+					BillUploadsMonthly: in.Body.BillUploadsMonthly,
+					EffectiveFrom:      in.Body.EffectiveFrom,
+					EffectiveTo:        in.Body.EffectiveTo,
+					IsDefault:          in.Body.IsDefault,
+				}
+
+				return pvh.svc.Update(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[DeletePlanVersionInput, dto.PlanVersionResponse]{
+			OperationID: "delete-admin-plan-version",
+			Method:      http.MethodDelete,
+			Path:        "/admin/v1/plan-versions/{planVersionID}",
+			Summary:     "Delete a plan version",
+			Tags:        []string{"admin-plan-versions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in DeletePlanVersionInput) (dto.PlanVersionResponse, error) {
+				return pvh.svc.Delete(ctx, in.PlanVersionID)
+			},
+		}),
+	}
 }

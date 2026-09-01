@@ -1,13 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type DebtHandler struct {
@@ -18,88 +19,91 @@ func NewDebtHandler(debtService service.DebtService) *DebtHandler {
 	return &DebtHandler{debtService}
 }
 
-// HandleCreate godoc
-// @Summary      Record a new debt transaction
-// @Tags         debts
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.NewDebtTransactionRequest true "New debt transaction payload"
-// @Success      201  {object}  response.JSONResponse[dto.DebtTransactionResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /debts [post]
-func (dh *DebtHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler("DebtHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.NewDebtTransactionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.UserProfileID = profileID
-
-		return dh.debtService.RecordNewTransaction(ctx.Request.Context(), request)
-	})
+type CreateDebtInput struct {
+	httpapi.AuthInput
+	Body struct {
+		FriendProfileID  uuid.UUID                    `json:"friendProfileId"`
+		Direction        dto.DebtTransactionDirection `json:"direction" enum:"INCOMING,OUTGOING"`
+		Currency         string                       `json:"currency" minLength:"3" maxLength:"3"`
+		Amount           httpapi.Decimal              `json:"amount"`
+		TransferMethodID uuid.UUID                    `json:"transferMethodId"`
+		Description      string                       `json:"description,omitempty"`
+	}
 }
 
-// HandleGetAll godoc
-// @Summary      Get all debt transactions
-// @Tags         debts
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.DebtTransactionResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /debts [get]
-func (dh *DebtHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler("DebtHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return dh.debtService.GetTransactions(ctx.Request.Context(), profileID)
-	})
+type GetAllDebtsInput struct {
+	httpapi.AuthInput
 }
 
-// HandleGetTransactionSummary godoc
-// @Summary      Get debt transaction summary
-// @Tags         debts
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[map[string]dto.FriendBalance]
-// @Failure      401  {object}  map[string]any
-// @Router       /debts/summary [get]
-func (dh *DebtHandler) HandleGetTransactionSummary() gin.HandlerFunc {
-	return server.Handler("DebtHandler.HandleGetTransactionSummary", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return dh.debtService.GetTransactionSummary(ctx.Request.Context(), profileID)
-	})
+type GetDebtsSummaryInput struct {
+	httpapi.AuthInput
 }
 
-// HandleGetRecent godoc
-// @Summary      Get recent debt transactions
-// @Tags         debts
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.DebtTransactionResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /debts/recent [get]
-func (dh *DebtHandler) HandleGetRecent() gin.HandlerFunc {
-	return server.Handler("DebtHandler.HandleGetRecent", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type GetRecentDebtsInput struct {
+	httpapi.AuthInput
+}
 
-		return dh.debtService.GetRecent(ctx.Request.Context(), profileID)
-	})
+// Routes returns every route DebtHandler exposes, for registration via
+// endpoint.RegisterAll.
+func (dh *DebtHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[CreateDebtInput, dto.DebtTransactionResponse]{
+			OperationID: "create-debt",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/debts",
+			Summary:     "Record a new debt transaction",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateDebtInput) (dto.DebtTransactionResponse, error) {
+				request := dto.NewDebtTransactionRequest{
+					UserProfileID:    in.ProfileID,
+					FriendProfileID:  in.Body.FriendProfileID,
+					Direction:        in.Body.Direction,
+					Currency:         in.Body.Currency,
+					Amount:           in.Body.Amount.Decimal,
+					TransferMethodID: in.Body.TransferMethodID,
+					Description:      in.Body.Description,
+				}
+
+				return dh.debtService.RecordNewTransaction(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetAllDebtsInput, []dto.DebtTransactionResponse]{
+			OperationID: "get-debts",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/debts",
+			Summary:     "Get all debt transactions",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllDebtsInput) ([]dto.DebtTransactionResponse, error) {
+				return dh.debtService.GetTransactions(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetDebtsSummaryInput, map[string]dto.FriendBalance]{
+			OperationID: "get-debts-summary",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/debts/summary",
+			Summary:     "Get debt transaction summary",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetDebtsSummaryInput) (map[string]dto.FriendBalance, error) {
+				return dh.debtService.GetTransactionSummary(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetRecentDebtsInput, []dto.DebtTransactionResponse]{
+			OperationID: "get-recent-debts",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/debts/recent",
+			Summary:     "Get recent debt transactions",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetRecentDebtsInput) ([]dto.DebtTransactionResponse, error) {
+				return dh.debtService.GetRecent(ctx, in.ProfileID)
+			},
+		}),
+	}
 }

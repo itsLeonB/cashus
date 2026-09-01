@@ -1,13 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type TransferMethodHandler struct {
@@ -18,22 +19,26 @@ func NewTransferMethodHandler(transferMethodService service.TransferMethodServic
 	return &TransferMethodHandler{transferMethodService}
 }
 
-// HandleGetAll godoc
-// @Summary      Get all transfer methods
-// @Tags         transfer-methods
-// @Security     BearerAuth
-// @Produce      json
-// @Param        status query string false "Filter by status"
-// @Success      200  {object}  response.JSONResponse[[]dto.TransferMethodResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /transfer-methods [get]
-func (tmh *TransferMethodHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler("TransferMethodHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type GetAllTransferMethodsInput struct {
+	httpapi.AuthInput
+	Status string `query:"status"`
+}
 
-		return tmh.transferMethodService.GetAll(ctx.Request.Context(), debts.ParentFilter(ctx.Query("status")), profileID)
-	})
+// Routes returns every route TransferMethodHandler exposes, for registration
+// via endpoint.RegisterAll.
+func (tmh *TransferMethodHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetAllTransferMethodsInput, []dto.TransferMethodResponse]{
+			OperationID: "get-transfer-methods",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/transfer-methods",
+			Summary:     "Get all transfer methods",
+			Tags:        []string{"transfer-methods"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllTransferMethodsInput) ([]dto.TransferMethodResponse, error) {
+				return tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(in.Status), in.ProfileID)
+			},
+		}),
+	}
 }

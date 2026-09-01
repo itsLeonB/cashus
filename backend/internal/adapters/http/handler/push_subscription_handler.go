@@ -1,14 +1,13 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type PushSubscriptionHandler struct {
@@ -19,66 +18,67 @@ func NewPushSubscriptionHandler(pushSubscriptionService service.PushNotification
 	return &PushSubscriptionHandler{pushSubscriptionService}
 }
 
-// HandleSubscribe godoc
-// @Summary      Subscribe to push notifications
-// @Tags         push
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.PushSubscriptionRequest true "Push subscription payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /push/subscribe [post]
-func (h *PushSubscriptionHandler) HandleSubscribe() gin.HandlerFunc {
-	return server.Handler("PushSubscriptionHandler.HandleSubscribe", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		sessionID, err := server.GetAndParseFromContext[uuid.UUID](ctx, appconstant.ContextSessionID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.PushSubscriptionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.ProfileID = profileID
-		req.SessionID = sessionID
-
-		return nil, h.pushNotificationSvc.Subscribe(ctx.Request.Context(), req)
-	})
+type SubscribeToPushInput struct {
+	httpapi.AuthInput
+	httpapi.SessionInput
+	Body struct {
+		Endpoint string `json:"endpoint"`
+		Keys     struct {
+			P256dh string `json:"p256dh"`
+			Auth   string `json:"auth"`
+		} `json:"keys"`
+		UserAgent string `json:"userAgent,omitempty"`
+	}
 }
 
-// HandleUnsubscribe godoc
-// @Summary      Unsubscribe from push notifications
-// @Tags         push
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.PushUnsubscribeRequest true "Push unsubscribe payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /push/unsubscribe [post]
-func (h *PushSubscriptionHandler) HandleUnsubscribe() gin.HandlerFunc {
-	return server.Handler("PushSubscriptionHandler.HandleUnsubscribe", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type UnsubscribeFromPushInput struct {
+	httpapi.AuthInput
+	Body struct {
+		Endpoint string `json:"endpoint"`
+	}
+}
 
-		req, err := server.BindJSON[dto.PushUnsubscribeRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
+// Routes returns every route PushSubscriptionHandler exposes via
+// endpoint.NoBodyEndpoint, for registration via endpoint.RegisterAll.
+func (h *PushSubscriptionHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SubscribeToPushInput]{
+			OperationID: "subscribe-to-push",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/push/subscribe",
+			Summary:     "Subscribe to push notifications",
+			Tags:        []string{"push"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in SubscribeToPushInput) error {
+				request := dto.PushSubscriptionRequest{
+					ProfileID: in.ProfileID,
+					SessionID: in.SessionID,
+					Endpoint:  in.Body.Endpoint,
+					Keys: dto.PushSubscriptionKeys{
+						P256dh: in.Body.Keys.P256dh,
+						Auth:   in.Body.Keys.Auth,
+					},
+					UserAgent: in.Body.UserAgent,
+				}
 
-		req.ProfileID = profileID
+				return h.pushNotificationSvc.Subscribe(ctx, request)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[UnsubscribeFromPushInput]{
+			OperationID: "unsubscribe-from-push",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/push/unsubscribe",
+			Summary:     "Unsubscribe from push notifications",
+			Tags:        []string{"push"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UnsubscribeFromPushInput) error {
+				request := dto.PushUnsubscribeRequest{
+					ProfileID: in.ProfileID,
+					Endpoint:  in.Body.Endpoint,
+				}
 
-		return nil, h.pushNotificationSvc.Unsubscribe(ctx.Request.Context(), req)
-	})
+				return h.pushNotificationSvc.Unsubscribe(ctx, request)
+			},
+		}),
+	}
 }

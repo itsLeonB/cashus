@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -42,10 +44,11 @@ func NewFriendshipRequestService(
 	}
 }
 
-func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
+func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipRequestResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Send")
 	defer span.End()
 	var msg message.FriendRequestSent
+	var response dto.FriendshipRequestResponse
 
 	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
@@ -76,6 +79,16 @@ func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID
 
 		msg.ID = insertedRequest.ID
 
+		fetchSpec := crud.Specification[users.FriendshipRequest]{}
+		fetchSpec.Model.ID = insertedRequest.ID
+		fetchSpec.PreloadRelations = []string{"SenderProfile", "RecipientProfile"}
+		withProfiles, err := frs.requestRepo.FindFirst(ctx, fetchSpec)
+		if err != nil {
+			return err
+		}
+
+		response = mapper.FriendshipRequestToResponse(withProfiles, userProfileID)
+
 		return nil
 	})
 
@@ -83,7 +96,7 @@ func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID
 		go frs.taskQueue.AsyncEnqueue(ctx, msg)
 	}
 
-	return err
+	return response, err
 }
 
 func (frs *friendshipRequestServiceImpl) validateFriendProfile(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
@@ -166,6 +179,20 @@ func (frs *friendshipRequestServiceImpl) getRequest(ctx context.Context, spec cr
 	return request, nil
 }
 
+// GetAllByType dispatches to GetAllSent or GetAllReceived based on
+// requestType. Moved down from the handler's RegisterGetAll so the handler
+// only needs to call this and pass the error through.
+func (frs *friendshipRequestServiceImpl) GetAllByType(ctx context.Context, userProfileID uuid.UUID, requestType string) ([]dto.FriendshipRequestResponse, error) {
+	switch requestType {
+	case appconstant.SentFriendRequest:
+		return frs.GetAllSent(ctx, userProfileID)
+	case appconstant.ReceivedFriendRequest:
+		return frs.GetAllReceived(ctx, userProfileID)
+	default:
+		return nil, ungerr.BadRequestError("invalid path parameter")
+	}
+}
+
 func (frs *friendshipRequestServiceImpl) GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.GetAllReceived")
 	defer span.End()
@@ -198,20 +225,23 @@ func (frs *friendshipRequestServiceImpl) Ignore(ctx context.Context, userProfile
 	})
 }
 
-func (frs *friendshipRequestServiceImpl) Block(ctx context.Context, userProfileID, reqID uuid.UUID) error {
+func (frs *friendshipRequestServiceImpl) Block(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipRequestResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Block")
 	defer span.End()
 
-	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	var response dto.FriendshipRequestResponse
+	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
 		spec.Model.RecipientProfileID = userProfileID
+		spec.PreloadRelations = []string{"SenderProfile", "RecipientProfile"}
 		spec.ForUpdate = true
 		request, err := frs.getRequest(ctx, spec)
 		if err != nil {
 			return err
 		}
 		if request.BlockedAt.Valid {
+			response = mapper.FriendshipRequestToResponse(request, userProfileID)
 			return nil
 		}
 
@@ -219,32 +249,63 @@ func (frs *friendshipRequestServiceImpl) Block(ctx context.Context, userProfileI
 			Time:  time.Now(),
 			Valid: true,
 		}
-		_, err = frs.requestRepo.Update(ctx, request)
-		return err
+		updated, err := frs.requestRepo.Update(ctx, request)
+		if err != nil {
+			return err
+		}
+
+		response = mapper.FriendshipRequestToResponse(updated, userProfileID)
+		return nil
 	})
+
+	return response, err
 }
 
-func (frs *friendshipRequestServiceImpl) Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error {
+func (frs *friendshipRequestServiceImpl) Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipRequestResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Unblock")
 	defer span.End()
 
-	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	var response dto.FriendshipRequestResponse
+	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
 		spec.Model.RecipientProfileID = userProfileID
+		spec.PreloadRelations = []string{"SenderProfile", "RecipientProfile"}
 		spec.ForUpdate = true
 		request, err := frs.getRequest(ctx, spec)
 		if err != nil {
 			return err
 		}
 		if !request.BlockedAt.Valid {
+			response = mapper.FriendshipRequestToResponse(request, userProfileID)
 			return nil
 		}
 
 		request.BlockedAt = sql.NullTime{}
-		_, err = frs.requestRepo.Update(ctx, request)
-		return err
+		updated, err := frs.requestRepo.Update(ctx, request)
+		if err != nil {
+			return err
+		}
+
+		response = mapper.FriendshipRequestToResponse(updated, userProfileID)
+		return nil
 	})
+
+	return response, err
+}
+
+// HandleBlockCommand dispatches to Block or Unblock based on command. Moved
+// down from the handler's RegisterBlock so the handler only needs to call
+// this and pass the error through.
+func (frs *friendshipRequestServiceImpl) HandleBlockCommand(ctx context.Context, userProfileID, reqID uuid.UUID, command string) (dto.FriendshipRequestResponse, error) {
+	switch command {
+	case "block":
+		return frs.Block(ctx, userProfileID, reqID)
+	case "unblock":
+		return frs.Unblock(ctx, userProfileID, reqID)
+	default:
+		return dto.FriendshipRequestResponse{}, ungerr.BadRequestError(fmt.Sprintf("unknown command: %s", command))
+	}
 }
 
 func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error) {

@@ -1,12 +1,12 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/ginkgo/pkg/server"
-	"github.com/itsLeonB/ungerr"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type PublicHandler struct {
@@ -17,12 +17,24 @@ func NewPublicHandler(friendDetailsSvc service.FriendDetailsService) *PublicHand
 	return &PublicHandler{friendDetailsSvc}
 }
 
-func (ph *PublicHandler) HandleGetPublicProfile() gin.HandlerFunc {
-	return server.Handler("PublicHandler.HandleGetPublicProfile", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		slug := ctx.Param("slug")
-		if slug == "" {
-			return nil, ungerr.BadRequestError("slug is required")
-		}
-		return ph.friendDetailsSvc.GetDetailsBySlug(ctx.Request.Context(), slug)
-	})
+type GetPublicProfileInput struct {
+	Slug string `path:"slug"`
+}
+
+// Routes returns every route PublicHandler exposes, for registration via
+// endpoint.RegisterAll.
+func (ph *PublicHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetPublicProfileInput, dto.FriendDetailsResponse]{
+			OperationID: "get-public-profile",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/public/profiles/{slug}",
+			Summary:     "Get a public profile by slug",
+			Tags:        []string{"public"},
+			SuccessCode: http.StatusOK,
+			ServiceFunc: func(ctx context.Context, in GetPublicProfileInput) (dto.FriendDetailsResponse, error) {
+				return ph.friendDetailsSvc.GetDetailsBySlug(ctx, in.Slug)
+			},
+		}),
+	}
 }

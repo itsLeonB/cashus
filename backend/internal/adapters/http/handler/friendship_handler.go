@@ -1,15 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type FriendshipHandler struct {
@@ -30,92 +29,82 @@ func NewFriendshipHandler(
 	}
 }
 
-// HandleCreateAnonymousFriendship godoc
-// @Summary      Create an anonymous friendship
-// @Tags         friendships
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.NewAnonymousFriendshipRequest true "New anonymous friendship payload"
-// @Success      201  {object}  response.JSONResponse[dto.FriendshipResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /friendships [post]
-func (fh *FriendshipHandler) HandleCreateAnonymousFriendship() gin.HandlerFunc {
-	return server.Handler("FriendshipHandler.HandleCreateAnonymousFriendship", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.NewAnonymousFriendshipRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.ProfileID = profileID
-
-		return fh.friendshipService.CreateAnonymous(ctx.Request.Context(), request)
-	})
+type CreateAnonymousFriendshipInput struct {
+	httpapi.AuthInput
+	Body struct {
+		Name string `json:"name" minLength:"3"`
+	}
 }
 
-// HandleGetAll godoc
-// @Summary      Get all friendships
-// @Tags         friendships
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[[]dto.FriendshipResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /friendships [get]
-func (fh *FriendshipHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler("FriendshipHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		friendships, err := fh.friendshipService.GetAll(ctx.Request.Context(), profileID)
-		if err != nil {
-			return nil, err
-		}
-
-		balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx.Request.Context(), profileID)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range friendships {
-			if b, ok := balances[friendships[i].ProfileID]; ok {
-				friendships[i].BalancesPerCurrency = b
-			}
-		}
-
-		return friendships, nil
-	})
+type GetAllFriendshipsInput struct {
+	httpapi.AuthInput
 }
 
-// HandleGetDetails godoc
-// @Summary      Get friendship details
-// @Tags         friendships
-// @Security     BearerAuth
-// @Produce      json
-// @Param        friendshipId path string true "Friendship ID"
-// @Success      200  {object}  response.JSONResponse[dto.FriendDetailsResponse]
-// @Failure      401  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Router       /friendships/{friendshipId} [get]
-func (fh *FriendshipHandler) HandleGetDetails() gin.HandlerFunc {
-	return server.Handler("FriendshipHandler.HandleGetDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type GetFriendshipDetailsInput struct {
+	httpapi.AuthInput
+	FriendshipID uuid.UUID `path:"friendshipID"`
+}
 
-		friendshipID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextFriendshipID.String())
-		if err != nil {
-			return nil, err
-		}
+// Routes returns every route FriendshipHandler exposes, for registration via
+// endpoint.RegisterAll.
+func (fh *FriendshipHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[CreateAnonymousFriendshipInput, dto.FriendshipResponse]{
+			OperationID: "create-anonymous-friendship",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/friendships",
+			Summary:     "Create an anonymous friendship",
+			Tags:        []string{"friendships"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateAnonymousFriendshipInput) (dto.FriendshipResponse, error) {
+				request := dto.NewAnonymousFriendshipRequest{
+					ProfileID: in.ProfileID,
+					Name:      in.Body.Name,
+				}
 
-		return fh.friendDetailsSvc.GetDetails(ctx.Request.Context(), profileID, friendshipID)
-	})
+				return fh.friendshipService.CreateAnonymous(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetAllFriendshipsInput, []dto.FriendshipResponse]{
+			OperationID: "get-friendships",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/friendships",
+			Summary:     "Get all friendships",
+			Tags:        []string{"friendships"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetAllFriendshipsInput) ([]dto.FriendshipResponse, error) {
+				friendships, err := fh.friendshipService.GetAll(ctx, in.ProfileID)
+				if err != nil {
+					return nil, err
+				}
+
+				balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx, in.ProfileID)
+				if err != nil {
+					return nil, err
+				}
+
+				for i := range friendships {
+					if b, ok := balances[friendships[i].ProfileID]; ok {
+						friendships[i].BalancesPerCurrency = b
+					}
+				}
+
+				return friendships, nil
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetFriendshipDetailsInput, dto.FriendDetailsResponse]{
+			OperationID: "get-friendship-details",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/friendships/{friendshipID}",
+			Summary:     "Get friendship details",
+			Tags:        []string{"friendships"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetFriendshipDetailsInput) (dto.FriendDetailsResponse, error) {
+				return fh.friendDetailsSvc.GetDetails(ctx, in.ProfileID, in.FriendshipID)
+			},
+		}),
+	}
 }

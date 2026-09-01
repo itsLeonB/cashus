@@ -30,13 +30,6 @@
         "DATABASE_URI": "${POSTGRES_DEV_URI}"
       }
     },
-    "context7": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ]
-    },
     "grafana": {
       "type": "http",
       "url": "https://mcp.grafana.com/mcp",
@@ -59,9 +52,15 @@
         "--context",
         "claude-code",
         "--project",
-        "/home/leon/Projects/itsLeonB/cashus"
-      ],
-      "env": {}
+        "${CLAUDE_PROJECT_DIR:-.}"
+      ]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CONTEXT7_API_KEY}"
+      }
     }
   }
 }

@@ -1,161 +1,114 @@
 package routes
 
 import (
-	"fmt"
-
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/go-authkit/authgin"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 	"golang.org/x/time/rate"
 )
 
-func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc) {
-	apiRoutes := router.Group("/api")
-	{
-		v1 := apiRoutes.Group("/v1")
-		{
-			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
-			v1.GET("/plans", handlers.Plan.HandleGetActive())
-			v1.GET("/public/profiles/:slug", handlers.Public.HandleGetPublicProfile())
-
-			authRoutes := v1.Group("/auth")
-			authRoutes.Use(sentinelGin.RateLimit(httpserver.RateLimitConfig{
-				Limit:   rate.Limit(20.0 / 60),
-				Burst:   5,
-				KeyFunc: httpserver.KeyFuncByIP(),
-			}))
-			{
-				authRoutes.POST("/register", handlers.Auth.Register())
-				authRoutes.POST("/login", handlers.Auth.Login())
-				authRoutes.PUT("/refresh", handlers.Auth.RefreshToken())
-				authRoutes.GET("/:provider", handlers.Auth.OAuthLogin())
-				authRoutes.GET("/:provider/callback", handlers.Auth.OAuthCallback())
-				authRoutes.GET("/verify-registration", handlers.Auth.VerifyRegistration())
-				authRoutes.POST("/password-reset",
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(3.0 / 900),
-						Burst:   3,
-						KeyFunc: httpserver.KeyFuncByIP(),
-					}),
-					handlers.Auth.SendPasswordReset(),
-				)
-				authRoutes.PATCH("/reset-password",
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(5.0 / 900),
-						Burst:   5,
-						KeyFunc: httpserver.KeyFuncByIP(),
-					}),
-					handlers.Auth.ResetPassword(),
-				)
-			}
-
-			protectedRoutes := v1.Group("/", authMiddleware, authgin.CSRFMiddleware())
-			{
-				protectedRoutes.DELETE("/auth/logout", handlers.Auth.Logout())
-
-				transferMethodsRoute := "/transfer-methods"
-				profileRoutes := protectedRoutes.Group("/profile")
-				{
-					profileRoutes.GET("", handlers.Profile.HandleProfile())
-					profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
-					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
-					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
-					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
-					profileRoutes.GET("/subscription", handlers.Subscription.HandleGetSubscribedDetails())
-				}
-
-				profilesRoutes := protectedRoutes.Group("/profiles")
-				profilesRoutes.Use(
-					middlewares.WithRateKey(appconstant.ContextProfileID.String()),
-					sentinelGin.RateLimit(httpserver.RateLimitConfig{
-						Limit:   rate.Limit(10.0 / 60),
-						Burst:   3,
-						KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
-					}),
-				)
-				{
-					profilesRoutes.GET("", handlers.Profile.HandleSearch())
-					profilesRoutes.POST(fmt.Sprintf("/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
-					profilesRoutes.GET(fmt.Sprintf("/:%s%s", appconstant.ContextProfileID.String(), transferMethodsRoute), handlers.ProfileTransferMethod.HandleGetAllByFriendProfileID())
-				}
-
-				friendshipRoutes := protectedRoutes.Group("/friendships")
-				{
-					friendshipRoutes.POST("", handlers.Friendship.HandleCreateAnonymousFriendship())
-					friendshipRoutes.GET("", handlers.Friendship.HandleGetAll())
-					friendshipRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextFriendshipID), handlers.Friendship.HandleGetDetails())
-				}
-
-				receivedFriendRequestRoute := fmt.Sprintf("/%s/:%s", appconstant.ReceivedFriendRequest, appconstant.ContextFriendRequestID)
-				friendRequestRoutes := protectedRoutes.Group("/friend-requests")
-				{
-					friendRequestRoutes.GET(fmt.Sprintf("/:%s", appconstant.PathFriendRequestType), handlers.FriendshipRequest.HandleGetAll())
-					friendRequestRoutes.DELETE(fmt.Sprintf("/%s/:%s", appconstant.SentFriendRequest, appconstant.ContextFriendRequestID), handlers.FriendshipRequest.HandleCancel())
-					friendRequestRoutes.DELETE(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleIgnore())
-					friendRequestRoutes.PATCH(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleBlock())
-					friendRequestRoutes.POST(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleAccept())
-				}
-
-				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-
-				debtsRoutes := protectedRoutes.Group("/debts")
-				{
-					debtsRoutes.POST("", handlers.Debt.HandleCreate())
-					debtsRoutes.GET("", handlers.Debt.HandleGetAll())
-					debtsRoutes.GET("/summary", handlers.Debt.HandleGetTransactionSummary())
-					debtsRoutes.GET("/recent", handlers.Debt.HandleGetRecent())
-				}
-
-				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
-				{
-					groupExpenseRoutes.POST("", handlers.GroupExpense.HandleCreateDraft())
-					groupExpenseRoutes.GET("", handlers.GroupExpense.HandleGetAll())
-					groupExpenseRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleGetDetails())
-					groupExpenseRoutes.PATCH(fmt.Sprintf("/:%s/confirmed", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleConfirmDraft())
-					groupExpenseRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleDelete())
-					groupExpenseRoutes.GET("/fee-calculation-methods", handlers.OtherFee.HandleGetFeeCalculationMethods())
-					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/participants", appconstant.ContextGroupExpenseID.String()), handlers.GroupExpense.HandleSyncParticipants())
-					groupExpenseRoutes.POST(fmt.Sprintf("/:%s/bills", appconstant.ContextGroupExpenseID.String()), handlers.ExpenseBill.HandlePresignedSave())
-					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/bills/:%s", appconstant.ContextGroupExpenseID.String(), appconstant.ContextExpenseBillID.String()), handlers.ExpenseBill.HandleTriggerParsing())
-					groupExpenseRoutes.GET("/recent", handlers.GroupExpense.HandleGetRecent())
-				}
-
-				expenseItemRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/items", appconstant.ContextGroupExpenseID))
-				{
-					expenseItemRoute := fmt.Sprintf("/:%s", appconstant.ContextExpenseItemID)
-					expenseItemRoutes.POST("", handlers.ExpenseItem.HandleAdd())
-					expenseItemRoutes.PUT(expenseItemRoute, handlers.ExpenseItem.HandleUpdate())
-					expenseItemRoutes.DELETE(expenseItemRoute, handlers.ExpenseItem.HandleRemove())
-					expenseItemRoutes.PUT(expenseItemRoute+"/participants", handlers.ExpenseItem.HandleSyncParticipants())
-				}
-
-				otherFeeRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/fees", appconstant.ContextGroupExpenseID))
-				{
-					otherFeeRoutes.POST("", handlers.OtherFee.HandleAdd())
-					otherFeeRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleUpdate())
-					otherFeeRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleRemove())
-				}
-
-				notificationRoutes := protectedRoutes.Group("/notifications")
-				{
-					notificationRoutes.GET("", handlers.Notification.HandleGetUnread())
-					notificationRoutes.PATCH(fmt.Sprintf("/:%s", appconstant.ContextNotificationID), handlers.Notification.HandleMarkAsRead())
-					notificationRoutes.PATCH("", handlers.Notification.HandleMarkAllAsRead())
-				}
-
-				pushRoutes := protectedRoutes.Group("/push")
-				{
-					pushRoutes.POST("/subscribe", handlers.PushSubscription.HandleSubscribe())
-					pushRoutes.POST("/unsubscribe", handlers.PushSubscription.HandleUnsubscribe())
-				}
-
-				protectedRoutes.POST(fmt.Sprintf("/plans/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
-				protectedRoutes.POST(fmt.Sprintf("/subscriptions/:%s", appconstant.ContextSubscriptionID.String()), handlers.Payment.HandleMakePayment())
-			}
-		}
+// RegisterAPIRoutes wires up every /api/v1 operation on the Huma API. Huma
+// is bound at the engine root, so operations that need the same auth+CSRF
+// protection as `protectedMW` below must have those gin middlewares bridged
+// onto them individually via httpapi.Bridge.
+func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc, api huma.API) {
+	protectedMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(authMiddleware),
+		httpapi.Bridge(authgin.CSRFMiddleware()),
 	}
+
+	profilesMW := append(append([]func(huma.Context, func(huma.Context)){}, protectedMW...),
+		httpapi.Bridge(middlewares.WithRateKey(appconstant.ContextProfileID.String())),
+		httpapi.Bridge(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			Limit:   rate.Limit(10.0 / 60),
+			Burst:   3,
+			KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
+		})),
+	)
+
+	endpoint.RegisterAll(api, handlers.Public.Routes())
+	endpoint.RegisterAll(api, handlers.Plan.Routes())
+	handlers.Payment.RegisterNotification(api)
+
+	endpoint.RegisterAll(api, handlers.Payment.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.Profile.Routes(), protectedMW...)
+	endpoint.RegisterAll(api, handlers.Profile.SearchRoutes(), profilesMW...)
+
+	endpoint.RegisterAll(api, handlers.ProfileTransferMethod.Routes(), protectedMW...)
+	endpoint.RegisterAll(api, handlers.ProfileTransferMethod.GetAllByFriendProfileIDRoutes(), profilesMW...)
+
+	endpoint.RegisterAll(api, handlers.Subscription.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.Friendship.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.FriendshipRequest.SendRoutes(), profilesMW...)
+	endpoint.RegisterAll(api, handlers.FriendshipRequest.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.TransferMethod.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.Debt.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.GroupExpense.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.ExpenseItem.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.OtherFee.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.ExpenseBill.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.Notification.Routes(), protectedMW...)
+
+	endpoint.RegisterAll(api, handlers.PushSubscription.Routes(), protectedMW...)
+
+	// authRateMW mirrors the rate limit the whole /api/v1/auth group used to
+	// share as a gin route-group middleware (20/60 per IP): the
+	// sentinelGin.RateLimit middleware (and its bucket store) is constructed
+	// once here and bridged once, then reused unchanged across every op
+	// below so they keep sharing one limiter, not one each.
+	authRateMW := []func(huma.Context, func(huma.Context)){
+		httpapi.Bridge(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			Limit:   rate.Limit(20.0 / 60),
+			Burst:   5,
+			KeyFunc: httpserver.KeyFuncByIP(),
+		})),
+	}
+	passwordResetMW := withRateLimit(authRateMW, sentinelGin.RateLimit(httpserver.RateLimitConfig{
+		Limit:   rate.Limit(3.0 / 900),
+		Burst:   3,
+		KeyFunc: httpserver.KeyFuncByIP(),
+	}))
+	resetPasswordMW := withRateLimit(authRateMW, sentinelGin.RateLimit(httpserver.RateLimitConfig{
+		Limit:   rate.Limit(5.0 / 900),
+		Burst:   5,
+		KeyFunc: httpserver.KeyFuncByIP(),
+	}))
+
+	// Register, Login, OAuthLogin, OAuthCallback, VerifyRegistration, and
+	// RefreshToken share only the group-wide rate limit.
+	endpoint.RegisterAll(api, handlers.Auth.Routes(), authRateMW...)
+
+	// SendPasswordReset and ResetPassword each need an extra, tighter rate
+	// limit layered on top of authRateMW, so they're registered separately
+	// from the rest of Routes() with their own middleware slice.
+	endpoint.RegisterAll(api, handlers.Auth.PasswordResetRoutes(), passwordResetMW...)
+	endpoint.RegisterAll(api, handlers.Auth.ResetPasswordRoutes(), resetPasswordMW...)
+
+	// Logout is not under the rate-limited /auth group above (it never was,
+	// even before this migration); it's protected the same way as every
+	// other protected route.
+	endpoint.RegisterAll(api, handlers.Auth.LogoutRoutes(), protectedMW...)
+}
+
+// withRateLimit appends an extra bridged gin middleware onto a copy of base,
+// without mutating base or its backing array.
+func withRateLimit(base []func(huma.Context, func(huma.Context)), extra gin.HandlerFunc) []func(huma.Context, func(huma.Context)) {
+	return append(append([]func(huma.Context, func(huma.Context)){}, base...), httpapi.Bridge(extra))
 }

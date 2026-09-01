@@ -23,7 +23,7 @@ import (
 type PaymentService interface {
 	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
 	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
-	MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
+	MakePayment(ctx context.Context, profileID, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
 
 	// Admin
 	GetList(ctx context.Context) ([]dto.PaymentResponse, error)
@@ -200,7 +200,7 @@ func (ps *paymentService) updateSubscriptionStatus(
 	return nil
 }
 
-func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
+func (ps *paymentService) MakePayment(ctx context.Context, profileID, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "PaymentService.MakePayment")
 	defer span.End()
 
@@ -210,7 +210,19 @@ func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.U
 
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)
+		// Check ownership on an unlocked read first, so a request for a
+		// subscription that isn't the caller's never takes the forUpdate
+		// row lock below.
+		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, false)
+		if err != nil {
+			return err
+		}
+
+		if subscription.ProfileID != profileID {
+			return ungerr.NotFoundError(fmt.Sprintf("subscription with ID %s is not found", subscriptionID))
+		}
+
+		subscription, err = ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)
 		if err != nil {
 			return err
 		}

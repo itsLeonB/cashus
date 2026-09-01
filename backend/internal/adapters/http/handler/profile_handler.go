@@ -1,14 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
+	"github.com/google/uuid"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type ProfileHandler struct {
@@ -23,101 +23,99 @@ func NewProfileHandler(
 	}
 }
 
-// HandleProfile godoc
-// @Summary      Get current user's profile
-// @Tags         profile
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[dto.ProfileResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profile [get]
-func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleProfile", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return ph.profileService.GetByID(ctx.Request.Context(), profileID)
-	})
+type GetProfileInput struct {
+	httpapi.AuthInput
 }
 
-// HandleUpdate godoc
-// @Summary      Update current user's profile
-// @Tags         profile
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.UpdateProfileRequest true "Update profile payload"
-// @Success      200  {object}  response.JSONResponse[dto.ProfileResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /profile [patch]
-func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request, err := server.BindJSON[dto.UpdateProfileRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request.ID = profileID
-
-		return ph.profileService.Update(ctx.Request.Context(), request)
-	})
+type UpdateProfileInput struct {
+	httpapi.AuthInput
+	Body struct {
+		Name         string `json:"name" minLength:"3" maxLength:"255"`
+		HomeCurrency string `json:"homeCurrency" minLength:"3" maxLength:"3"`
+	}
 }
 
-// HandleSearch godoc
-// @Summary      Search profiles
-// @Tags         profile
-// @Security     BearerAuth
-// @Produce      json
-// @Param        query query string false "Search query"
-// @Success      200  {object}  response.JSONResponse[[]dto.SearchProfileResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profiles [get]
-func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleSearch", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		request, err := server.BindRequest[dto.SearchRequest](ctx, binding.Query)
-		if err != nil {
-			return nil, err
-		}
-
-		return ph.profileService.Search(ctx.Request.Context(), profileID, request.Query)
-	})
+type AssociateProfileInput struct {
+	httpapi.AuthInput
+	Body struct {
+		RealProfileID uuid.UUID `json:"realProfileId"`
+		AnonProfileID uuid.UUID `json:"anonProfileId"`
+	}
 }
 
-// HandleAssociate godoc
-// @Summary      Associate anonymous profile with real profile
-// @Tags         profile
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body dto.AssociateProfileRequest true "Associate payload"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /profile/associate [post]
-func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
-	return server.Handler("ProfileHandler.HandleAssociate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+// Routes returns the ProfileHandler routes that share protectedMW, for
+// registration via endpoint.RegisterAll. RegisterSearch is registered
+// separately (SearchRoutes) because it's rate-limited with profilesMW rather
+// than protectedMW.
+func (ph *ProfileHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[GetProfileInput, dto.ProfileResponse]{
+			OperationID: "get-profile",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/profile",
+			Summary:     "Get current user's profile",
+			Tags:        []string{"profile"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetProfileInput) (dto.ProfileResponse, error) {
+				return ph.profileService.GetByID(ctx, in.ProfileID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[UpdateProfileInput, dto.ProfileResponse]{
+			OperationID: "update-profile",
+			Method:      http.MethodPatch,
+			Path:        "/api/v1/profile",
+			Summary:     "Update current user's profile",
+			Tags:        []string{"profile"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UpdateProfileInput) (dto.ProfileResponse, error) {
+				request := dto.UpdateProfileRequest{
+					ID:           in.ProfileID,
+					Name:         in.Body.Name,
+					HomeCurrency: in.Body.HomeCurrency,
+				}
 
-		request, err := server.BindJSON[dto.AssociateProfileRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
+				return ph.profileService.Update(ctx, request)
+			},
+		}),
+		endpoint.NewNoBody(endpoint.NoBodyEndpoint[AssociateProfileInput]{
+			OperationID: "associate-profile",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/profile/associate",
+			Summary:     "Associate anonymous profile with real profile",
+			Tags:        []string{"profile"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in AssociateProfileInput) error {
+				return ph.profileService.MergeAnonymousProfile(ctx, in.ProfileID, in.Body.RealProfileID, in.Body.AnonProfileID)
+			},
+		}),
+	}
+}
 
-		return nil, ph.profileService.MergeAnonymousProfile(ctx.Request.Context(), profileID, request.RealProfileID, request.AnonProfileID)
-	})
+type SearchProfilesInput struct {
+	httpapi.AuthInput
+	Query string `query:"query" required:"true" minLength:"3" maxLength:"255"`
+}
+
+// SearchRoutes returns search-profiles on its own, so routes/api_routes.go
+// can register it with profilesMW instead of sharing Routes()'s protectedMW
+// group: it's rate-limited like FriendshipRequestHandler.SendRoutes and
+// ProfileTransferMethodHandler.GetAllByFriendProfileIDRoutes, using the same
+// shared limiter instance.
+func (ph *ProfileHandler) SearchRoutes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[SearchProfilesInput, []dto.SearchProfileResponse]{
+			OperationID: "search-profiles",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/profiles",
+			Summary:     "Search profiles",
+			Tags:        []string{"profile"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in SearchProfilesInput) ([]dto.SearchProfileResponse, error) {
+				return ph.profileService.Search(ctx, in.ProfileID, in.Query)
+			},
+		}),
+	}
 }

@@ -1,15 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	_ "github.com/itsLeonB/ginkgo/pkg/response"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type SubscriptionHandler struct {
@@ -17,59 +16,49 @@ type SubscriptionHandler struct {
 	paymentSvc service.PaymentService
 }
 
-// HandleCreatePurchase godoc
-// @Summary      Create a subscription purchase
-// @Tags         subscriptions
-// @Security     BearerAuth
-// @Produce      json
-// @Param        planId        path string true "Plan ID"
-// @Param        planVersionId path string true "Plan version ID"
-// @Success      201  {object}  response.JSONResponse[monetization.PaymentResponse]
-// @Failure      400  {object}  map[string]any
-// @Failure      401  {object}  map[string]any
-// @Router       /plans/{planId}/versions/{planVersionId}/subscriptions [post]
-func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleCreatePurchase", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		planID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		planVersionID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req := dto.PurchaseSubscriptionRequest{
-			ProfileID:     profileID,
-			PlanID:        planID,
-			PlanVersionID: planVersionID,
-		}
-
-		return sh.paymentSvc.NewPurchase(ctx.Request.Context(), req)
-	})
+type CreateSubscriptionPurchaseInput struct {
+	httpapi.AuthInput
+	PlanID        uuid.UUID `path:"planID"`
+	PlanVersionID uuid.UUID `path:"planVersionID"`
 }
 
-// HandleGetSubscribedDetails godoc
-// @Summary      Get current subscription details
-// @Tags         subscriptions
-// @Security     BearerAuth
-// @Produce      json
-// @Success      200  {object}  response.JSONResponse[monetization.SubscriptionResponse]
-// @Failure      401  {object}  map[string]any
-// @Router       /profile/subscription [get]
-func (sh *SubscriptionHandler) HandleGetSubscribedDetails() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleGetSubscribedDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
+type GetSubscribedDetailsInput struct {
+	httpapi.AuthInput
+}
 
-		return sh.svc.GetSubscribedDetails(ctx.Request.Context(), profileID)
-	})
+// Routes returns every route SubscriptionHandler exposes, for registration
+// via endpoint.RegisterAll.
+func (sh *SubscriptionHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.New(endpoint.Endpoint[CreateSubscriptionPurchaseInput, dto.PaymentResponse]{
+			OperationID: "create-subscription-purchase",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/plans/{planID}/versions/{planVersionID}/subscriptions",
+			Summary:     "Create a subscription purchase",
+			Tags:        []string{"subscriptions"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateSubscriptionPurchaseInput) (dto.PaymentResponse, error) {
+				req := dto.PurchaseSubscriptionRequest{
+					ProfileID:     in.ProfileID,
+					PlanID:        in.PlanID,
+					PlanVersionID: in.PlanVersionID,
+				}
+
+				return sh.paymentSvc.NewPurchase(ctx, req)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetSubscribedDetailsInput, dto.SubscriptionResponse]{
+			OperationID: "get-subscribed-details",
+			Method:      http.MethodGet,
+			Path:        "/api/v1/profile/subscription",
+			Summary:     "Get current subscription details",
+			Tags:        []string{"subscriptions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetSubscribedDetailsInput) (dto.SubscriptionResponse, error) {
+				return sh.svc.GetSubscribedDetails(ctx, in.ProfileID)
+			},
+		}),
+	}
 }

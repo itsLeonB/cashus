@@ -1,81 +1,143 @@
 package admin
 
 import (
-	"fmt"
+	"context"
 	"net/http"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
+	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/cashback/internal/endpoint"
 )
 
 type SubscriptionHandler struct {
 	svc service.SubscriptionService
 }
 
-func (sh *SubscriptionHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		req, err := server.BindJSON[dto.NewSubscriptionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return sh.svc.Create(ctx.Request.Context(), req)
-	})
+type CreateSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	Body struct {
+		ProfileID     uuid.UUID `json:"profileId"`
+		PlanVersionID uuid.UUID `json:"planVersionId"`
+		EndsAt        time.Time `json:"endsAt,omitempty"`
+		CanceledAt    time.Time `json:"canceledAt,omitempty"`
+		AutoRenew     bool      `json:"autoRenew,omitempty"`
+	}
 }
 
-func (sh *SubscriptionHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		subscriptions, err := sh.svc.GetList(ctx.Request.Context())
-		if err != nil {
-			return nil, err
-		}
-
-		ctx.Header("X-Total-Count", fmt.Sprint(len(subscriptions)))
-
-		return subscriptions, nil
-	})
+type GetSubscriptionListInput struct {
+	httpapi.AdminAuthInput
 }
 
-func (sh *SubscriptionHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		return sh.svc.GetOne(ctx.Request.Context(), id)
-	})
+type GetSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
 }
 
-func (sh *SubscriptionHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := server.BindJSON[dto.UpdateSubscriptionRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		req.ID = id
-
-		return sh.svc.Update(ctx.Request.Context(), req)
-	})
+type UpdateSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
+	Body           struct {
+		ProfileID          uuid.UUID `json:"profileId"`
+		PlanVersionID      uuid.UUID `json:"planVersionId"`
+		EndsAt             time.Time `json:"endsAt,omitempty"`
+		CanceledAt         time.Time `json:"canceledAt,omitempty"`
+		AutoRenew          bool      `json:"autoRenew,omitempty"`
+		Status             string    `json:"status" enum:"incomplete_payment,active,past_due_payment,canceled"`
+		CurrentPeriodStart time.Time `json:"currentPeriodStart,omitempty"`
+		CurrentPeriodEnd   time.Time `json:"currentPeriodEnd,omitempty"`
+	}
 }
 
-func (sh *SubscriptionHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler("SubscriptionHandler.HandleDelete", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
-		if err != nil {
-			return nil, err
-		}
+type DeleteSubscriptionInput struct {
+	httpapi.AdminAuthInput
+	SubscriptionID uuid.UUID `path:"subscriptionID"`
+}
 
-		return sh.svc.Delete(ctx.Request.Context(), id)
-	})
+// Routes returns every route SubscriptionHandler exposes via
+// endpoint.Endpoint, for registration via endpoint.RegisterAll.
+func (sh *SubscriptionHandler) Routes() []endpoint.Registrable {
+	return []endpoint.Registrable{
+		endpoint.NewList(endpoint.ListEndpoint[GetSubscriptionListInput, dto.SubscriptionResponse]{
+			OperationID: "get-admin-subscriptions",
+			Method:      http.MethodGet,
+			Path:        "/admin/v1/subscriptions",
+			Summary:     "Get all subscriptions",
+			Tags:        []string{"admin-subscriptions"},
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetSubscriptionListInput) ([]dto.SubscriptionResponse, error) {
+				return sh.svc.GetList(ctx)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[CreateSubscriptionInput, dto.SubscriptionResponse]{
+			OperationID: "create-admin-subscription",
+			Method:      http.MethodPost,
+			Path:        "/admin/v1/subscriptions",
+			Summary:     "Create a subscription",
+			Tags:        []string{"admin-subscriptions"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in CreateSubscriptionInput) (dto.SubscriptionResponse, error) {
+				request := dto.NewSubscriptionRequest{
+					ProfileID:     in.Body.ProfileID,
+					PlanVersionID: in.Body.PlanVersionID,
+					EndsAt:        in.Body.EndsAt,
+					CanceledAt:    in.Body.CanceledAt,
+					AutoRenew:     in.Body.AutoRenew,
+				}
+
+				return sh.svc.Create(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[GetSubscriptionInput, dto.SubscriptionResponse]{
+			OperationID: "get-admin-subscription",
+			Method:      http.MethodGet,
+			Path:        "/admin/v1/subscriptions/{subscriptionID}",
+			Summary:     "Get a subscription by ID",
+			Tags:        []string{"admin-subscriptions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in GetSubscriptionInput) (dto.SubscriptionResponse, error) {
+				return sh.svc.GetOne(ctx, in.SubscriptionID)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[UpdateSubscriptionInput, dto.SubscriptionResponse]{
+			OperationID: "update-admin-subscription",
+			Method:      http.MethodPut,
+			Path:        "/admin/v1/subscriptions/{subscriptionID}",
+			Summary:     "Update a subscription",
+			Tags:        []string{"admin-subscriptions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in UpdateSubscriptionInput) (dto.SubscriptionResponse, error) {
+				request := dto.UpdateSubscriptionRequest{
+					ID:                 in.SubscriptionID,
+					ProfileID:          in.Body.ProfileID,
+					PlanVersionID:      in.Body.PlanVersionID,
+					EndsAt:             in.Body.EndsAt,
+					CanceledAt:         in.Body.CanceledAt,
+					AutoRenew:          in.Body.AutoRenew,
+					Status:             in.Body.Status,
+					CurrentPeriodStart: in.Body.CurrentPeriodStart,
+					CurrentPeriodEnd:   in.Body.CurrentPeriodEnd,
+				}
+
+				return sh.svc.Update(ctx, request)
+			},
+		}),
+		endpoint.New(endpoint.Endpoint[DeleteSubscriptionInput, dto.SubscriptionResponse]{
+			OperationID: "delete-admin-subscription",
+			Method:      http.MethodDelete,
+			Path:        "/admin/v1/subscriptions/{subscriptionID}",
+			Summary:     "Delete a subscription",
+			Tags:        []string{"admin-subscriptions"},
+			SuccessCode: http.StatusOK,
+			Secured:     true,
+			ServiceFunc: func(ctx context.Context, in DeleteSubscriptionInput) (dto.SubscriptionResponse, error) {
+				return sh.svc.Delete(ctx, in.SubscriptionID)
+			},
+		}),
+	}
 }

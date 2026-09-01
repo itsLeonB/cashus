@@ -25,11 +25,13 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 
 	skipPaths := []string{"/ping", "/livez", "/readyz", "/metrics", "/favicon.ico"}
 	if err = setupSentinel(r, skipPaths, zerologger); err != nil {
+		cleanup()
 		return nil, nil, err
 	}
 
 	routesShutdown, err := RegisterRoutes(r, configs, providers.Services, providers.AdminServices, providers.AdminRepos)
 	if err != nil {
+		cleanup()
 		return nil, nil, err
 	}
 

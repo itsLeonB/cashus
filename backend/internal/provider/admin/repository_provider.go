@@ -11,9 +11,9 @@ type Repositories struct {
 	User       crud.Repository[admin.User]
 }
 
-func ProvideRepositories(db *gorm.DB) *Repositories {
+func ProvideRepositories(db *gorm.DB, transactor crud.Transactor) *Repositories {
 	return &Repositories{
-		Transactor: crud.NewTransactor(db),
+		Transactor: transactor,
 		User:       crud.NewRepository[admin.User](db),
 	}
 }

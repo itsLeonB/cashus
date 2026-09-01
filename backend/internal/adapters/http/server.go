@@ -12,7 +12,7 @@ import (
 )
 
 func Setup(configs config.Config) (*httpserver.Server, func(), error) {
-	providers, err := provider.All()
+	providers, cleanup, err := provider.InitializeProviders()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -35,9 +35,7 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 
 	shutdownFunc := func() {
 		routesShutdown()
-		if err := providers.Shutdown(); err != nil {
-			logger.Error(err)
-		}
+		cleanup()
 	}
 
 	httpCfg := httpserver.ProductionConfig()

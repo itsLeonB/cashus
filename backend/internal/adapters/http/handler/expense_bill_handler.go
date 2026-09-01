@@ -56,14 +56,15 @@ func (geh *ExpenseBillHandler) Routes() []endpoint.Registrable {
 				return geh.expenseBillService.SavePresigned(ctx, request)
 			},
 		}),
-		endpoint.NewNoBody(endpoint.NoBodyEndpoint[TriggerExpenseBillParsingInput]{
+		endpoint.New(endpoint.Endpoint[TriggerExpenseBillParsingInput, dto.ExpenseBillResponse]{
 			OperationID: "trigger-expense-bill-parsing",
 			Method:      http.MethodPut,
 			Path:        "/api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID}",
 			Summary:     "Trigger parsing of an uploaded expense bill",
 			Tags:        []string{"expense-bills"},
+			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in TriggerExpenseBillParsingInput) error {
+			ServiceFunc: func(ctx context.Context, in TriggerExpenseBillParsingInput) (dto.ExpenseBillResponse, error) {
 				return geh.expenseBillService.TriggerParsing(ctx, in.GroupExpenseID, in.ExpenseBillID)
 			},
 		}),

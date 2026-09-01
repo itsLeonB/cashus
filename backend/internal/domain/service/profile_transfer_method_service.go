@@ -34,21 +34,21 @@ func NewProfileTransferMethodService(
 	}
 }
 
-func (ptm *profileTransferMethodService) Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error {
+func (ptm *profileTransferMethodService) Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) (dto.ProfileTransferMethodResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ProfileTransferMethodService.Add")
 	defer span.End()
 
 	if _, err := ptm.profileSvc.GetEntityByID(ctx, req.ProfileID); err != nil {
-		return err
+		return dto.ProfileTransferMethodResponse{}, err
 	}
 
 	method, err := ptm.transferMethodSvc.GetByID(ctx, req.TransferMethodID)
 	if err != nil {
-		return err
+		return dto.ProfileTransferMethodResponse{}, err
 	}
 
 	if !method.ParentID.Valid {
-		return ungerr.UnprocessableEntityError("cannot add parent transfer method to profile")
+		return dto.ProfileTransferMethodResponse{}, ungerr.UnprocessableEntityError("cannot add parent transfer method to profile")
 	}
 
 	newProfileMethod := debts.ProfileTransferMethod{
@@ -58,10 +58,14 @@ func (ptm *profileTransferMethodService) Add(ctx context.Context, req dto.NewPro
 		AccountNumber:    req.AccountNumber,
 	}
 
-	if _, err := ptm.profileTransferMethodRepo.Insert(ctx, newProfileMethod); err != nil {
-		return ungerr.Wrap(err, "error inserting new profile transfer method")
+	inserted, err := ptm.profileTransferMethodRepo.Insert(ctx, newProfileMethod)
+	if err != nil {
+		return dto.ProfileTransferMethodResponse{}, ungerr.Wrap(err, "error inserting new profile transfer method")
 	}
-	return nil
+
+	inserted.Method = method
+
+	return mapper.ProfileTransferMethodPopulator(ptm.transferMethodSvc.PopulateSignedURL)(inserted), nil
 }
 
 func (ptm *profileTransferMethodService) GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error) {

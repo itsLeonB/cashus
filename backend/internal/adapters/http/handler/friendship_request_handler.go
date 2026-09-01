@@ -32,14 +32,15 @@ type SendFriendRequestInput struct {
 // RegisterGetAllByFriendProfileID, using the same shared limiter instance.
 func (frh *FriendshipRequestHandler) SendRoutes() []endpoint.Registrable {
 	return []endpoint.Registrable{
-		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SendFriendRequestInput]{
+		endpoint.New(endpoint.Endpoint[SendFriendRequestInput, dto.FriendshipRequestResponse]{
 			OperationID: "send-friend-request",
 			Method:      http.MethodPost,
 			Path:        "/api/v1/profiles/{profileID}/friend-requests",
 			Summary:     "Send a friend request",
 			Tags:        []string{"friend-requests"},
+			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in SendFriendRequestInput) error {
+			ServiceFunc: func(ctx context.Context, in SendFriendRequestInput) (dto.FriendshipRequestResponse, error) {
 				return frh.svc.Send(ctx, in.ProfileID, in.FriendProfileID)
 			},
 		}),
@@ -118,14 +119,15 @@ func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 				return frh.svc.Ignore(ctx, in.ProfileID, in.FriendRequestID)
 			},
 		}),
-		endpoint.NewNoBody(endpoint.NoBodyEndpoint[BlockFriendRequestInput]{
+		endpoint.New(endpoint.Endpoint[BlockFriendRequestInput, dto.FriendshipRequestResponse]{
 			OperationID: "block-friend-request",
 			Method:      http.MethodPatch,
 			Path:        fmt.Sprintf("/api/v1/friend-requests/%s/{friendRequestID}", appconstant.ReceivedFriendRequest),
 			Summary:     "Block or unblock a friend request sender",
 			Tags:        []string{"friend-requests"},
+			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in BlockFriendRequestInput) error {
+			ServiceFunc: func(ctx context.Context, in BlockFriendRequestInput) (dto.FriendshipRequestResponse, error) {
 				return frh.svc.HandleBlockCommand(ctx, in.ProfileID, in.FriendRequestID, in.Command)
 			},
 		}),

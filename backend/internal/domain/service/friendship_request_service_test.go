@@ -104,7 +104,7 @@ func TestHandleBlockCommand_Block_DispatchesToBlock(t *testing.T) {
 		return r.BlockedAt.Valid
 	})).Return(users.FriendshipRequest{}, nil)
 
-	err := svc.HandleBlockCommand(context.Background(), userProfileID, reqID, "block")
+	_, err := svc.HandleBlockCommand(context.Background(), userProfileID, reqID, "block")
 
 	assert.NoError(t, err)
 }
@@ -134,7 +134,7 @@ func TestHandleBlockCommand_Unblock_DispatchesToUnblock(t *testing.T) {
 		return !r.BlockedAt.Valid
 	})).Return(users.FriendshipRequest{}, nil)
 
-	err := svc.HandleBlockCommand(context.Background(), userProfileID, reqID, "unblock")
+	_, err := svc.HandleBlockCommand(context.Background(), userProfileID, reqID, "unblock")
 
 	assert.NoError(t, err)
 }
@@ -142,7 +142,7 @@ func TestHandleBlockCommand_Unblock_DispatchesToUnblock(t *testing.T) {
 func TestHandleBlockCommand_InvalidCommand_ReturnsBadRequestError(t *testing.T) {
 	svc, _, _ := newTestFriendshipRequestService(t)
 
-	err := svc.HandleBlockCommand(context.Background(), uuid.New(), uuid.New(), "bogus")
+	_, err := svc.HandleBlockCommand(context.Background(), uuid.New(), uuid.New(), "bogus")
 
 	assert.Error(t, err)
 	var appErr ungerr.AppError

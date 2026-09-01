@@ -16,6 +16,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
+	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/ezutil/v2"
@@ -160,11 +161,12 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted(msg))
 }
 
-func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error {
+func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) (dto.ExpenseBillResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.TriggerParsing")
 	defer span.End()
 
-	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	var response dto.ExpenseBillResponse
+	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = billID
 		spec.Model.GroupExpenseID = expenseID
@@ -179,10 +181,16 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 
 		if bill.Status == expenses.FailedExtracting || bill.Status == expenses.NotUploadedBill {
 			bill.Status = expenses.PendingBill
-			if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
+			updated, err := ebs.billRepo.Update(ctx, bill)
+			if err != nil {
 				return err
 			}
-			return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: billID})
+			if err := ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: billID}); err != nil {
+				return err
+			}
+
+			response, err = ebs.toResponse(updated)
+			return err
 		}
 
 		if bill.ExtractedText == "" {
@@ -197,12 +205,32 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 		}
 
 		bill.Status = expenses.ExtractedBill
-		if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
+		updated, err := ebs.billRepo.Update(ctx, bill)
+		if err != nil {
 			return err
 		}
 
-		return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted{ID: billID})
+		if err := ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted{ID: billID}); err != nil {
+			return err
+		}
+
+		response, err = ebs.toResponse(updated)
+		return err
 	})
+
+	return response, err
+}
+
+// toResponse resolves bill's signed image URL and maps it to
+// dto.ExpenseBillResponse, matching the billURL pattern
+// GroupExpenseService.GetDetails uses before mapper.GroupExpenseToResponse.
+func (ebs *expenseBillServiceImpl) toResponse(bill expenses.ExpenseBill) (dto.ExpenseBillResponse, error) {
+	url, err := ebs.imageSvc.GetURL(ObjectKeyToFileID(bill.ImageName))
+	if err != nil {
+		return dto.ExpenseBillResponse{}, err
+	}
+
+	return mapper.ExpenseBillToResponse(bill, url), nil
 }
 
 func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {

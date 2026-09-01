@@ -28,8 +28,8 @@ type AddProfileTransferMethodInput struct {
 // out of the Routes() ServiceFunc closure since it's more than a plain
 // passthrough (it assembles dto.NewProfileTransferMethodRequest first),
 // matching handler.AuthHandler.logout's reasoning for extracting non-trivial
-// NoBodyEndpoint logic into a private method.
-func (ptmh *ProfileTransferMethodHandler) add(ctx context.Context, in AddProfileTransferMethodInput) error {
+// logic into a private method.
+func (ptmh *ProfileTransferMethodHandler) add(ctx context.Context, in AddProfileTransferMethodInput) (dto.ProfileTransferMethodResponse, error) {
 	req := dto.NewProfileTransferMethodRequest{
 		ProfileID:        in.ProfileID,
 		TransferMethodID: in.Body.TransferMethodID,
@@ -62,12 +62,13 @@ func (ptmh *ProfileTransferMethodHandler) Routes() []endpoint.Registrable {
 				return ptmh.svc.GetAllByProfileID(ctx, in.ProfileID)
 			},
 		}),
-		endpoint.NewNoBody(endpoint.NoBodyEndpoint[AddProfileTransferMethodInput]{
+		endpoint.New(endpoint.Endpoint[AddProfileTransferMethodInput, dto.ProfileTransferMethodResponse]{
 			OperationID: "add-profile-transfer-method",
 			Method:      http.MethodPost,
 			Path:        "/api/v1/profile/transfer-methods",
 			Summary:     "Add a transfer method to profile",
 			Tags:        []string{"profile-transfer-methods"},
+			SuccessCode: http.StatusCreated,
 			Secured:     true,
 			ServiceFunc: ptmh.add,
 		}),

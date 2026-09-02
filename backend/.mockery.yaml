@@ -29,6 +29,7 @@ packages:
     interfaces:
       ProfileRepository:
       FriendshipRepository:
+      GroupExpenseRepository:
   github.com/itsLeonB/go-crud:
     config:
       filename: "mock_crud.go"

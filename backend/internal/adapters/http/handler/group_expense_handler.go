@@ -82,12 +82,7 @@ func (geh *groupExpenseHandler) createGroupExpenseDraft(ctx context.Context, in 
 }
 
 func (geh *groupExpenseHandler) getGroupExpenses(ctx context.Context, in GetAllGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
-	ownership := in.Ownership
-	if ownership == "" {
-		ownership = expenses.OwnedExpense
-	}
-
-	return geh.groupExpenseService.GetAll(ctx, in.ProfileID, ownership, in.Status)
+	return geh.groupExpenseService.GetAll(ctx, in.ProfileID, in.Ownership, in.Status)
 }
 
 func (geh *groupExpenseHandler) getGroupExpenseDetails(ctx context.Context, in GetGroupExpenseDetailsInput) (dto.GroupExpenseResponse, error) {

@@ -28,30 +28,31 @@ func TestMain(m *testing.M) {
 
 func newTestGroupExpenseService(
 	t *testing.T,
-) (service.GroupExpenseService, *mocks.MockRepository[expenses.ExpenseBill], *mocks.MockTransactor, *mocks.MockClient) {
+) (service.GroupExpenseService, *mocks.MockGroupExpenseRepository, *mocks.MockRepository[expenses.ExpenseBill], *mocks.MockTransactor, *mocks.MockClient) {
+	expenseRepo := mocks.NewMockGroupExpenseRepository(t)
 	billRepo := mocks.NewMockRepository[expenses.ExpenseBill](t)
 	transactor := mocks.NewMockTransactor(t)
 	langfuseClient := mocks.NewMockClient(t)
 
 	svc := service.NewGroupExpenseService(
-		nil, // friendshipService (unused by ParseFromBillText)
-		nil, // expenseRepo (unused: LLM call fails before this path is reached)
+		nil, // friendshipService (unused)
+		expenseRepo,
 		transactor,
-		nil, // feeCalculatorRegistry (unused by ParseFromBillText)
-		nil, // otherFeeRepository (unused by ParseFromBillText)
+		nil, // feeCalculatorRegistry (unused)
+		nil, // otherFeeRepository (unused)
 		billRepo,
-		nil, // llmService (unused: langfuseClient.GetPrompt fails first)
-		nil, // imageSvc (unused by ParseFromBillText)
-		nil, // taskQueue (unused by ParseFromBillText)
+		nil, // llmService (unused unless langfuseClient.GetPrompt succeeds)
+		nil, // imageSvc (unused)
+		nil, // taskQueue (unused)
 		langfuseClient,
-		nil, // profileSvc (unused by ParseFromBillText)
+		nil, // profileSvc (unused)
 	)
 
-	return svc, billRepo, transactor, langfuseClient
+	return svc, expenseRepo, billRepo, transactor, langfuseClient
 }
 
 func TestParseFromBillText_CallsLLMBeforeOpeningTransaction(t *testing.T) {
-	svc, billRepo, transactor, langfuseClient := newTestGroupExpenseService(t)
+	svc, _, billRepo, transactor, langfuseClient := newTestGroupExpenseService(t)
 
 	billID := uuid.New()
 	pendingBill := expenses.ExpenseBill{
@@ -91,6 +92,24 @@ func TestParseFromBillText_CallsLLMBeforeOpeningTransaction(t *testing.T) {
 	mock.InOrder(getPromptCall.Call, withinTxCall.Call)
 
 	err := svc.ParseFromBillText(context.Background(), message.ExpenseBillTextExtracted{ID: billID})
+
+	assert.NoError(t, err)
+}
+
+// TestGetAll_DefaultsEmptyOwnershipToOwnedExpense verifies the business-rule
+// default ("no ownership filter specified means owned expenses") that used to
+// live in the handler now lives here, on GroupExpenseService.GetAll.
+func TestGetAll_DefaultsEmptyOwnershipToOwnedExpense(t *testing.T) {
+	svc, expenseRepo, _, _, _ := newTestGroupExpenseService(t)
+
+	profileID := uuid.New()
+
+	expenseRepo.EXPECT().
+		FindAllByOwnership(mock.Anything, profileID, expenses.OwnedExpense, expenses.ExpenseStatus(""), -1).
+		Return([]expenses.GroupExpense{}, nil).
+		Once()
+
+	_, err := svc.GetAll(context.Background(), profileID, "", "")
 
 	assert.NoError(t, err)
 }

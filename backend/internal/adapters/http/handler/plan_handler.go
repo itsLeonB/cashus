@@ -17,6 +17,10 @@ type GetActivePlansInput struct{}
 
 // Routes returns every route PlanHandler exposes, for registration via
 // endpoint.RegisterAll.
+func (ph *PlanHandler) getActivePlans(ctx context.Context, in GetActivePlansInput) ([]dto.PlanVersionResponse, error) {
+	return ph.svc.GetActive(ctx)
+}
+
 func (ph *PlanHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetActivePlansInput, []dto.PlanVersionResponse]{
@@ -26,9 +30,7 @@ func (ph *PlanHandler) Routes() []endpoint.Registrable {
 			Summary:     "Get active subscription plans",
 			Tags:        []string{"plans"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: func(ctx context.Context, in GetActivePlansInput) ([]dto.PlanVersionResponse, error) {
-				return ph.svc.GetActive(ctx)
-			},
+			HandlerFunc: ph.getActivePlans,
 		}),
 	}
 }

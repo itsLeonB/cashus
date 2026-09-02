@@ -51,7 +51,7 @@ internal/
 ### Naming
 
 - Service implementations: `<name>ServiceImpl` struct, `New<Name>Service` constructor.
-- Handlers: `<Name>Handler` struct with `Handle<Action>()` methods returning `gin.HandlerFunc`.
+- Handlers: `<Name>Handler` struct with a `Routes() []endpoint.Registrable` method; each route's Input→Request mapping and service call lives in a private lowerCamelCase method named after its OperationID (e.g. `createDebt`), passed as the route's `HandlerFunc` field.
 - DTOs: `<Action>Request` / `<Action>Response` in the `dto` package.
 - Mappers: standalone functions in `mapper/`, named `<Entity>To<DTO>` or `<DTO>To<Entity>`.
 

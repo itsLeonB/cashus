@@ -28,7 +28,7 @@ func TestRegisterList_SecuredSetsBearerAuthSecurity(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/list/secured",
 		Secured:     true,
-		ServiceFunc: func(context.Context, struct{}) ([]listItemRes, error) {
+		HandlerFunc: func(context.Context, struct{}) ([]listItemRes, error) {
 			return nil, nil
 		},
 	})
@@ -46,7 +46,7 @@ func TestRegisterList_UnsecuredHasNoSecurity(t *testing.T) {
 		OperationID: "test-list-unsecured",
 		Method:      http.MethodGet,
 		Path:        "/test/list/unsecured",
-		ServiceFunc: func(context.Context, struct{}) ([]listItemRes, error) {
+		HandlerFunc: func(context.Context, struct{}) ([]listItemRes, error) {
 			return nil, nil
 		},
 	})
@@ -66,7 +66,7 @@ func TestRegisterList_BodyAndTotalCount(t *testing.T) {
 		OperationID: "test-list-body",
 		Method:      http.MethodGet,
 		Path:        "/test/list/body",
-		ServiceFunc: func(context.Context, struct{}) ([]listItemRes, error) {
+		HandlerFunc: func(context.Context, struct{}) ([]listItemRes, error) {
 			return items, nil
 		},
 	})
@@ -86,7 +86,7 @@ func TestRegisterList_ErrorPassesThroughUntouched(t *testing.T) {
 		OperationID: "test-list-error",
 		Method:      http.MethodGet,
 		Path:        "/test/list/error",
-		ServiceFunc: func(context.Context, struct{}) ([]listItemRes, error) {
+		HandlerFunc: func(context.Context, struct{}) ([]listItemRes, error) {
 			return nil, ungerr.NotFoundError("thing not found")
 		},
 	})
@@ -111,7 +111,7 @@ func TestRegisterList_PerRouteMiddlewareRuns(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/list/mw",
 		Middlewares: []func(huma.Context, func(huma.Context)){routeMW},
-		ServiceFunc: func(context.Context, struct{}) ([]listItemRes, error) {
+		HandlerFunc: func(context.Context, struct{}) ([]listItemRes, error) {
 			return nil, nil
 		},
 	})

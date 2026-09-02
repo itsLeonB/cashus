@@ -36,6 +36,20 @@ type TriggerExpenseBillParsingInput struct {
 // Routes returns every route ExpenseBillHandler exposes via
 // endpoint.Endpoint / endpoint.NoBodyEndpoint, for registration via
 // endpoint.RegisterAll.
+func (geh *ExpenseBillHandler) presignedSaveExpenseBill(ctx context.Context, in PresignedSaveExpenseBillInput) (dto.PresignedExpenseBillResponse, error) {
+	request := dto.PresignedExpenseBillRequest{
+		ProfileID:      in.ProfileID,
+		GroupExpenseID: in.GroupExpenseID,
+		Filename:       in.Body.Filename,
+	}
+
+	return geh.expenseBillService.SavePresigned(ctx, request)
+}
+
+func (geh *ExpenseBillHandler) triggerExpenseBillParsing(ctx context.Context, in TriggerExpenseBillParsingInput) (dto.ExpenseBillResponse, error) {
+	return geh.expenseBillService.TriggerParsing(ctx, in.ProfileID, in.GroupExpenseID, in.ExpenseBillID)
+}
+
 func (geh *ExpenseBillHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[PresignedSaveExpenseBillInput, dto.PresignedExpenseBillResponse]{
@@ -46,15 +60,7 @@ func (geh *ExpenseBillHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"expense-bills"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in PresignedSaveExpenseBillInput) (dto.PresignedExpenseBillResponse, error) {
-				request := dto.PresignedExpenseBillRequest{
-					ProfileID:      in.ProfileID,
-					GroupExpenseID: in.GroupExpenseID,
-					Filename:       in.Body.Filename,
-				}
-
-				return geh.expenseBillService.SavePresigned(ctx, request)
-			},
+			HandlerFunc: geh.presignedSaveExpenseBill,
 		}),
 		endpoint.New(endpoint.Endpoint[TriggerExpenseBillParsingInput, dto.ExpenseBillResponse]{
 			OperationID: "trigger-expense-bill-parsing",
@@ -64,9 +70,7 @@ func (geh *ExpenseBillHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"expense-bills"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in TriggerExpenseBillParsingInput) (dto.ExpenseBillResponse, error) {
-				return geh.expenseBillService.TriggerParsing(ctx, in.ProfileID, in.GroupExpenseID, in.ExpenseBillID)
-			},
+			HandlerFunc: geh.triggerExpenseBillParsing,
 		}),
 	}
 }

@@ -23,7 +23,7 @@ func TestRegisterNoBody_SecuredSetsBearerAuthSecurity(t *testing.T) {
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/secured",
 		Secured:     true,
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})
@@ -41,7 +41,7 @@ func TestRegisterNoBody_UnsecuredHasNoSecurity(t *testing.T) {
 		OperationID: "test-nobody-unsecured",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/unsecured",
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})
@@ -51,7 +51,7 @@ func TestRegisterNoBody_UnsecuredHasNoSecurity(t *testing.T) {
 }
 
 // TestRegisterNoBody_SuccessReturnsNoContentWithNoBody proves a successful
-// ServiceFunc call yields 204 with a genuinely empty body.
+// HandlerFunc call yields 204 with a genuinely empty body.
 func TestRegisterNoBody_SuccessReturnsNoContentWithNoBody(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
@@ -59,7 +59,7 @@ func TestRegisterNoBody_SuccessReturnsNoContentWithNoBody(t *testing.T) {
 		OperationID: "test-nobody-success",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/success",
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})
@@ -78,7 +78,7 @@ func TestRegisterNoBody_ErrorPassesThroughUntouched(t *testing.T) {
 		OperationID: "test-nobody-error",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/error",
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return ungerr.NotFoundError("thing not found")
 		},
 	})
@@ -103,7 +103,7 @@ func TestRegisterNoBody_PerRouteMiddlewareRuns(t *testing.T) {
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/mw",
 		Middlewares: []func(huma.Context, func(huma.Context)){routeMW},
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})

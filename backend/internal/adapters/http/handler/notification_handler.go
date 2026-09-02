@@ -35,6 +35,18 @@ type MarkAllNotificationsAsReadInput struct {
 // Routes returns every route NotificationHandler exposes via
 // endpoint.Endpoint/endpoint.NoBodyEndpoint, for registration via
 // endpoint.RegisterAll.
+func (nh *NotificationHandler) getUnreadNotifications(ctx context.Context, in GetUnreadNotificationsInput) ([]dto.NotificationResponse, error) {
+	return nh.notificationService.GetUnread(ctx, in.ProfileID)
+}
+
+func (nh *NotificationHandler) markNotificationAsRead(ctx context.Context, in MarkNotificationAsReadInput) error {
+	return nh.notificationService.MarkAsRead(ctx, in.ProfileID, in.NotificationID)
+}
+
+func (nh *NotificationHandler) markAllNotificationsAsRead(ctx context.Context, in MarkAllNotificationsAsReadInput) error {
+	return nh.notificationService.MarkAllAsRead(ctx, in.ProfileID)
+}
+
 func (nh *NotificationHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetUnreadNotificationsInput, []dto.NotificationResponse]{
@@ -45,9 +57,7 @@ func (nh *NotificationHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"notifications"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetUnreadNotificationsInput) ([]dto.NotificationResponse, error) {
-				return nh.notificationService.GetUnread(ctx, in.ProfileID)
-			},
+			HandlerFunc: nh.getUnreadNotifications,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[MarkNotificationAsReadInput]{
 			OperationID: "mark-notification-as-read",
@@ -56,9 +66,7 @@ func (nh *NotificationHandler) Routes() []endpoint.Registrable {
 			Summary:     "Mark a notification as read",
 			Tags:        []string{"notifications"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in MarkNotificationAsReadInput) error {
-				return nh.notificationService.MarkAsRead(ctx, in.ProfileID, in.NotificationID)
-			},
+			HandlerFunc: nh.markNotificationAsRead,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[MarkAllNotificationsAsReadInput]{
 			OperationID: "mark-all-notifications-as-read",
@@ -67,9 +75,7 @@ func (nh *NotificationHandler) Routes() []endpoint.Registrable {
 			Summary:     "Mark all notifications as read",
 			Tags:        []string{"notifications"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in MarkAllNotificationsAsReadInput) error {
-				return nh.notificationService.MarkAllAsRead(ctx, in.ProfileID)
-			},
+			HandlerFunc: nh.markAllNotificationsAsRead,
 		}),
 	}
 }

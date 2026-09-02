@@ -23,7 +23,7 @@ func TestRegisterRedirect_SecuredSetsBearerAuthSecurity(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/secured",
 		Secured:     true,
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com", nil
 		},
 	})
@@ -41,7 +41,7 @@ func TestRegisterRedirect_UnsecuredHasNoSecurity(t *testing.T) {
 		OperationID: "test-redirect-unsecured",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/unsecured",
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com", nil
 		},
 	})
@@ -51,7 +51,7 @@ func TestRegisterRedirect_UnsecuredHasNoSecurity(t *testing.T) {
 }
 
 // TestRegisterRedirect_StatusAndLocation proves the response carries
-// Status: 307 and a Location header set from ServiceFunc's returned URL.
+// Status: 307 and a Location header set from HandlerFunc's returned URL.
 func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
@@ -59,7 +59,7 @@ func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 		OperationID: "test-redirect-success",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/success",
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com/oauth", nil
 		},
 	})
@@ -86,7 +86,7 @@ func TestRegisterRedirect_ErrorPassesThroughUntouched(t *testing.T) {
 		OperationID: "test-redirect-error",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/error",
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "", ungerr.NotFoundError("thing not found")
 		},
 	})
@@ -111,7 +111,7 @@ func TestRegisterRedirect_PerRouteMiddlewareRuns(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/mw",
 		Middlewares: []func(huma.Context, func(huma.Context)){routeMW},
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com", nil
 		},
 	})

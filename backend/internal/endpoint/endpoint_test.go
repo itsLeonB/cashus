@@ -28,7 +28,7 @@ func TestRegister_SecuredSetsBearerAuthSecurity(t *testing.T) {
 		Path:        "/test/secured",
 		SuccessCode: http.StatusOK,
 		Secured:     true,
-		ServiceFunc: func(context.Context, struct{}) (struct{}, error) {
+		HandlerFunc: func(context.Context, struct{}) (struct{}, error) {
 			return struct{}{}, nil
 		},
 	})
@@ -47,7 +47,7 @@ func TestRegister_UnsecuredHasNoSecurity(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/unsecured",
 		SuccessCode: http.StatusOK,
-		ServiceFunc: func(context.Context, struct{}) (struct{}, error) {
+		HandlerFunc: func(context.Context, struct{}) (struct{}, error) {
 			return struct{}{}, nil
 		},
 	})
@@ -74,7 +74,7 @@ func TestRegister_EnvelopeWrapsBody(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/greet",
 		SuccessCode: http.StatusOK,
-		ServiceFunc: func(_ context.Context, req greetReq) (greetRes, error) {
+		HandlerFunc: func(_ context.Context, req greetReq) (greetRes, error) {
 			return greetRes{Greeting: "hello " + req.Name}, nil
 		},
 	})
@@ -88,7 +88,7 @@ func TestRegister_EnvelopeWrapsBody(t *testing.T) {
 }
 
 // TestRegister_ErrorPassesThroughUntouched proves an error returned by
-// ServiceFunc reaches the client with the same HTTP status ungerr would
+// HandlerFunc reaches the client with the same HTTP status ungerr would
 // normally produce, with no translation layer in between.
 func TestRegister_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
@@ -98,7 +98,7 @@ func TestRegister_ErrorPassesThroughUntouched(t *testing.T) {
 		Method:      http.MethodGet,
 		Path:        "/test/error",
 		SuccessCode: http.StatusOK,
-		ServiceFunc: func(context.Context, struct{}) (struct{}, error) {
+		HandlerFunc: func(context.Context, struct{}) (struct{}, error) {
 			return struct{}{}, ungerr.NotFoundError("thing not found")
 		},
 	})
@@ -128,7 +128,7 @@ func TestRegisterAll_RegistersMultipleEndpointTypes(t *testing.T) {
 			Method:      http.MethodGet,
 			Path:        "/test/all/greet",
 			SuccessCode: http.StatusOK,
-			ServiceFunc: func(_ context.Context, req greetReq) (greetRes, error) {
+			HandlerFunc: func(_ context.Context, req greetReq) (greetRes, error) {
 				return greetRes{Greeting: "hi " + req.Name}, nil
 			},
 		}),
@@ -137,7 +137,7 @@ func TestRegisterAll_RegistersMultipleEndpointTypes(t *testing.T) {
 			Method:      http.MethodGet,
 			Path:        "/test/all/echo",
 			SuccessCode: http.StatusOK,
-			ServiceFunc: func(_ context.Context, req echoReq) (echoRes, error) {
+			HandlerFunc: func(_ context.Context, req echoReq) (echoRes, error) {
 				return echoRes{Echoed: req.Value}, nil
 			},
 		}),
@@ -177,7 +177,7 @@ func TestRegister_PerRouteMiddlewareRunsAfterShared(t *testing.T) {
 		Path:        "/test/mw/order",
 		SuccessCode: http.StatusOK,
 		Middlewares: []func(huma.Context, func(huma.Context)){routeMW},
-		ServiceFunc: func(context.Context, struct{}) (struct{}, error) {
+		HandlerFunc: func(context.Context, struct{}) (struct{}, error) {
 			return struct{}{}, nil
 		},
 	}, sharedMW)
@@ -199,7 +199,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 			Method:      http.MethodGet,
 			Path:        "/test/mixed/greet",
 			SuccessCode: http.StatusOK,
-			ServiceFunc: func(_ context.Context, req greetReq) (greetRes, error) {
+			HandlerFunc: func(_ context.Context, req greetReq) (greetRes, error) {
 				return greetRes{Greeting: "hi " + req.Name}, nil
 			},
 		}),
@@ -207,7 +207,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 			OperationID: "test-mixed-nobody",
 			Method:      http.MethodDelete,
 			Path:        "/test/mixed/nobody",
-			ServiceFunc: func(context.Context, struct{}) error {
+			HandlerFunc: func(context.Context, struct{}) error {
 				return nil
 			},
 		}),
@@ -215,7 +215,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 			OperationID: "test-mixed-list",
 			Method:      http.MethodGet,
 			Path:        "/test/mixed/list",
-			ServiceFunc: func(context.Context, struct{}) ([]greetRes, error) {
+			HandlerFunc: func(context.Context, struct{}) ([]greetRes, error) {
 				return []greetRes{{Greeting: "a"}, {Greeting: "b"}}, nil
 			},
 		}),
@@ -223,7 +223,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 			OperationID: "test-mixed-redirect",
 			Method:      http.MethodGet,
 			Path:        "/test/mixed/redirect",
-			ServiceFunc: func(context.Context, struct{}) (string, error) {
+			HandlerFunc: func(context.Context, struct{}) (string, error) {
 				return "https://example.com", nil
 			},
 		}),

@@ -71,6 +71,53 @@ type SyncGroupExpenseParticipantsInput struct {
 // Routes returns every route groupExpenseHandler exposes via
 // endpoint.Endpoint / endpoint.NoBodyEndpoint, for registration via
 // endpoint.RegisterAll.
+func (geh *groupExpenseHandler) createGroupExpenseDraft(ctx context.Context, in CreateGroupExpenseDraftInput) (dto.GroupExpenseResponse, error) {
+	request := dto.NewDraftRequest{
+		UserProfileID: in.ProfileID,
+		Description:   in.Body.Description,
+		Currency:      in.Body.Currency,
+	}
+
+	return geh.groupExpenseService.CreateDraft(ctx, request)
+}
+
+func (geh *groupExpenseHandler) getGroupExpenses(ctx context.Context, in GetAllGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
+	ownership := in.Ownership
+	if ownership == "" {
+		ownership = expenses.OwnedExpense
+	}
+
+	return geh.groupExpenseService.GetAll(ctx, in.ProfileID, ownership, in.Status)
+}
+
+func (geh *groupExpenseHandler) getGroupExpenseDetails(ctx context.Context, in GetGroupExpenseDetailsInput) (dto.GroupExpenseResponse, error) {
+	return geh.groupExpenseService.GetDetails(ctx, in.GroupExpenseID, in.ProfileID)
+}
+
+func (geh *groupExpenseHandler) confirmGroupExpenseDraft(ctx context.Context, in ConfirmGroupExpenseDraftInput) (dto.ExpenseConfirmationResponse, error) {
+	return geh.groupExpenseService.ConfirmDraft(ctx, in.GroupExpenseID, in.ProfileID, in.DryRun)
+}
+
+func (geh *groupExpenseHandler) getRecentGroupExpenses(ctx context.Context, in GetRecentGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
+	return geh.groupExpenseService.GetRecent(ctx, in.ProfileID)
+}
+
+func (geh *groupExpenseHandler) deleteGroupExpense(ctx context.Context, in DeleteGroupExpenseInput) error {
+	return geh.groupExpenseService.Delete(ctx, in.ProfileID, in.GroupExpenseID)
+}
+
+func (geh *groupExpenseHandler) syncGroupExpenseParticipants(ctx context.Context, in SyncGroupExpenseParticipantsInput) error {
+	request := dto.ExpenseParticipantsRequest{
+		ParticipantProfileIDs: in.Body.ParticipantProfileIDs,
+		ProxyByProfileIDs:     in.Body.ProxyByProfileIDs,
+		PayerProfileID:        in.Body.PayerProfileID,
+		UserProfileID:         in.ProfileID,
+		GroupExpenseID:        in.GroupExpenseID,
+	}
+
+	return geh.groupExpenseService.SyncParticipants(ctx, request)
+}
+
 func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[CreateGroupExpenseDraftInput, dto.GroupExpenseResponse]{
@@ -81,15 +128,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"group-expenses"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in CreateGroupExpenseDraftInput) (dto.GroupExpenseResponse, error) {
-				request := dto.NewDraftRequest{
-					UserProfileID: in.ProfileID,
-					Description:   in.Body.Description,
-					Currency:      in.Body.Currency,
-				}
-
-				return geh.groupExpenseService.CreateDraft(ctx, request)
-			},
+			HandlerFunc: geh.createGroupExpenseDraft,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAllGroupExpensesInput, []dto.GroupExpenseResponse]{
 			OperationID: "get-group-expenses",
@@ -99,14 +138,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"group-expenses"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
-				ownership := in.Ownership
-				if ownership == "" {
-					ownership = expenses.OwnedExpense
-				}
-
-				return geh.groupExpenseService.GetAll(ctx, in.ProfileID, ownership, in.Status)
-			},
+			HandlerFunc: geh.getGroupExpenses,
 		}),
 		endpoint.New(endpoint.Endpoint[GetGroupExpenseDetailsInput, dto.GroupExpenseResponse]{
 			OperationID: "get-group-expense-details",
@@ -116,9 +148,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"group-expenses"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetGroupExpenseDetailsInput) (dto.GroupExpenseResponse, error) {
-				return geh.groupExpenseService.GetDetails(ctx, in.GroupExpenseID, in.ProfileID)
-			},
+			HandlerFunc: geh.getGroupExpenseDetails,
 		}),
 		endpoint.New(endpoint.Endpoint[ConfirmGroupExpenseDraftInput, dto.ExpenseConfirmationResponse]{
 			OperationID: "confirm-group-expense-draft",
@@ -128,9 +158,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"group-expenses"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in ConfirmGroupExpenseDraftInput) (dto.ExpenseConfirmationResponse, error) {
-				return geh.groupExpenseService.ConfirmDraft(ctx, in.GroupExpenseID, in.ProfileID, in.DryRun)
-			},
+			HandlerFunc: geh.confirmGroupExpenseDraft,
 		}),
 		endpoint.New(endpoint.Endpoint[GetRecentGroupExpensesInput, []dto.GroupExpenseResponse]{
 			OperationID: "get-recent-group-expenses",
@@ -140,9 +168,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"group-expenses"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetRecentGroupExpensesInput) ([]dto.GroupExpenseResponse, error) {
-				return geh.groupExpenseService.GetRecent(ctx, in.ProfileID)
-			},
+			HandlerFunc: geh.getRecentGroupExpenses,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[DeleteGroupExpenseInput]{
 			OperationID: "delete-group-expense",
@@ -151,9 +177,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Summary:     "Delete a group expense",
 			Tags:        []string{"group-expenses"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in DeleteGroupExpenseInput) error {
-				return geh.groupExpenseService.Delete(ctx, in.ProfileID, in.GroupExpenseID)
-			},
+			HandlerFunc: geh.deleteGroupExpense,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SyncGroupExpenseParticipantsInput]{
 			OperationID: "sync-group-expense-participants",
@@ -162,17 +186,7 @@ func (geh *groupExpenseHandler) Routes() []endpoint.Registrable {
 			Summary:     "Sync participants of a group expense",
 			Tags:        []string{"group-expenses"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in SyncGroupExpenseParticipantsInput) error {
-				request := dto.ExpenseParticipantsRequest{
-					ParticipantProfileIDs: in.Body.ParticipantProfileIDs,
-					ProxyByProfileIDs:     in.Body.ProxyByProfileIDs,
-					PayerProfileID:        in.Body.PayerProfileID,
-					UserProfileID:         in.ProfileID,
-					GroupExpenseID:        in.GroupExpenseID,
-				}
-
-				return geh.groupExpenseService.SyncParticipants(ctx, request)
-			},
+			HandlerFunc: geh.syncGroupExpenseParticipants,
 		}),
 	}
 }

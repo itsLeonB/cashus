@@ -57,6 +57,39 @@ type GetFeeCalculationMethodsInput struct {
 
 // Routes returns every route OtherFeeHandler exposes via endpoint.Endpoint /
 // endpoint.NoBodyEndpoint, for registration via endpoint.RegisterAll.
+func (geh *OtherFeeHandler) addOtherFee(ctx context.Context, in AddOtherFeeInput) (dto.OtherFeeResponse, error) {
+	request := dto.NewOtherFeeRequest{
+		UserProfileID:     in.ProfileID,
+		GroupExpenseID:    in.GroupExpenseID,
+		Name:              in.Body.Name,
+		Amount:            in.Body.Amount.Decimal,
+		CalculationMethod: in.Body.CalculationMethod,
+	}
+
+	return geh.otherFeeSvc.Add(ctx, request)
+}
+
+func (geh *OtherFeeHandler) updateOtherFee(ctx context.Context, in UpdateOtherFeeInput) (dto.OtherFeeResponse, error) {
+	request := dto.UpdateOtherFeeRequest{
+		UserProfileID:     in.ProfileID,
+		ID:                in.OtherFeeID,
+		GroupExpenseID:    in.GroupExpenseID,
+		Name:              in.Body.Name,
+		Amount:            in.Body.Amount.Decimal,
+		CalculationMethod: in.Body.CalculationMethod,
+	}
+
+	return geh.otherFeeSvc.Update(ctx, request)
+}
+
+func (geh *OtherFeeHandler) getFeeCalculationMethods(ctx context.Context, in GetFeeCalculationMethodsInput) ([]dto.FeeCalculationMethodInfo, error) {
+	return geh.otherFeeSvc.GetCalculationMethods(), nil
+}
+
+func (geh *OtherFeeHandler) removeOtherFee(ctx context.Context, in RemoveOtherFeeInput) error {
+	return geh.otherFeeSvc.Remove(ctx, in.GroupExpenseID, in.OtherFeeID, in.ProfileID)
+}
+
 func (geh *OtherFeeHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[AddOtherFeeInput, dto.OtherFeeResponse]{
@@ -67,17 +100,7 @@ func (geh *OtherFeeHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"other-fees"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in AddOtherFeeInput) (dto.OtherFeeResponse, error) {
-				request := dto.NewOtherFeeRequest{
-					UserProfileID:     in.ProfileID,
-					GroupExpenseID:    in.GroupExpenseID,
-					Name:              in.Body.Name,
-					Amount:            in.Body.Amount.Decimal,
-					CalculationMethod: in.Body.CalculationMethod,
-				}
-
-				return geh.otherFeeSvc.Add(ctx, request)
-			},
+			HandlerFunc: geh.addOtherFee,
 		}),
 		endpoint.New(endpoint.Endpoint[UpdateOtherFeeInput, dto.OtherFeeResponse]{
 			OperationID: "update-other-fee",
@@ -87,18 +110,7 @@ func (geh *OtherFeeHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"other-fees"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UpdateOtherFeeInput) (dto.OtherFeeResponse, error) {
-				request := dto.UpdateOtherFeeRequest{
-					UserProfileID:     in.ProfileID,
-					ID:                in.OtherFeeID,
-					GroupExpenseID:    in.GroupExpenseID,
-					Name:              in.Body.Name,
-					Amount:            in.Body.Amount.Decimal,
-					CalculationMethod: in.Body.CalculationMethod,
-				}
-
-				return geh.otherFeeSvc.Update(ctx, request)
-			},
+			HandlerFunc: geh.updateOtherFee,
 		}),
 		endpoint.New(endpoint.Endpoint[GetFeeCalculationMethodsInput, []dto.FeeCalculationMethodInfo]{
 			OperationID: "get-fee-calculation-methods",
@@ -108,9 +120,7 @@ func (geh *OtherFeeHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"other-fees"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetFeeCalculationMethodsInput) ([]dto.FeeCalculationMethodInfo, error) {
-				return geh.otherFeeSvc.GetCalculationMethods(), nil
-			},
+			HandlerFunc: geh.getFeeCalculationMethods,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[RemoveOtherFeeInput]{
 			OperationID: "remove-other-fee",
@@ -119,9 +129,7 @@ func (geh *OtherFeeHandler) Routes() []endpoint.Registrable {
 			Summary:     "Remove a fee from a group expense",
 			Tags:        []string{"other-fees"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in RemoveOtherFeeInput) error {
-				return geh.otherFeeSvc.Remove(ctx, in.GroupExpenseID, in.OtherFeeID, in.ProfileID)
-			},
+			HandlerFunc: geh.removeOtherFee,
 		}),
 	}
 }

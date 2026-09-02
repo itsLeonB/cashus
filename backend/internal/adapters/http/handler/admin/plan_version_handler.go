@@ -63,6 +63,51 @@ type DeletePlanVersionInput struct {
 
 // Routes returns every route PlanVersionHandler exposes via
 // endpoint.Endpoint, for registration via endpoint.RegisterAll.
+func (pvh *PlanVersionHandler) getAdminPlanVersions(ctx context.Context, in GetPlanVersionListInput) ([]dto.PlanVersionResponse, error) {
+	return pvh.svc.GetList(ctx)
+}
+
+func (pvh *PlanVersionHandler) createAdminPlanVersion(ctx context.Context, in CreatePlanVersionInput) (dto.PlanVersionResponse, error) {
+	request := dto.NewPlanVersionRequest{
+		PlanID:             in.Body.PlanID,
+		PriceAmount:        in.Body.PriceAmount.Decimal,
+		PriceCurrency:      in.Body.PriceCurrency,
+		BillingInterval:    in.Body.BillingInterval,
+		BillUploadsDaily:   in.Body.BillUploadsDaily,
+		BillUploadsMonthly: in.Body.BillUploadsMonthly,
+		EffectiveFrom:      in.Body.EffectiveFrom,
+		EffectiveTo:        in.Body.EffectiveTo,
+		IsDefault:          in.Body.IsDefault,
+	}
+
+	return pvh.svc.Create(ctx, request)
+}
+
+func (pvh *PlanVersionHandler) getAdminPlanVersion(ctx context.Context, in GetPlanVersionInput) (dto.PlanVersionResponse, error) {
+	return pvh.svc.GetOne(ctx, in.PlanVersionID)
+}
+
+func (pvh *PlanVersionHandler) updateAdminPlanVersion(ctx context.Context, in UpdatePlanVersionInput) (dto.PlanVersionResponse, error) {
+	request := dto.UpdatePlanVersionRequest{
+		ID:                 in.PlanVersionID,
+		PlanID:             in.Body.PlanID,
+		PriceAmount:        in.Body.PriceAmount.Decimal,
+		PriceCurrency:      in.Body.PriceCurrency,
+		BillingInterval:    in.Body.BillingInterval,
+		BillUploadsDaily:   in.Body.BillUploadsDaily,
+		BillUploadsMonthly: in.Body.BillUploadsMonthly,
+		EffectiveFrom:      in.Body.EffectiveFrom,
+		EffectiveTo:        in.Body.EffectiveTo,
+		IsDefault:          in.Body.IsDefault,
+	}
+
+	return pvh.svc.Update(ctx, request)
+}
+
+func (pvh *PlanVersionHandler) deleteAdminPlanVersion(ctx context.Context, in DeletePlanVersionInput) (dto.PlanVersionResponse, error) {
+	return pvh.svc.Delete(ctx, in.PlanVersionID)
+}
+
 func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.NewList(endpoint.ListEndpoint[GetPlanVersionListInput, dto.PlanVersionResponse]{
@@ -72,9 +117,7 @@ func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
 			Summary:     "Get all plan versions",
 			Tags:        []string{"admin-plan-versions"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetPlanVersionListInput) ([]dto.PlanVersionResponse, error) {
-				return pvh.svc.GetList(ctx)
-			},
+			HandlerFunc: pvh.getAdminPlanVersions,
 		}),
 		endpoint.New(endpoint.Endpoint[CreatePlanVersionInput, dto.PlanVersionResponse]{
 			OperationID: "create-admin-plan-version",
@@ -84,21 +127,7 @@ func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plan-versions"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in CreatePlanVersionInput) (dto.PlanVersionResponse, error) {
-				request := dto.NewPlanVersionRequest{
-					PlanID:             in.Body.PlanID,
-					PriceAmount:        in.Body.PriceAmount.Decimal,
-					PriceCurrency:      in.Body.PriceCurrency,
-					BillingInterval:    in.Body.BillingInterval,
-					BillUploadsDaily:   in.Body.BillUploadsDaily,
-					BillUploadsMonthly: in.Body.BillUploadsMonthly,
-					EffectiveFrom:      in.Body.EffectiveFrom,
-					EffectiveTo:        in.Body.EffectiveTo,
-					IsDefault:          in.Body.IsDefault,
-				}
-
-				return pvh.svc.Create(ctx, request)
-			},
+			HandlerFunc: pvh.createAdminPlanVersion,
 		}),
 		endpoint.New(endpoint.Endpoint[GetPlanVersionInput, dto.PlanVersionResponse]{
 			OperationID: "get-admin-plan-version",
@@ -108,9 +137,7 @@ func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plan-versions"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetPlanVersionInput) (dto.PlanVersionResponse, error) {
-				return pvh.svc.GetOne(ctx, in.PlanVersionID)
-			},
+			HandlerFunc: pvh.getAdminPlanVersion,
 		}),
 		endpoint.New(endpoint.Endpoint[UpdatePlanVersionInput, dto.PlanVersionResponse]{
 			OperationID: "update-admin-plan-version",
@@ -120,22 +147,7 @@ func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plan-versions"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UpdatePlanVersionInput) (dto.PlanVersionResponse, error) {
-				request := dto.UpdatePlanVersionRequest{
-					ID:                 in.PlanVersionID,
-					PlanID:             in.Body.PlanID,
-					PriceAmount:        in.Body.PriceAmount.Decimal,
-					PriceCurrency:      in.Body.PriceCurrency,
-					BillingInterval:    in.Body.BillingInterval,
-					BillUploadsDaily:   in.Body.BillUploadsDaily,
-					BillUploadsMonthly: in.Body.BillUploadsMonthly,
-					EffectiveFrom:      in.Body.EffectiveFrom,
-					EffectiveTo:        in.Body.EffectiveTo,
-					IsDefault:          in.Body.IsDefault,
-				}
-
-				return pvh.svc.Update(ctx, request)
-			},
+			HandlerFunc: pvh.updateAdminPlanVersion,
 		}),
 		endpoint.New(endpoint.Endpoint[DeletePlanVersionInput, dto.PlanVersionResponse]{
 			OperationID: "delete-admin-plan-version",
@@ -145,9 +157,7 @@ func (pvh *PlanVersionHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plan-versions"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in DeletePlanVersionInput) (dto.PlanVersionResponse, error) {
-				return pvh.svc.Delete(ctx, in.PlanVersionID)
-			},
+			HandlerFunc: pvh.deleteAdminPlanVersion,
 		}),
 	}
 }

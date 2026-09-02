@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/message"
-	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/mocks"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -28,13 +27,13 @@ func TestMain(m *testing.M) {
 
 func newTestGroupExpenseService(
 	t *testing.T,
-) (service.GroupExpenseService, *mocks.MockGroupExpenseRepository, *mocks.MockRepository[expenses.ExpenseBill], *mocks.MockTransactor, *mocks.MockClient) {
+) (GroupExpenseService, *mocks.MockGroupExpenseRepository, *mocks.MockRepository[expenses.ExpenseBill], *mocks.MockTransactor, *mocks.MockClient) {
 	expenseRepo := mocks.NewMockGroupExpenseRepository(t)
 	billRepo := mocks.NewMockRepository[expenses.ExpenseBill](t)
 	transactor := mocks.NewMockTransactor(t)
 	langfuseClient := mocks.NewMockClient(t)
 
-	svc := service.NewGroupExpenseService(
+	svc := NewGroupExpenseService(
 		nil, // friendshipService (unused)
 		expenseRepo,
 		transactor,

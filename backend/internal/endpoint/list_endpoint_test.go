@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +22,7 @@ type listItemRes struct {
 func TestRegisterList_SecuredSetsBearerAuthSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterList(api, endpoint.ListEndpoint[struct{}, listItemRes]{
+	RegisterList(api, ListEndpoint[struct{}, listItemRes]{
 		OperationID: "test-list-secured",
 		Method:      http.MethodGet,
 		Path:        "/test/list/secured",
@@ -42,7 +41,7 @@ func TestRegisterList_SecuredSetsBearerAuthSecurity(t *testing.T) {
 func TestRegisterList_UnsecuredHasNoSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterList(api, endpoint.ListEndpoint[struct{}, listItemRes]{
+	RegisterList(api, ListEndpoint[struct{}, listItemRes]{
 		OperationID: "test-list-unsecured",
 		Method:      http.MethodGet,
 		Path:        "/test/list/unsecured",
@@ -62,7 +61,7 @@ func TestRegisterList_BodyAndTotalCount(t *testing.T) {
 
 	items := []listItemRes{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
-	endpoint.RegisterList(api, endpoint.ListEndpoint[struct{}, listItemRes]{
+	RegisterList(api, ListEndpoint[struct{}, listItemRes]{
 		OperationID: "test-list-body",
 		Method:      http.MethodGet,
 		Path:        "/test/list/body",
@@ -82,7 +81,7 @@ func TestRegisterList_BodyAndTotalCount(t *testing.T) {
 func TestRegisterList_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterList(api, endpoint.ListEndpoint[struct{}, listItemRes]{
+	RegisterList(api, ListEndpoint[struct{}, listItemRes]{
 		OperationID: "test-list-error",
 		Method:      http.MethodGet,
 		Path:        "/test/list/error",
@@ -106,7 +105,7 @@ func TestRegisterList_PerRouteMiddlewareRuns(t *testing.T) {
 		next(ctx)
 	}
 
-	endpoint.RegisterList(api, endpoint.ListEndpoint[struct{}, listItemRes]{
+	RegisterList(api, ListEndpoint[struct{}, listItemRes]{
 		OperationID: "test-list-mw",
 		Method:      http.MethodGet,
 		Path:        "/test/list/mw",

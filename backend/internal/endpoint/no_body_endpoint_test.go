@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +17,7 @@ import (
 func TestRegisterNoBody_SecuredSetsBearerAuthSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-secured",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/secured",
@@ -37,7 +36,7 @@ func TestRegisterNoBody_SecuredSetsBearerAuthSecurity(t *testing.T) {
 func TestRegisterNoBody_UnsecuredHasNoSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-unsecured",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/unsecured",
@@ -55,7 +54,7 @@ func TestRegisterNoBody_UnsecuredHasNoSecurity(t *testing.T) {
 func TestRegisterNoBody_SuccessReturnsNoContentWithNoBody(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-success",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/success",
@@ -74,7 +73,7 @@ func TestRegisterNoBody_SuccessReturnsNoContentWithNoBody(t *testing.T) {
 func TestRegisterNoBody_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-error",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/error",
@@ -98,7 +97,7 @@ func TestRegisterNoBody_PerRouteMiddlewareRuns(t *testing.T) {
 		next(ctx)
 	}
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-mw",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/mw",

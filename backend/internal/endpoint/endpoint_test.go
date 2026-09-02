@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +21,7 @@ import (
 func TestRegister_SecuredSetsBearerAuthSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.Register(api, endpoint.Endpoint[struct{}, struct{}]{
+	Register(api, Endpoint[struct{}, struct{}]{
 		OperationID: "test-secured",
 		Method:      http.MethodGet,
 		Path:        "/test/secured",
@@ -42,7 +41,7 @@ func TestRegister_SecuredSetsBearerAuthSecurity(t *testing.T) {
 func TestRegister_UnsecuredHasNoSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.Register(api, endpoint.Endpoint[struct{}, struct{}]{
+	Register(api, Endpoint[struct{}, struct{}]{
 		OperationID: "test-unsecured",
 		Method:      http.MethodGet,
 		Path:        "/test/unsecured",
@@ -69,7 +68,7 @@ type greetRes struct {
 func TestRegister_EnvelopeWrapsBody(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.Register(api, endpoint.Endpoint[greetReq, greetRes]{
+	Register(api, Endpoint[greetReq, greetRes]{
 		OperationID: "test-greet",
 		Method:      http.MethodGet,
 		Path:        "/test/greet",
@@ -93,7 +92,7 @@ func TestRegister_EnvelopeWrapsBody(t *testing.T) {
 func TestRegister_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.Register(api, endpoint.Endpoint[struct{}, struct{}]{
+	Register(api, Endpoint[struct{}, struct{}]{
 		OperationID: "test-error",
 		Method:      http.MethodGet,
 		Path:        "/test/error",
@@ -122,8 +121,8 @@ type echoRes struct {
 func TestRegisterAll_RegistersMultipleEndpointTypes(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	routes := []endpoint.Registrable{
-		endpoint.New(endpoint.Endpoint[greetReq, greetRes]{
+	routes := []Registrable{
+		New(Endpoint[greetReq, greetRes]{
 			OperationID: "test-all-greet",
 			Method:      http.MethodGet,
 			Path:        "/test/all/greet",
@@ -132,7 +131,7 @@ func TestRegisterAll_RegistersMultipleEndpointTypes(t *testing.T) {
 				return greetRes{Greeting: "hi " + req.Name}, nil
 			},
 		}),
-		endpoint.New(endpoint.Endpoint[echoReq, echoRes]{
+		New(Endpoint[echoReq, echoRes]{
 			OperationID: "test-all-echo",
 			Method:      http.MethodGet,
 			Path:        "/test/all/echo",
@@ -143,7 +142,7 @@ func TestRegisterAll_RegistersMultipleEndpointTypes(t *testing.T) {
 		}),
 	}
 
-	endpoint.RegisterAll(api, routes)
+	RegisterAll(api, routes)
 
 	greetResp := api.Get("/test/all/greet?name=there")
 	assert.Equal(t, http.StatusOK, greetResp.Code)
@@ -171,7 +170,7 @@ func TestRegister_PerRouteMiddlewareRunsAfterShared(t *testing.T) {
 		next(ctx)
 	}
 
-	endpoint.Register(api, endpoint.Endpoint[struct{}, struct{}]{
+	Register(api, Endpoint[struct{}, struct{}]{
 		OperationID: "test-mw-order",
 		Method:      http.MethodGet,
 		Path:        "/test/mw/order",
@@ -193,8 +192,8 @@ func TestRegister_PerRouteMiddlewareRunsAfterShared(t *testing.T) {
 func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	routes := []endpoint.Registrable{
-		endpoint.New(endpoint.Endpoint[greetReq, greetRes]{
+	routes := []Registrable{
+		New(Endpoint[greetReq, greetRes]{
 			OperationID: "test-mixed-greet",
 			Method:      http.MethodGet,
 			Path:        "/test/mixed/greet",
@@ -203,7 +202,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 				return greetRes{Greeting: "hi " + req.Name}, nil
 			},
 		}),
-		endpoint.NewNoBody(endpoint.NoBodyEndpoint[struct{}]{
+		NewNoBody(NoBodyEndpoint[struct{}]{
 			OperationID: "test-mixed-nobody",
 			Method:      http.MethodDelete,
 			Path:        "/test/mixed/nobody",
@@ -211,7 +210,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 				return nil
 			},
 		}),
-		endpoint.NewList(endpoint.ListEndpoint[struct{}, greetRes]{
+		NewList(ListEndpoint[struct{}, greetRes]{
 			OperationID: "test-mixed-list",
 			Method:      http.MethodGet,
 			Path:        "/test/mixed/list",
@@ -219,7 +218,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 				return []greetRes{{Greeting: "a"}, {Greeting: "b"}}, nil
 			},
 		}),
-		endpoint.NewRedirect(endpoint.RedirectEndpoint[struct{}]{
+		NewRedirect(RedirectEndpoint[struct{}]{
 			OperationID: "test-mixed-redirect",
 			Method:      http.MethodGet,
 			Path:        "/test/mixed/redirect",
@@ -229,7 +228,7 @@ func TestRegisterAll_MixedEndpointTypes(t *testing.T) {
 		}),
 	}
 
-	endpoint.RegisterAll(api, routes)
+	RegisterAll(api, routes)
 
 	greetResp := api.Get("/test/mixed/greet?name=there")
 	assert.Equal(t, http.StatusOK, greetResp.Code)

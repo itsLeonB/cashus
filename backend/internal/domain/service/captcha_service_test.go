@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"context"
@@ -7,13 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTurnstileService_EmptyKey_ReturnsNoop(t *testing.T) {
-	svc := service.NewTurnstileService("")
+	svc := NewTurnstileService("")
 	err := svc.Verify(context.Background(), "any-token")
 	assert.NoError(t, err)
 }
@@ -26,7 +25,7 @@ func TestTurnstileService_Verify_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	svc := service.NewTurnstileServiceWithURL("test-secret", srv.URL)
+	svc := NewTurnstileServiceWithURL("test-secret", srv.URL)
 	err := svc.Verify(context.Background(), "valid-token")
 	assert.NoError(t, err)
 }
@@ -37,7 +36,7 @@ func TestTurnstileService_Verify_Failure(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	svc := service.NewTurnstileServiceWithURL("test-secret", srv.URL)
+	svc := NewTurnstileServiceWithURL("test-secret", srv.URL)
 	err := svc.Verify(context.Background(), "invalid-token")
 
 	assert.Error(t, err)
@@ -47,7 +46,7 @@ func TestTurnstileService_Verify_Failure(t *testing.T) {
 }
 
 func TestTurnstileService_Verify_NetworkError(t *testing.T) {
-	svc := service.NewTurnstileServiceWithURL("test-secret", "http://localhost:1")
+	svc := NewTurnstileServiceWithURL("test-secret", "http://localhost:1")
 	err := svc.Verify(context.Background(), "token")
 	assert.Error(t, err)
 }
@@ -58,7 +57,7 @@ func TestTurnstileService_Verify_NonOKStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	svc := service.NewTurnstileServiceWithURL("test-secret", srv.URL)
+	svc := NewTurnstileServiceWithURL("test-secret", srv.URL)
 	err := svc.Verify(context.Background(), "token")
 	assert.Error(t, err)
 }

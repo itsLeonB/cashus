@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +17,7 @@ import (
 func TestRegisterRedirect_SecuredSetsBearerAuthSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-secured",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/secured",
@@ -37,7 +36,7 @@ func TestRegisterRedirect_SecuredSetsBearerAuthSecurity(t *testing.T) {
 func TestRegisterRedirect_UnsecuredHasNoSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-unsecured",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/unsecured",
@@ -55,7 +54,7 @@ func TestRegisterRedirect_UnsecuredHasNoSecurity(t *testing.T) {
 func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-success",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/success",
@@ -82,7 +81,7 @@ func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 func TestRegisterRedirect_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-error",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/error",
@@ -106,7 +105,7 @@ func TestRegisterRedirect_PerRouteMiddlewareRuns(t *testing.T) {
 		next(ctx)
 	}
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-mw",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/mw",

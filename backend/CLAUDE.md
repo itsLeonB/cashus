@@ -63,7 +63,7 @@ internal/
 ### Testing
 
 - Tests use `testify/assert`.
-- Test files use same package (e.g., `package middlewares`) with `_test.go` file suffix.
+- Test files use the `_test.go` suffix. Use the same package (e.g. `package middlewares`) when the test needs access to unexported symbols; otherwise use the external `<package>_test` package (e.g. `package service_test`) to test only the public interface.
 - Use `github.com/vektra/mockery` for generating mocks.
 
 ### Dependencies (key libraries)

@@ -28,6 +28,9 @@ type CreateDebtInput struct {
 		Amount           httpapi.Decimal              `json:"amount"`
 		TransferMethodID uuid.UUID                    `json:"transferMethodId"`
 		Description      string                       `json:"description,omitempty"`
+		// TransactionDate is an optional "YYYY-MM-DD" date. Omitted -> defaults to
+		// today's date (server date). Validated in DebtService.RecordNewTransaction.
+		TransactionDate string `json:"transactionDate,omitempty" format:"date"`
 	}
 }
 
@@ -54,6 +57,7 @@ func (dh *DebtHandler) createDebt(ctx context.Context, in CreateDebtInput) (dto.
 		Amount:           in.Body.Amount.Decimal,
 		TransferMethodID: in.Body.TransferMethodID,
 		Description:      in.Body.Description,
+		TransactionDate:  in.Body.TransactionDate,
 	}
 
 	return dh.debtService.RecordNewTransaction(ctx, request)

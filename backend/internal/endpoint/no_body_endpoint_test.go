@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,12 +17,12 @@ import (
 func TestRegisterNoBody_SecuredSetsBearerAuthSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-secured",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/secured",
 		Secured:     true,
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})
@@ -37,11 +36,11 @@ func TestRegisterNoBody_SecuredSetsBearerAuthSecurity(t *testing.T) {
 func TestRegisterNoBody_UnsecuredHasNoSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-unsecured",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/unsecured",
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})
@@ -51,15 +50,15 @@ func TestRegisterNoBody_UnsecuredHasNoSecurity(t *testing.T) {
 }
 
 // TestRegisterNoBody_SuccessReturnsNoContentWithNoBody proves a successful
-// ServiceFunc call yields 204 with a genuinely empty body.
+// HandlerFunc call yields 204 with a genuinely empty body.
 func TestRegisterNoBody_SuccessReturnsNoContentWithNoBody(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-success",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/success",
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})
@@ -74,11 +73,11 @@ func TestRegisterNoBody_SuccessReturnsNoContentWithNoBody(t *testing.T) {
 func TestRegisterNoBody_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-error",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/error",
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return ungerr.NotFoundError("thing not found")
 		},
 	})
@@ -98,12 +97,12 @@ func TestRegisterNoBody_PerRouteMiddlewareRuns(t *testing.T) {
 		next(ctx)
 	}
 
-	endpoint.RegisterNoBody(api, endpoint.NoBodyEndpoint[struct{}]{
+	RegisterNoBody(api, NoBodyEndpoint[struct{}]{
 		OperationID: "test-nobody-mw",
 		Method:      http.MethodDelete,
 		Path:        "/test/nobody/mw",
 		Middlewares: []func(huma.Context, func(huma.Context)){routeMW},
-		ServiceFunc: func(context.Context, struct{}) error {
+		HandlerFunc: func(context.Context, struct{}) error {
 			return nil
 		},
 	})

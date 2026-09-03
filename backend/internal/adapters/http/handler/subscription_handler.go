@@ -28,6 +28,20 @@ type GetSubscribedDetailsInput struct {
 
 // Routes returns every route SubscriptionHandler exposes, for registration
 // via endpoint.RegisterAll.
+func (sh *SubscriptionHandler) createSubscriptionPurchase(ctx context.Context, in CreateSubscriptionPurchaseInput) (dto.PaymentResponse, error) {
+	req := dto.PurchaseSubscriptionRequest{
+		ProfileID:     in.ProfileID,
+		PlanID:        in.PlanID,
+		PlanVersionID: in.PlanVersionID,
+	}
+
+	return sh.paymentSvc.NewPurchase(ctx, req)
+}
+
+func (sh *SubscriptionHandler) getSubscribedDetails(ctx context.Context, in GetSubscribedDetailsInput) (dto.SubscriptionResponse, error) {
+	return sh.svc.GetSubscribedDetails(ctx, in.ProfileID)
+}
+
 func (sh *SubscriptionHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[CreateSubscriptionPurchaseInput, dto.PaymentResponse]{
@@ -38,15 +52,7 @@ func (sh *SubscriptionHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"subscriptions"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in CreateSubscriptionPurchaseInput) (dto.PaymentResponse, error) {
-				req := dto.PurchaseSubscriptionRequest{
-					ProfileID:     in.ProfileID,
-					PlanID:        in.PlanID,
-					PlanVersionID: in.PlanVersionID,
-				}
-
-				return sh.paymentSvc.NewPurchase(ctx, req)
-			},
+			HandlerFunc: sh.createSubscriptionPurchase,
 		}),
 		endpoint.New(endpoint.Endpoint[GetSubscribedDetailsInput, dto.SubscriptionResponse]{
 			OperationID: "get-subscribed-details",
@@ -56,9 +62,7 @@ func (sh *SubscriptionHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"subscriptions"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetSubscribedDetailsInput) (dto.SubscriptionResponse, error) {
-				return sh.svc.GetSubscribedDetails(ctx, in.ProfileID)
-			},
+			HandlerFunc: sh.getSubscribedDetails,
 		}),
 	}
 }

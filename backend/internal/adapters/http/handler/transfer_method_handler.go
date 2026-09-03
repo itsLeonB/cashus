@@ -26,6 +26,10 @@ type GetAllTransferMethodsInput struct {
 
 // Routes returns every route TransferMethodHandler exposes, for registration
 // via endpoint.RegisterAll.
+func (tmh *TransferMethodHandler) getTransferMethods(ctx context.Context, in GetAllTransferMethodsInput) ([]dto.TransferMethodResponse, error) {
+	return tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(in.Status), in.ProfileID)
+}
+
 func (tmh *TransferMethodHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetAllTransferMethodsInput, []dto.TransferMethodResponse]{
@@ -36,9 +40,7 @@ func (tmh *TransferMethodHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"transfer-methods"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllTransferMethodsInput) ([]dto.TransferMethodResponse, error) {
-				return tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(in.Status), in.ProfileID)
-			},
+			HandlerFunc: tmh.getTransferMethods,
 		}),
 	}
 }

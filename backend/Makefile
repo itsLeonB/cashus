@@ -4,6 +4,7 @@ http-hot \
 worker \
 worker-hot \
 job \
+wire \
 lint \
 vulncheck \
 test \
@@ -21,6 +22,7 @@ help:
 	@echo "  make worker                  - Start the worker"
 	@echo "  make worker-hot              - Start the worker with hot reload (requires air)"
 	@echo "  make job                     - Run migrations + asset sync (production)"
+	@echo "  make wire                    - Regenerate internal/provider/wire_gen.go"
 	@echo "  make lint                    - Run golangci-lint on the codebase"
 	@echo "  make vulncheck               - Run govulncheck for known vulnerabilities"
 	@echo "  make test                    - Run all tests"
@@ -45,6 +47,9 @@ worker-hot:
 
 job:
 	go run -tags job ./cmd/job
+
+wire:
+	go generate ./internal/provider/...
 
 lint:
 	go vet ./...

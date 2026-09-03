@@ -106,6 +106,11 @@ func (ah *AuthHandler) getMe(ctx context.Context, userID uuid.UUID) (dto.AdminMe
 // returned separately (RegisterRoutes/LoginRoutes): they're unauthenticated
 // with different per-route middleware (bootstrap-only / login rate
 // limiting), so they can't share this Secured-true group's middleware.
+// getAdminMe delegates to ah.getMe.
+func (ah *AuthHandler) getAdminMe(ctx context.Context, in GetAdminMeInput) (dto.AdminMe, error) {
+	return ah.getMe(ctx, in.UserID)
+}
+
 func (ah *AuthHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetAdminMeInput, dto.AdminMe]{
@@ -116,9 +121,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-auth"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAdminMeInput) (dto.AdminMe, error) {
-				return ah.getMe(ctx, in.UserID)
-			},
+			HandlerFunc: ah.getAdminMe,
 		}),
 	}
 }
@@ -137,7 +140,7 @@ func (ah *AuthHandler) RegisterRoutes() []endpoint.Registrable {
 			Summary:     "Register a new admin user",
 			Tags:        []string{"admin-auth"},
 			SuccessCode: http.StatusCreated,
-			ServiceFunc: ah.register,
+			HandlerFunc: ah.register,
 		}),
 	}
 }
@@ -154,7 +157,7 @@ func (ah *AuthHandler) LoginRoutes() []endpoint.Registrable {
 			Summary:     "Login as an admin user",
 			Tags:        []string{"admin-auth"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: ah.login,
+			HandlerFunc: ah.login,
 		}),
 	}
 }

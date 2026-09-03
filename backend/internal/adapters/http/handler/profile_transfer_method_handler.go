@@ -24,11 +24,15 @@ type AddProfileTransferMethodInput struct {
 	}
 }
 
+func (ptmh *ProfileTransferMethodHandler) getAllOwnedProfileTransferMethods(ctx context.Context, in GetAllOwnedProfileTransferMethodsInput) ([]dto.ProfileTransferMethodResponse, error) {
+	return ptmh.svc.GetAllByProfileID(ctx, in.ProfileID)
+}
+
 // add builds the service request from in and delegates to svc.Add. Pulled
-// out of the Routes() ServiceFunc closure since it's more than a plain
-// passthrough (it assembles dto.NewProfileTransferMethodRequest first),
-// matching handler.AuthHandler.logout's reasoning for extracting non-trivial
-// logic into a private method.
+// out of the Routes() inline HandlerFunc closure since it's more than a
+// plain passthrough (it assembles dto.NewProfileTransferMethodRequest
+// first), matching handler.AuthHandler.logout's reasoning for extracting
+// non-trivial logic into a private method.
 func (ptmh *ProfileTransferMethodHandler) add(ctx context.Context, in AddProfileTransferMethodInput) (dto.ProfileTransferMethodResponse, error) {
 	req := dto.NewProfileTransferMethodRequest{
 		ProfileID:        in.ProfileID,
@@ -58,9 +62,7 @@ func (ptmh *ProfileTransferMethodHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"profile-transfer-methods"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllOwnedProfileTransferMethodsInput) ([]dto.ProfileTransferMethodResponse, error) {
-				return ptmh.svc.GetAllByProfileID(ctx, in.ProfileID)
-			},
+			HandlerFunc: ptmh.getAllOwnedProfileTransferMethods,
 		}),
 		endpoint.New(endpoint.Endpoint[AddProfileTransferMethodInput, dto.ProfileTransferMethodResponse]{
 			OperationID: "add-profile-transfer-method",
@@ -70,7 +72,7 @@ func (ptmh *ProfileTransferMethodHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"profile-transfer-methods"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: ptmh.add,
+			HandlerFunc: ptmh.add,
 		}),
 	}
 }
@@ -88,6 +90,12 @@ type GetAllProfileTransferMethodsByFriendProfileIDInput struct {
 // the same shared limiter instance. This route returns a real response body
 // (the friend's transfer methods), so it fits endpoint.Endpoint, not
 // endpoint.NoBodyEndpoint.
+// getAllProfileTransferMethodsByFriendProfileID delegates to
+// svc.GetAllByFriendProfileID.
+func (ptmh *ProfileTransferMethodHandler) getAllProfileTransferMethodsByFriendProfileID(ctx context.Context, in GetAllProfileTransferMethodsByFriendProfileIDInput) ([]dto.ProfileTransferMethodResponse, error) {
+	return ptmh.svc.GetAllByFriendProfileID(ctx, in.ProfileID, in.FriendProfileID)
+}
+
 func (ptmh *ProfileTransferMethodHandler) GetAllByFriendProfileIDRoutes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetAllProfileTransferMethodsByFriendProfileIDInput, []dto.ProfileTransferMethodResponse]{
@@ -98,9 +106,7 @@ func (ptmh *ProfileTransferMethodHandler) GetAllByFriendProfileIDRoutes() []endp
 			Tags:        []string{"profile-transfer-methods"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllProfileTransferMethodsByFriendProfileIDInput) ([]dto.ProfileTransferMethodResponse, error) {
-				return ptmh.svc.GetAllByFriendProfileID(ctx, in.ProfileID, in.FriendProfileID)
-			},
+			HandlerFunc: ptmh.getAllProfileTransferMethodsByFriendProfileID,
 		}),
 	}
 }

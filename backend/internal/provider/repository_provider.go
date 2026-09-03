@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/google/wire"
 	adapters "github.com/itsLeonB/cashback/internal/adapters/repository"
 	monetizationAdapter "github.com/itsLeonB/cashback/internal/adapters/repository/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/monetization"
@@ -10,6 +11,21 @@ import (
 	"github.com/itsLeonB/go-crud"
 	"gorm.io/gorm"
 )
+
+// TransactorSet provides the single crud.Transactor instance shared by the
+// top-level Repositories and admin.Repositories, so both wrap the same
+// underlying *gorm.DB transaction manager instead of each constructing their
+// own.
+var TransactorSet = wire.NewSet(ProvideTransactor)
+
+// RepositorySet is the wire provider set for the top-level Repositories.
+var RepositorySet = wire.NewSet(ProvideRepositories)
+
+// ProvideTransactor builds the single crud.Transactor shared across the
+// top-level and admin repositories.
+func ProvideTransactor(db *gorm.DB) crud.Transactor {
+	return crud.NewTransactor(db)
+}
 
 type Repositories struct {
 	Transactor crud.Transactor
@@ -47,9 +63,9 @@ type Repositories struct {
 	PushSubscription repository.PushSubscriptionRepository
 }
 
-func ProvideRepositories(db *gorm.DB) *Repositories {
+func ProvideRepositories(db *gorm.DB, transactor crud.Transactor) *Repositories {
 	return &Repositories{
-		Transactor: crud.NewTransactor(db),
+		Transactor: transactor,
 
 		User:               adapters.NewUserRepository(db),
 		Profile:            adapters.NewProfileRepository(db),

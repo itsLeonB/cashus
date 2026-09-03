@@ -49,6 +49,38 @@ type DeletePlanInput struct {
 
 // Routes returns every route PlanHandler exposes via endpoint.Endpoint, for
 // registration via endpoint.RegisterAll.
+func (ph *PlanHandler) getAdminPlans(ctx context.Context, in GetPlanListInput) ([]dto.PlanResponse, error) {
+	return ph.svc.GetList(ctx)
+}
+
+func (ph *PlanHandler) createAdminPlan(ctx context.Context, in CreatePlanInput) (dto.PlanResponse, error) {
+	request := dto.NewPlanRequest{
+		Name:     in.Body.Name,
+		Priority: in.Body.Priority,
+	}
+
+	return ph.svc.Create(ctx, request)
+}
+
+func (ph *PlanHandler) getAdminPlan(ctx context.Context, in GetPlanInput) (dto.PlanResponse, error) {
+	return ph.svc.GetOne(ctx, in.PlanID)
+}
+
+func (ph *PlanHandler) updateAdminPlan(ctx context.Context, in UpdatePlanInput) (dto.PlanResponse, error) {
+	request := dto.UpdatePlanRequest{
+		ID:       in.PlanID,
+		Name:     in.Body.Name,
+		IsActive: in.Body.IsActive,
+		Priority: in.Body.Priority,
+	}
+
+	return ph.svc.Update(ctx, request)
+}
+
+func (ph *PlanHandler) deleteAdminPlan(ctx context.Context, in DeletePlanInput) (dto.PlanResponse, error) {
+	return ph.svc.Delete(ctx, in.PlanID)
+}
+
 func (ph *PlanHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.NewList(endpoint.ListEndpoint[GetPlanListInput, dto.PlanResponse]{
@@ -58,9 +90,7 @@ func (ph *PlanHandler) Routes() []endpoint.Registrable {
 			Summary:     "Get all plans",
 			Tags:        []string{"admin-plans"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetPlanListInput) ([]dto.PlanResponse, error) {
-				return ph.svc.GetList(ctx)
-			},
+			HandlerFunc: ph.getAdminPlans,
 		}),
 		endpoint.New(endpoint.Endpoint[CreatePlanInput, dto.PlanResponse]{
 			OperationID: "create-admin-plan",
@@ -70,14 +100,7 @@ func (ph *PlanHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plans"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in CreatePlanInput) (dto.PlanResponse, error) {
-				request := dto.NewPlanRequest{
-					Name:     in.Body.Name,
-					Priority: in.Body.Priority,
-				}
-
-				return ph.svc.Create(ctx, request)
-			},
+			HandlerFunc: ph.createAdminPlan,
 		}),
 		endpoint.New(endpoint.Endpoint[GetPlanInput, dto.PlanResponse]{
 			OperationID: "get-admin-plan",
@@ -87,9 +110,7 @@ func (ph *PlanHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plans"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetPlanInput) (dto.PlanResponse, error) {
-				return ph.svc.GetOne(ctx, in.PlanID)
-			},
+			HandlerFunc: ph.getAdminPlan,
 		}),
 		endpoint.New(endpoint.Endpoint[UpdatePlanInput, dto.PlanResponse]{
 			OperationID: "update-admin-plan",
@@ -99,16 +120,7 @@ func (ph *PlanHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plans"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UpdatePlanInput) (dto.PlanResponse, error) {
-				request := dto.UpdatePlanRequest{
-					ID:       in.PlanID,
-					Name:     in.Body.Name,
-					IsActive: in.Body.IsActive,
-					Priority: in.Body.Priority,
-				}
-
-				return ph.svc.Update(ctx, request)
-			},
+			HandlerFunc: ph.updateAdminPlan,
 		}),
 		endpoint.New(endpoint.Endpoint[DeletePlanInput, dto.PlanResponse]{
 			OperationID: "delete-admin-plan",
@@ -118,9 +130,7 @@ func (ph *PlanHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-plans"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in DeletePlanInput) (dto.PlanResponse, error) {
-				return ph.svc.Delete(ctx, in.PlanID)
-			},
+			HandlerFunc: ph.deleteAdminPlan,
 		}),
 	}
 }

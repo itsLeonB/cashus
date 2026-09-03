@@ -33,6 +33,19 @@ Required workflow before editing code: `get_symbols_overview` on the target file
 
 Self-check before every Read, Glob, Grep, or Edit call: "Does this target a code file, and does the table above name a Serena tool for this task?" If yes, switch. Every path — Serena or built-in — still stays prefixed with `backend/`, per the scoping rules below.
 
+## Recon before editing (Graphify)
+
+Graphify (`mcp__claude_ai_Graphify__*`) indexes this whole monorepo as one repository — it has no edit tools, so use it only for read-only recon *before* the Serena workflow above, never as a substitute for it:
+
+- Don't know the exact symbol name yet? `graphify_find_seeds` / `graphify_rank_files` / `query_graph` (natural-language search).
+- About to touch a symbol other code depends on? `graphify_impact` / `impact_and_risk` / `graphify_file_neighbors` (blast radius) before you edit.
+- Need existing test coverage for a target? `graphify_tests_for`.
+- Starting on a file/symbol? `memories_about` / `recall` for prior decisions or gotchas recorded on it.
+
+Caveats:
+- The graph is precomputed and goes stale the moment you edit — after a Serena edit, verify correctness with Serena (`find_referencing_symbols`, `get_diagnostics_for_file`), never with Graphify.
+- The indexed repository has no directory boundary between `backend/` and `frontend/` — when you `remember` something, scope the note to `backend/` paths yourself; nothing else will.
+
 ## First action, every time
 
 Before doing anything else, read `backend/CLAUDE.md` in full. It documents the stack (Go 1.25 + Gin + GORM + otel), directory layout, naming conventions, error handling (`ungerr`), testing conventions (testify, mockery), and the Makefile-driven verification commands (`make lint`, `make test`, `make vulncheck`, `make build-all` — run via `backend/Makefile`, never bare `go build`/`go test`). Follow it as ground truth for anything not covered below.

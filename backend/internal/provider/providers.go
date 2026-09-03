@@ -1,10 +1,9 @@
 package provider
 
-import (
-	"errors"
+//go:generate go tool wire
 
+import (
 	adminConfig "github.com/itsLeonB/cashback/internal/core/config/admin"
-	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
 )
 
@@ -19,43 +18,14 @@ type Providers struct {
 	AdminServices *admin.Services
 }
 
-func (p *Providers) Shutdown() error {
-	var errs error
-	if e := p.DataSources.Shutdown(); e != nil {
-		errs = errors.Join(errs, e)
-	}
-	if e := p.CoreServices.Shutdown(); e != nil {
-		errs = errors.Join(errs, e)
-	}
-	if e := p.Services.Shutdown(); e != nil {
-		errs = errors.Join(errs, e)
-	}
-	return errs
-}
-
-func All() (*Providers, error) {
-	dataSources, err := ProvideDataSource()
-	if err != nil {
-		return nil, err
-	}
-
-	repos := ProvideRepositories(dataSources.Gorm)
-	adminRepos := admin.ProvideRepositories(dataSources.Gorm)
-
-	coreSvcs, err := ProvideCoreServices()
-	if err != nil {
-		if e := dataSources.Shutdown(); e != nil {
-			logger.Error(e)
-		}
-		return nil, err
-	}
-
-	return &Providers{
-		DataSources:   dataSources,
-		Repositories:  repos,
-		CoreServices:  coreSvcs,
-		Services:      ProvideServices(repos, coreSvcs),
-		AdminRepos:    adminRepos,
-		AdminServices: admin.ProvideServices(adminRepos, adminConfig.Global),
-	}, nil
+// ProvideAdminConfig reads the admin config global at call time, not at
+// package-init time. admin.Global is nil until admin.Load() runs inside
+// config.Load(), which every cmd/*/main.go calls explicitly inside main() —
+// after package init has already finished. A wire.Value binding would have
+// captured admin.Global via a package-level var initializer that runs before
+// main(), permanently freezing it at nil; this ordinary provider function
+// instead reads the global when wire's generated code calls it, which is
+// always after config.Load() has populated it.
+func ProvideAdminConfig() *adminConfig.Config {
+	return adminConfig.Global
 }

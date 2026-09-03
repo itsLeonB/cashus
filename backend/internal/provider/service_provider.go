@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/google/wire"
 	appembed "github.com/itsLeonB/cashback"
 	authadapter "github.com/itsLeonB/cashback/internal/adapters/auth"
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -15,8 +16,12 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/go-authkit"
+	"github.com/itsLeonB/ungerr"
 	"github.com/markbates/goth/providers/google"
 )
+
+// ServiceSet is the wire provider set for the top-level Services.
+var ServiceSet = wire.NewSet(ProvideServices)
 
 type Services struct {
 	// Auth
@@ -53,14 +58,10 @@ type Services struct {
 	PushNotification service.PushNotificationService
 }
 
-func (s *Services) Shutdown() error {
-	return errors.Join(s.AuthKit.Shutdown(), s.TransferMethod.Shutdown())
-}
-
 func ProvideServices(
 	repos *Repositories,
 	coreSvc *CoreServices,
-) *Services {
+) (*Services, func(), error) {
 	authConfig := config.Global.Auth
 	appConfig := config.Global.App
 	oauthConfig := config.Global.OAuthProviders
@@ -68,7 +69,7 @@ func ProvideServices(
 
 	paymentGateway, err := payment.NewGateway(paymentConfig)
 	if err != nil {
-		logger.Error(err)
+		return nil, nil, ungerr.Wrap(err, "error creating payment gateway")
 	}
 
 	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, coreSvc.Queue)
@@ -139,11 +140,25 @@ func ProvideServices(
 
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, coreSvc.Image, coreSvc.Queue, coreSvc.Langfuse, profile)
 
+	// authKit is constructed here, before transferMethod, specifically so
+	// that on failure the only background resource requiring rollback is
+	// sessionCache (an authKit dependency, so it necessarily exists by this
+	// point already). transferMethod's own cache is built after this check
+	// succeeds, so it's simply never started on this failure path instead of
+	// needing its own rollback.
+	authKit, err := newAuthKit(authKitCfg, authKitDeps, hooks)
+	if err != nil {
+		if e := sessionCache.Shutdown(); e != nil {
+			logger.Error(ungerr.Wrap(e, "error shutting down session cache after authkit construction failure"))
+		}
+		return nil, nil, err
+	}
+
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue, repos.Transactor, friendshipBalance)
 
-	return &Services{
-		AuthKit: mustNewAuthKit(authKitCfg, authKitDeps, hooks),
+	services := &Services{
+		AuthKit: authKit,
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 
 		User:              user,
@@ -170,12 +185,20 @@ func ProvideServices(
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,
 	}
+
+	cleanup := func() {
+		if err := errors.Join(services.AuthKit.Shutdown(), services.TransferMethod.Shutdown()); err != nil {
+			logger.Error(err)
+		}
+	}
+
+	return services, cleanup, nil
 }
 
-func mustNewAuthKit(cfg authkit.Config, deps authkit.Deps, hooks authkit.Hooks) *authkit.AuthKit {
+func newAuthKit(cfg authkit.Config, deps authkit.Deps, hooks authkit.Hooks) (*authkit.AuthKit, error) {
 	kit, err := authkit.New(cfg, deps, hooks)
 	if err != nil {
-		panic(err)
+		return nil, ungerr.Wrap(err, "error creating authkit instance")
 	}
-	return kit
+	return kit, nil
 }

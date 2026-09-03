@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/mocks"
 	"github.com/itsLeonB/go-crud"
 	"github.com/stretchr/testify/assert"
@@ -18,14 +17,14 @@ import (
 
 func newTestProfileService(
 	t *testing.T,
-) (service.ProfileService, *mocks.MockProfileRepository, *mocks.MockRepository[users.User]) {
+) (ProfileService, *mocks.MockProfileRepository, *mocks.MockRepository[users.User]) {
 	profileRepo := mocks.NewMockProfileRepository(t)
 	userRepo := mocks.NewMockRepository[users.User](t)
 	transactor := mocks.NewMockTransactor(t)
 	friendshipRepo := mocks.NewMockFriendshipRepository(t)
 	subLimitSvc := mocks.NewMockSubscriptionLimitService(t)
 
-	svc := service.NewProfileService(
+	svc := NewProfileService(
 		transactor,
 		profileRepo,
 		userRepo,

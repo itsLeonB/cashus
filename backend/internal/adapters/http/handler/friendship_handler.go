@@ -47,6 +47,39 @@ type GetFriendshipDetailsInput struct {
 
 // Routes returns every route FriendshipHandler exposes, for registration via
 // endpoint.RegisterAll.
+func (fh *FriendshipHandler) createAnonymousFriendship(ctx context.Context, in CreateAnonymousFriendshipInput) (dto.FriendshipResponse, error) {
+	request := dto.NewAnonymousFriendshipRequest{
+		ProfileID: in.ProfileID,
+		Name:      in.Body.Name,
+	}
+
+	return fh.friendshipService.CreateAnonymous(ctx, request)
+}
+
+func (fh *FriendshipHandler) getFriendships(ctx context.Context, in GetAllFriendshipsInput) ([]dto.FriendshipResponse, error) {
+	friendships, err := fh.friendshipService.GetAll(ctx, in.ProfileID)
+	if err != nil {
+		return nil, err
+	}
+
+	balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx, in.ProfileID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range friendships {
+		if b, ok := balances[friendships[i].ProfileID]; ok {
+			friendships[i].BalancesPerCurrency = b
+		}
+	}
+
+	return friendships, nil
+}
+
+func (fh *FriendshipHandler) getFriendshipDetails(ctx context.Context, in GetFriendshipDetailsInput) (dto.FriendDetailsResponse, error) {
+	return fh.friendDetailsSvc.GetDetails(ctx, in.ProfileID, in.FriendshipID)
+}
+
 func (fh *FriendshipHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[CreateAnonymousFriendshipInput, dto.FriendshipResponse]{
@@ -57,14 +90,7 @@ func (fh *FriendshipHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"friendships"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in CreateAnonymousFriendshipInput) (dto.FriendshipResponse, error) {
-				request := dto.NewAnonymousFriendshipRequest{
-					ProfileID: in.ProfileID,
-					Name:      in.Body.Name,
-				}
-
-				return fh.friendshipService.CreateAnonymous(ctx, request)
-			},
+			HandlerFunc: fh.createAnonymousFriendship,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAllFriendshipsInput, []dto.FriendshipResponse]{
 			OperationID: "get-friendships",
@@ -74,25 +100,7 @@ func (fh *FriendshipHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"friendships"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllFriendshipsInput) ([]dto.FriendshipResponse, error) {
-				friendships, err := fh.friendshipService.GetAll(ctx, in.ProfileID)
-				if err != nil {
-					return nil, err
-				}
-
-				balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx, in.ProfileID)
-				if err != nil {
-					return nil, err
-				}
-
-				for i := range friendships {
-					if b, ok := balances[friendships[i].ProfileID]; ok {
-						friendships[i].BalancesPerCurrency = b
-					}
-				}
-
-				return friendships, nil
-			},
+			HandlerFunc: fh.getFriendships,
 		}),
 		endpoint.New(endpoint.Endpoint[GetFriendshipDetailsInput, dto.FriendDetailsResponse]{
 			OperationID: "get-friendship-details",
@@ -102,9 +110,7 @@ func (fh *FriendshipHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"friendships"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetFriendshipDetailsInput) (dto.FriendDetailsResponse, error) {
-				return fh.friendDetailsSvc.GetDetails(ctx, in.ProfileID, in.FriendshipID)
-			},
+			HandlerFunc: fh.getFriendshipDetails,
 		}),
 	}
 }

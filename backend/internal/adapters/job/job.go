@@ -9,36 +9,30 @@ import (
 )
 
 type Job struct {
-	providers *provider.Providers
-	asset     *asset.Asset
-	migrate   *migrate.Migrate
+	cleanup func()
+	asset   *asset.Asset
+	migrate *migrate.Migrate
 }
 
 func Setup(cfg *config.Config) (*Job, error) {
-	providers, err := provider.All()
+	providers, cleanup, err := provider.InitializeProviders()
 	if err != nil {
 		return nil, err
 	}
 
 	migrator, err := migrate.Setup(providers)
 	if err != nil {
-		if e := providers.Shutdown(); e != nil {
-			logger.Error(e)
-		}
+		cleanup()
 		return nil, err
 	}
 
-	return &Job{providers, asset.Setup(providers), migrator}, nil
+	return &Job{cleanup, asset.Setup(providers), migrator}, nil
 }
 
 func (j *Job) Run() {
 	logger.Info("running all jobs...")
 
-	defer func() {
-		if err := j.providers.Shutdown(); err != nil {
-			logger.Error(err)
-		}
-	}()
+	defer j.cleanup()
 
 	logger.Info("running migrations...")
 	if err := j.migrate.Run(); err != nil {

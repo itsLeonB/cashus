@@ -1,10 +1,9 @@
-package httpapi_test
+package httpapi
 
 import (
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2"
-	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +12,7 @@ import (
 // decimal.Decimal.UnmarshalJSON actually accepts on the wire.
 func TestDecimalSchemaAcceptsNumberAndString(t *testing.T) {
 	registry := huma.NewMapRegistry("#/prefix", huma.DefaultSchemaNamer)
-	schema := httpapi.Decimal{}.Schema(registry)
+	schema := Decimal{}.Schema(registry)
 
 	tests := []struct {
 		name    string

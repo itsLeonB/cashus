@@ -10,12 +10,26 @@ packages:
       ProfileService:
       SubscriptionLimitService:
       CaptchaService:
+      FriendshipService:
+      FriendshipRequestService:
+      FriendDetailsService:
+      DebtService:
+      FriendshipBalanceService:
+      TransferMethodService:
+      GroupExpenseService:
+      ExpenseItemService:
+      OtherFeeService:
+      ExpenseBillService:
+      ProfileTransferMethodService:
+      NotificationService:
+      PushNotificationService:
   github.com/itsLeonB/cashback/internal/domain/repository:
     config:
       filename: "mock_repository.go"
     interfaces:
       ProfileRepository:
       FriendshipRepository:
+      GroupExpenseRepository:
   github.com/itsLeonB/go-crud:
     config:
       filename: "mock_crud.go"

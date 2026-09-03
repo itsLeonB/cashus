@@ -56,7 +56,7 @@ type Endpoint[Req, Res any] struct {
 	SuccessCode int
 	Secured     bool
 	Middlewares []func(huma.Context, func(huma.Context))
-	ServiceFunc func(context.Context, Req) (Res, error)
+	HandlerFunc func(context.Context, Req) (Res, error)
 }
 
 // envelopeOutput is the Output struct every Endpoint registers.
@@ -81,7 +81,7 @@ func Register[Req, Res any](api huma.API, e Endpoint[Req, Res], mw ...func(huma.
 	}
 
 	huma.Register(api, op, func(ctx context.Context, in *Req) (*envelopeOutput[Res], error) {
-		res, err := e.ServiceFunc(ctx, *in)
+		res, err := e.HandlerFunc(ctx, *in)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ type NoBodyEndpoint[Req any] struct {
 	Tags        []string
 	Secured     bool
 	Middlewares []func(huma.Context, func(huma.Context))
-	ServiceFunc func(context.Context, Req) error
+	HandlerFunc func(context.Context, Req) error
 }
 
 // noBodyOutput is the Output struct every NoBodyEndpoint registers: no Body
@@ -129,7 +129,7 @@ func RegisterNoBody[Req any](api huma.API, e NoBodyEndpoint[Req], mw ...func(hum
 	}
 
 	huma.Register(api, op, func(ctx context.Context, in *Req) (*noBodyOutput, error) {
-		if err := e.ServiceFunc(ctx, *in); err != nil {
+		if err := e.HandlerFunc(ctx, *in); err != nil {
 			return nil, err
 		}
 
@@ -148,7 +148,7 @@ type ListEndpoint[Req, Res any] struct {
 	Tags        []string
 	Secured     bool
 	Middlewares []func(huma.Context, func(huma.Context))
-	ServiceFunc func(context.Context, Req) ([]Res, error)
+	HandlerFunc func(context.Context, Req) ([]Res, error)
 }
 
 // listOutput is the Output struct every ListEndpoint registers.
@@ -175,7 +175,7 @@ func RegisterList[Req, Res any](api huma.API, e ListEndpoint[Req, Res], mw ...fu
 	}
 
 	huma.Register(api, op, func(ctx context.Context, in *Req) (*listOutput[Res], error) {
-		res, err := e.ServiceFunc(ctx, *in)
+		res, err := e.HandlerFunc(ctx, *in)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ type RedirectEndpoint[Req any] struct {
 	Tags        []string
 	Secured     bool
 	Middlewares []func(huma.Context, func(huma.Context))
-	ServiceFunc func(context.Context, Req) (string, error)
+	HandlerFunc func(context.Context, Req) (string, error)
 }
 
 // redirectOutput is the Output struct every RedirectEndpoint registers.
@@ -222,7 +222,7 @@ func RegisterRedirect[Req any](api huma.API, e RedirectEndpoint[Req], mw ...func
 	}
 
 	huma.Register(api, op, func(ctx context.Context, in *Req) (*redirectOutput, error) {
-		url, err := e.ServiceFunc(ctx, *in)
+		url, err := e.HandlerFunc(ctx, *in)
 		if err != nil {
 			return nil, err
 		}

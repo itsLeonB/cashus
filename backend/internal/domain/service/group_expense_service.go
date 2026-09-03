@@ -109,6 +109,10 @@ func (ges *groupExpenseServiceImpl) GetAll(ctx context.Context, userProfileID uu
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetAll")
 	defer span.End()
 
+	if ownership == "" {
+		ownership = expenses.OwnedExpense
+	}
+
 	groupExpenses, err := ges.expenseRepo.FindAllByOwnership(ctx, userProfileID, ownership, status, -1)
 	if err != nil {
 		return nil, err

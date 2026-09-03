@@ -132,7 +132,8 @@ CREATE TABLE public.debt_transactions (
     amount numeric(20,2) NOT NULL,
     transfer_method_id uuid NOT NULL,
     description text,
-    group_expense_id uuid
+    group_expense_id uuid,
+    transaction_date date NOT NULL
 );
 
 

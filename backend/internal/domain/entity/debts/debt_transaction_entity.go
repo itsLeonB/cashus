@@ -1,6 +1,8 @@
 package debts
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/itsLeonB/go-crud"
 	"github.com/shopspring/decimal"
@@ -19,6 +21,10 @@ type DebtTransaction struct {
 	TransferMethodID  uuid.UUID
 	Description       string
 	GroupExpenseID    uuid.NullUUID
+	// TransactionDate is the (possibly backdated) effective date of the transaction,
+	// independent of BaseEntity.CreatedAt (the actual record-creation timestamp).
+	// Stored as a date-only Postgres column; time-of-day is not meaningful here.
+	TransactionDate time.Time `gorm:"type:date;not null"`
 
 	// Relationships
 	TransferMethod TransferMethod

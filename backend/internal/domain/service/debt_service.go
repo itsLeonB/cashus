@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -66,6 +67,11 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
 
+	transactionDate, err := resolveTransactionDate(req.TransactionDate, time.Now())
+	if err != nil {
+		return dto.DebtTransactionResponse{}, err
+	}
+
 	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
@@ -102,6 +108,7 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 			TransferMethodID:  req.TransferMethodID,
 			Description:       req.Description,
 			Currency:          currency,
+			TransactionDate:   transactionDate,
 		})
 		if err != nil {
 			return err
@@ -269,4 +276,37 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 		EntityID:   msg.ID,
 		Metadata:   datatypes.JSON(metadata),
 	}, nil
+}
+
+// transactionDateLayout is the wire format for a debt transaction's date: date-only,
+// no time-of-day or timezone component (matches mapper.transactionDateLayout).
+const transactionDateLayout = "2006-01-02"
+
+// resolveTransactionDate defaults and validates the transactionDate field of a new
+// debt transaction request. An empty raw value defaults to now's date (server date).
+// A non-empty value must parse as YYYY-MM-DD and must not be later than now's date.
+func resolveTransactionDate(raw string, now time.Time) (time.Time, error) {
+	today := truncateToDate(now)
+
+	if raw == "" {
+		return today, nil
+	}
+
+	parsed, err := time.Parse(transactionDateLayout, raw)
+	if err != nil {
+		return time.Time{}, ungerr.ValidationError("transactionDate must be a valid date in YYYY-MM-DD format")
+	}
+
+	if parsed.After(today) {
+		return time.Time{}, ungerr.ValidationError("transactionDate cannot be later than today")
+	}
+
+	return parsed, nil
+}
+
+// truncateToDate strips the time-of-day and timezone from t, keeping only the
+// calendar date (as UTC midnight).
+func truncateToDate(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }

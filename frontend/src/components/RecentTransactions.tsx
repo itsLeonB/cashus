@@ -61,10 +61,12 @@ const RecentTransactions = () => {
               <p className="text-sm font-medium line-clamp-2 sm:truncate">
                 {descriptionDisplay(transaction)}
               </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {transaction.description && transaction.profile.name
-                  ? `with ${transaction.profile.name} · `
-                  : ""}
+              {transaction.description && transaction.profile.name && (
+                <p className="text-xs text-muted-foreground truncate">
+                  with {transaction.profile.name}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
                 {formatDate(transaction.transactionDate)}
               </p>
             </div>

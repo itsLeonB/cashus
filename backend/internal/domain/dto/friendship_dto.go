@@ -51,6 +51,9 @@ type FriendTransactionItem struct {
 	Amount         decimal.Decimal `json:"amount"`
 	TransferMethod string          `json:"transferMethod"`
 	Description    string          `json:"description"`
+	// TransactionDate is the effective (possibly backdated) transaction date,
+	// formatted "YYYY-MM-DD". Independent of BaseDTO.CreatedAt.
+	TransactionDate string `json:"transactionDate"`
 }
 
 type FriendDetailsResponse struct {

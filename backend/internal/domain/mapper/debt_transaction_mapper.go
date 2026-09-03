@@ -8,6 +8,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// transactionDateLayout is the wire format for DebtTransaction.TransactionDate:
+// date-only, no time-of-day or timezone component.
+const transactionDateLayout = "2006-01-02"
+
 func MapToFriendBalanceSummary(transactions []debts.DebtTransaction, userAssociatedIDs []uuid.UUID) dto.FriendBalance {
 	totalLent, totalBorrowed, history := calculateBalances(userAssociatedIDs, transactions)
 
@@ -59,11 +63,12 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 		}
 
 		history = append(history, dto.FriendTransactionItem{
-			BaseDTO:        BaseToDTO(tx.BaseEntity),
-			Type:           transactionType,
-			Amount:         amount,
-			TransferMethod: tx.TransferMethod.Display,
-			Description:    tx.Description,
+			BaseDTO:         BaseToDTO(tx.BaseEntity),
+			Type:            transactionType,
+			Amount:          amount,
+			TransferMethod:  tx.TransferMethod.Display,
+			Description:     tx.Description,
+			TransactionDate: tx.TransactionDate.Format(transactionDateLayout),
 		})
 	}
 
@@ -113,13 +118,14 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 			Avatar: profilesByID[profileID].Avatar,
 			IsUser: profileID == userProfileID,
 		},
-		Type:           txType,
-		Currency:       transaction.Currency,
-		Amount:         transaction.Amount,
-		TransferMethod: transaction.TransferMethod.Display,
-		Description:    transaction.Description,
-		GroupExpenseID: transaction.GroupExpenseID.UUID,
-		IsFromExpense:  transaction.GroupExpenseID.Valid,
+		Type:            txType,
+		Currency:        transaction.Currency,
+		Amount:          transaction.Amount,
+		TransferMethod:  transaction.TransferMethod.Display,
+		Description:     transaction.Description,
+		GroupExpenseID:  transaction.GroupExpenseID.UUID,
+		IsFromExpense:   transaction.GroupExpenseID.Valid,
+		TransactionDate: transaction.TransactionDate.Format(transactionDateLayout),
 	}
 }
 

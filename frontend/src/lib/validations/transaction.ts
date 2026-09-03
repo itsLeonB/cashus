@@ -14,21 +14,27 @@ export const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
-// Converts a "YYYY-MM-DD" transactionDate value into a Date for display in
-// the Calendar widget. Built via the local Date constructor (not
-// `new Date(value)`, which parses date-only ISO strings as UTC midnight) so
-// the calendar grid — which reads a Date's local getFullYear/getMonth/
-// getDate — highlights the same calendar day the string names, regardless
-// of the viewer's own UTC offset.
-export const parseTransactionDateValue = (value: string): Date => {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
+// Converts a "YYYY-MM-DD" transactionDate value into a Date for the
+// Calendar widget's `selected` prop. The Calendar is rendered with
+// `timeZone="UTC"` (see TransactionModal), which makes react-day-picker
+// re-anchor whatever Date `selected` holds onto a UTC-wall-clock TZDate by
+// reusing its *instant*, not its local Y/M/D — so `new Date(value)` (which
+// parses a date-only ISO string as UTC midnight, per spec) is exactly the
+// Date whose instant already matches that anchoring. Do NOT swap this for a
+// locally-constructed `new Date(year, month - 1, day)`: its instant would be
+// local midnight, which is a different moment than UTC midnight for any
+// viewer not at UTC+0, and would make `selected` land on the wrong day in
+// the grid.
+export const parseTransactionDateValue = (value: string): Date => new Date(value);
 
-// Inverse of parseTransactionDateValue: reads a Date's local calendar
-// components back into a "YYYY-MM-DD" string. Used for the Calendar's
-// onSelect and for comparing a calendar cell's day against
-// getTodayDateString() to disable future dates.
+// Inverse of parseTransactionDateValue: reads a Date's calendar components
+// back into a "YYYY-MM-DD" string. Used for the Calendar's onSelect and for
+// comparing a grid cell's day against getTodayDateString() to disable
+// future dates. Callers only ever pass this the TZDate instances the
+// `timeZone="UTC"`-anchored Calendar itself constructs for its cells (never
+// a plain local Date) — react-day-picker's TZDate overrides getFullYear/
+// getMonth/getDate to read that UTC wall clock instead of the system
+// timezone, so these plain local-style getters come back UTC-correct.
 export const formatTransactionDateValue = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

@@ -296,8 +296,17 @@ export function TransactionModal({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
+                {/* timeZone="UTC" anchors every grid cell, the built-in
+                    "today" highlight, and the initial visible month to the
+                    backend's UTC calendar day (see getTodayDateString) —
+                    without it react-day-picker builds cells and "today" from
+                    the viewer's local timezone, which for any viewer not at
+                    UTC+0 disagrees with the UTC-based `disabled` cutoff below
+                    and can grey out — or mislabel as "today" — the wrong
+                    cell. */}
                 <Calendar
                   mode="single"
+                  timeZone="UTC"
                   selected={parseTransactionDateValue(transactionDate)}
                   onSelect={(date) => {
                     if (!date) return;

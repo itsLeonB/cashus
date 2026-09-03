@@ -13,6 +13,12 @@ const descriptionDisplay = (transaction: DebtTransactionResponse) => {
   return `Borrowed from ${transaction.profile.name}`;
 };
 
+const formatDate = (date: string) =>
+  new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+
 const RecentTransactions = () => {
   const { data, isLoading } = useRecentDebts();
 
@@ -55,11 +61,12 @@ const RecentTransactions = () => {
               <p className="text-sm font-medium line-clamp-2 sm:truncate">
                 {descriptionDisplay(transaction)}
               </p>
-              {transaction.description && transaction.profile.name && (
-                <p className="text-xs text-muted-foreground truncate">
-                  with {transaction.profile.name}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground truncate">
+                {transaction.description && transaction.profile.name
+                  ? `with ${transaction.profile.name} · `
+                  : ""}
+                {formatDate(transaction.transactionDate)}
+              </p>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               {transaction.type === "LENT" ? (

@@ -77,7 +77,7 @@ export function TransactionHistory({
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatDate(debt.createdAt)}
+                        {formatDate(debt.transactionDate)}
                       </p>
                       <p
                         className={`text-sm font-semibold tabular-nums sm:hidden ${

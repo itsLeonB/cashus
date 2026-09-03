@@ -11,11 +11,15 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type { FriendBalance } from "@/lib/api";
 
+// transactionDate is a plain "YYYY-MM-DD" calendar date with no time
+// component; format it in UTC so it renders as the same day regardless of
+// the viewer's own timezone, instead of shifting near local midnight.
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   });
 
 export function TransactionHistory({

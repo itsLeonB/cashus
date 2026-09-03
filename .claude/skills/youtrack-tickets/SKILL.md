@@ -38,6 +38,19 @@ Enforce these during grooming — a ticket without them isn't ready to leave **N
 5. If a **Story** touches both `frontend/` and `backend/`: create two **Sub-Task** issues (`create_issue`), one per component, each with the Component section set and linked to the parent Story via `link_issues` (`subtask of`). This is what the orchestrator (root `CLAUDE.md`) dispatches to `backend-agent`/`frontend-agent` — the Sub-Task's Deliverable section should be concrete enough to paste directly into that agent's dispatch prompt.
 6. Once ready: `update_issue` to move `Stage` → `Open`.
 
+## Post-grooming workflow (implementation stages)
+
+`Stage` keeps tracking a ticket after grooming, through implementation:
+
+- **Open** → groomed, ready to implement, not yet started.
+- **Develop** → actively being implemented (e.g. a `backend-agent`/`frontend-agent` dispatch is in progress).
+- **Review** → implementation is merged to `dev`. This includes the orchestrator's post-implementation code-review pass and any fix-up round — a ticket stays in **Review** through review and fixes, not just the moment code review starts. Do not jump straight to `Done` on merge.
+- **Done** → fully released/shipped (e.g. deployed, or the repo's own release process marks it complete) — a separate, later step from merging to `dev`.
+
+Rule: **the moment a ticket's implementation is merged into `dev`, move its `Stage` → `Review`**, whether or not a code-review pass has happened yet. Only move to `Done` on an explicit signal that it actually shipped, not on merge alone.
+
+For a cross-cutting Story split into Sub-Tasks: apply this per Sub-Task as each one's branch merges to `dev`, and move the parent Story to `Review` once all its Sub-Tasks are in `Review` (or beyond).
+
 ## Reading / triage workflow
 
 - Scope every query to `project: CASH` explicitly — don't rely on a default project.

@@ -27,6 +27,10 @@ import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import {
+  getTodayDateString,
+  transactionDateSchema,
+} from "@/lib/validations/transaction";
 
 interface TransactionModalProps {
   open: boolean;
@@ -78,6 +82,8 @@ export function TransactionModal({
   const [description, setDescription] = useState("");
   const [selectedMethod, setSelectedMethod] = useState<TransferMethod>(null);
   const [transferMethodOpen, setTransferMethodOpen] = useState(false);
+  const [transactionDate, setTransactionDate] = useState(getTodayDateString());
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const { data: friendships } = useFriendships();
   const { data: transferMethods, isLoading: isLoadingMethods } =
@@ -106,6 +112,13 @@ export function TransactionModal({
     e.preventDefault();
     if (!friendId || !amount || !selectedMethod?.id) return;
 
+    const dateResult = transactionDateSchema.safeParse(transactionDate);
+    if (!dateResult.success) {
+      setDateError(dateResult.error.issues[0]?.message || "Invalid date");
+      return;
+    }
+    setDateError(null);
+
     try {
       await createDebt.mutateAsync({
         friendProfileId: friendId,
@@ -114,6 +127,7 @@ export function TransactionModal({
         currency,
         transferMethodId: selectedMethod.id,
         description: description || undefined,
+        transactionDate: dateResult.data,
       });
       toast({
         title: "Transaction recorded",
@@ -139,6 +153,8 @@ export function TransactionModal({
     setCurrency("IDR");
     setDescription("");
     setSelectedMethod(null);
+    setTransactionDate(getTodayDateString());
+    setDateError(null);
   };
 
   return (
@@ -235,6 +251,24 @@ export function TransactionModal({
               onChange={setCurrency}
               placeholder="Select currency"
             />
+          </div>
+
+          {/* Transaction Date */}
+          <div className="space-y-2">
+            <Label htmlFor="transactionDate">Date</Label>
+            <Input
+              id="transactionDate"
+              type="date"
+              max={getTodayDateString()}
+              value={transactionDate}
+              onChange={(e) => {
+                setTransactionDate(e.target.value);
+                setDateError(null);
+              }}
+            />
+            {dateError && (
+              <p className="text-xs text-destructive">{dateError}</p>
+            )}
           </div>
 
           {/* Transfer Method */}

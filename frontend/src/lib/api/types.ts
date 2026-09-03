@@ -111,6 +111,7 @@ export interface FriendTransaction {
   description: string;
   createdAt: string;
   updatedAt: string;
+  transactionDate: string; // "YYYY-MM-DD", the effective (possibly backdated) transaction date
 }
 
 export interface NewAnonymousFriendshipRequest {
@@ -129,6 +130,7 @@ export interface DebtTransactionResponse {
   transferMethod: string;
   description: string;
   createdAt: string;
+  transactionDate: string; // "YYYY-MM-DD", the effective (possibly backdated) transaction date
 }
 
 export interface NewDebtTransactionRequest {
@@ -138,6 +140,7 @@ export interface NewDebtTransactionRequest {
   currency: string;
   transferMethodId: string;
   description?: string;
+  transactionDate?: string; // "YYYY-MM-DD". Omitted -> defaults to today's date (server date).
 }
 
 export interface TransferMethod {

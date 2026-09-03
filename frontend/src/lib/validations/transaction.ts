@@ -14,6 +14,28 @@ export const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
+// Converts a "YYYY-MM-DD" transactionDate value into a Date for display in
+// the Calendar widget. Built via the local Date constructor (not
+// `new Date(value)`, which parses date-only ISO strings as UTC midnight) so
+// the calendar grid — which reads a Date's local getFullYear/getMonth/
+// getDate — highlights the same calendar day the string names, regardless
+// of the viewer's own UTC offset.
+export const parseTransactionDateValue = (value: string): Date => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+// Inverse of parseTransactionDateValue: reads a Date's local calendar
+// components back into a "YYYY-MM-DD" string. Used for the Calendar's
+// onSelect and for comparing a calendar cell's day against
+// getTodayDateString() to disable future dates.
+export const formatTransactionDateValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 // True only if value round-trips through the local Date constructor unchanged
 // — catches calendar-invalid-but-regex-valid dates like "2026-02-30", which
 // JS Date otherwise silently rolls over (to March 2) instead of producing NaN.

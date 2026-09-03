@@ -19,16 +19,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCircle } from "@/components/AvatarCircle";
-import { ArrowUpRight, ArrowDownLeft, Loader2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  CalendarIcon,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
+  formatTransactionDateValue,
   getTodayDateString,
+  parseTransactionDateValue,
   transactionDateSchema,
 } from "@/lib/validations/transaction";
 
@@ -68,6 +81,19 @@ const directionConfig = {
 // return type (string[]).
 const DEBT_DIRECTIONS = Object.keys(directionConfig) as DebtDirection[];
 
+// transactionDate is a plain "YYYY-MM-DD" calendar date with no time
+// component; format it in the viewer's own locale (no explicit locale
+// argument) but parse it in UTC so the displayed day doesn't shift for
+// viewers behind UTC — same UTC-anchored parsing as
+// RecentTransactions/TransactionHistory's formatDate.
+const formatTransactionDateLabel = (value: string) =>
+  new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
 export function TransactionModal({
   open,
   onOpenChange,
@@ -84,6 +110,7 @@ export function TransactionModal({
   const [transferMethodOpen, setTransferMethodOpen] = useState(false);
   const [transactionDate, setTransactionDate] = useState(getTodayDateString());
   const [dateError, setDateError] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const { data: friendships } = useFriendships();
   const { data: transferMethods, isLoading: isLoadingMethods } =
@@ -256,16 +283,35 @@ export function TransactionModal({
           {/* Transaction Date */}
           <div className="space-y-2">
             <Label htmlFor="transactionDate">Date</Label>
-            <Input
-              id="transactionDate"
-              type="date"
-              max={getTodayDateString()}
-              value={transactionDate}
-              onChange={(e) => {
-                setTransactionDate(e.target.value);
-                setDateError(null);
-              }}
-            />
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="transactionDate"
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  {formatTransactionDateLabel(transactionDate)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={parseTransactionDateValue(transactionDate)}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    setTransactionDate(formatTransactionDateValue(date));
+                    setDateError(null);
+                    setDatePickerOpen(false);
+                  }}
+                  disabled={(date) =>
+                    formatTransactionDateValue(date) > getTodayDateString()
+                  }
+                  autoFocus
+                />
+              </PopoverContent>
+            </Popover>
             {dateError && (
               <p className="text-xs text-destructive">{dateError}</p>
             )}

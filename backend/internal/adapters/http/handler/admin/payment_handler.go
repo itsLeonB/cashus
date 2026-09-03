@@ -18,6 +18,32 @@ type PaymentHandler struct {
 
 // Routes returns every route PaymentHandler exposes via endpoint.Endpoint,
 // for registration via endpoint.RegisterAll.
+func (ph *PaymentHandler) getAdminPayments(ctx context.Context, in GetPaymentListInput) ([]dto.PaymentResponse, error) {
+	return ph.svc.GetList(ctx)
+}
+
+func (ph *PaymentHandler) getAdminPayment(ctx context.Context, in GetPaymentInput) (dto.PaymentResponse, error) {
+	return ph.svc.GetOne(ctx, in.PaymentID)
+}
+
+func (ph *PaymentHandler) updateAdminPayment(ctx context.Context, in UpdatePaymentInput) (dto.PaymentResponse, error) {
+	request := dto.UpdatePaymentRequest{
+		ID:       in.PaymentID,
+		Status:   in.Body.Status,
+		Amount:   in.Body.Amount.Decimal,
+		Currency: in.Body.Currency,
+		StartsAt: in.Body.StartsAt,
+		EndsAt:   in.Body.EndsAt,
+		PaidAt:   in.Body.PaidAt,
+	}
+
+	return ph.svc.Update(ctx, request)
+}
+
+func (ph *PaymentHandler) deleteAdminPayment(ctx context.Context, in DeletePaymentInput) (dto.PaymentResponse, error) {
+	return ph.svc.Delete(ctx, in.PaymentID)
+}
+
 func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.NewList(endpoint.ListEndpoint[GetPaymentListInput, dto.PaymentResponse]{
@@ -27,9 +53,7 @@ func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 			Summary:     "Get all payments",
 			Tags:        []string{"admin-payments"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetPaymentListInput) ([]dto.PaymentResponse, error) {
-				return ph.svc.GetList(ctx)
-			},
+			HandlerFunc: ph.getAdminPayments,
 		}),
 		endpoint.New(endpoint.Endpoint[GetPaymentInput, dto.PaymentResponse]{
 			OperationID: "get-admin-payment",
@@ -39,9 +63,7 @@ func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-payments"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetPaymentInput) (dto.PaymentResponse, error) {
-				return ph.svc.GetOne(ctx, in.PaymentID)
-			},
+			HandlerFunc: ph.getAdminPayment,
 		}),
 		endpoint.New(endpoint.Endpoint[UpdatePaymentInput, dto.PaymentResponse]{
 			OperationID: "update-admin-payment",
@@ -51,19 +73,7 @@ func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-payments"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UpdatePaymentInput) (dto.PaymentResponse, error) {
-				request := dto.UpdatePaymentRequest{
-					ID:       in.PaymentID,
-					Status:   in.Body.Status,
-					Amount:   in.Body.Amount.Decimal,
-					Currency: in.Body.Currency,
-					StartsAt: in.Body.StartsAt,
-					EndsAt:   in.Body.EndsAt,
-					PaidAt:   in.Body.PaidAt,
-				}
-
-				return ph.svc.Update(ctx, request)
-			},
+			HandlerFunc: ph.updateAdminPayment,
 		}),
 		endpoint.New(endpoint.Endpoint[DeletePaymentInput, dto.PaymentResponse]{
 			OperationID: "delete-admin-payment",
@@ -73,9 +83,7 @@ func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-payments"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in DeletePaymentInput) (dto.PaymentResponse, error) {
-				return ph.svc.Delete(ctx, in.PaymentID)
-			},
+			HandlerFunc: ph.deleteAdminPayment,
 		}),
 	}
 }

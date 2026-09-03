@@ -1,4 +1,4 @@
-package util_test
+package util
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"image/png"
 	"testing"
 
-	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,11 +65,11 @@ const ValidFileSize = 51 * 1024 // 51 KB
 func TestValidateImageDimensions(t *testing.T) {
 	// Too small
 	smallImg := createSolidImage(100, 100, color.White)
-	err := util.ValidateImage(bytes.NewReader(smallImg), ValidFileSize)
-	if err != nil && err != util.ErrImageDimensions {
-		t.Logf("Got error: %v, Expected: %v", err, util.ErrImageDimensions)
+	err := ValidateImage(bytes.NewReader(smallImg), ValidFileSize)
+	if err != nil && err != ErrImageDimensions {
+		t.Logf("Got error: %v, Expected: %v", err, ErrImageDimensions)
 	}
-	assert.Equal(t, util.ErrImageDimensions, err)
+	assert.Equal(t, ErrImageDimensions, err)
 
 	// Valid size
 	validImg := createSolidImage(800, 600, color.RGBA{128, 128, 128, 255})
@@ -79,37 +78,37 @@ func TestValidateImageDimensions(t *testing.T) {
 	// 800x600 is min.
 
 	// We expect ErrImageTooBlurry for solid image, which means it passed dimension check
-	err = util.ValidateImage(bytes.NewReader(validImg), ValidFileSize)
+	err = ValidateImage(bytes.NewReader(validImg), ValidFileSize)
 	// Expect blur error, not dimension error
-	assert.Equal(t, util.ErrImageTooBlurry, err)
+	assert.Equal(t, ErrImageTooBlurry, err)
 }
 
 func TestValidateImageFileSize(t *testing.T) {
 	// Create a dummy reader with small size
-	err := util.ValidateImage(bytes.NewReader([]byte("dummy")), 100)
-	assert.Equal(t, util.ErrImageTooSmall, err)
+	err := ValidateImage(bytes.NewReader([]byte("dummy")), 100)
+	assert.Equal(t, ErrImageTooSmall, err)
 }
 
 func TestValidateImageBlur(t *testing.T) {
 	// Solid color -> Very blurry (variance 0)
 	solidImg := createSolidImage(800, 600, color.RGBA{128, 128, 128, 255})
-	err := util.ValidateImage(bytes.NewReader(solidImg), ValidFileSize)
-	if err != nil && err != util.ErrImageTooBlurry {
+	err := ValidateImage(bytes.NewReader(solidImg), ValidFileSize)
+	if err != nil && err != ErrImageTooBlurry {
 		t.Logf("Solid Image Error: %v", err)
 	}
-	assert.Equal(t, util.ErrImageTooBlurry, err)
+	assert.Equal(t, ErrImageTooBlurry, err)
 
 	// Gradient -> Blurry (variance low) (Laplacian of linear gradient is 0)
 	gradImg := createGradientImage(800, 600)
-	err = util.ValidateImage(bytes.NewReader(gradImg), ValidFileSize)
-	if err != nil && err != util.ErrImageTooBlurry {
+	err = ValidateImage(bytes.NewReader(gradImg), ValidFileSize)
+	if err != nil && err != ErrImageTooBlurry {
 		t.Logf("Gradient Image Error: %v", err)
 	}
-	assert.Equal(t, util.ErrImageTooBlurry, err)
+	assert.Equal(t, ErrImageTooBlurry, err)
 
 	// Noise/Sharp edges -> Not blurry
 	noiseImg := createNoiseImage(800, 600)
-	err = util.ValidateImage(bytes.NewReader(noiseImg), ValidFileSize)
+	err = ValidateImage(bytes.NewReader(noiseImg), ValidFileSize)
 	// Noise image should pass blur check.
 	// It might hit contrast check or brightness check depending on generation.
 	// Black and White noise:
@@ -149,8 +148,8 @@ func TestValidateImageBrightness(t *testing.T) {
 	}
 	data := buf.Bytes()
 
-	err := util.ValidateImage(bytes.NewReader(data), ValidFileSize)
-	assert.Equal(t, util.ErrImageTooDark, err)
+	err := ValidateImage(bytes.NewReader(data), ValidFileSize)
+	assert.Equal(t, ErrImageTooDark, err)
 
 	// Too bright
 	imgBright := image.NewGray(image.Rect(0, 0, 800, 600))
@@ -168,8 +167,8 @@ func TestValidateImageBrightness(t *testing.T) {
 	assert.NoError(t, err)
 	data2 := buf2.Bytes()
 
-	err = util.ValidateImage(bytes.NewReader(data2), ValidFileSize)
-	assert.Equal(t, util.ErrImageTooBright, err)
+	err = ValidateImage(bytes.NewReader(data2), ValidFileSize)
+	assert.Equal(t, ErrImageTooBright, err)
 }
 
 func TestValidateImageContrast(t *testing.T) {
@@ -210,9 +209,9 @@ func TestValidateImageContrast(t *testing.T) {
 	assert.NoError(t, err)
 	data := buf.Bytes()
 
-	err = util.ValidateImage(bytes.NewReader(data), ValidFileSize)
-	if err != nil && err != util.ErrImageLowContrast {
+	err = ValidateImage(bytes.NewReader(data), ValidFileSize)
+	if err != nil && err != ErrImageLowContrast {
 		t.Logf("Contrast Error: %v", err)
 	}
-	assert.Equal(t, util.ErrImageLowContrast, err)
+	assert.Equal(t, ErrImageLowContrast, err)
 }

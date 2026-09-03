@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/endpoint"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,12 +17,12 @@ import (
 func TestRegisterRedirect_SecuredSetsBearerAuthSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-secured",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/secured",
 		Secured:     true,
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com", nil
 		},
 	})
@@ -37,11 +36,11 @@ func TestRegisterRedirect_SecuredSetsBearerAuthSecurity(t *testing.T) {
 func TestRegisterRedirect_UnsecuredHasNoSecurity(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-unsecured",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/unsecured",
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com", nil
 		},
 	})
@@ -51,15 +50,15 @@ func TestRegisterRedirect_UnsecuredHasNoSecurity(t *testing.T) {
 }
 
 // TestRegisterRedirect_StatusAndLocation proves the response carries
-// Status: 307 and a Location header set from ServiceFunc's returned URL.
+// Status: 307 and a Location header set from HandlerFunc's returned URL.
 func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-success",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/success",
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com/oauth", nil
 		},
 	})
@@ -82,11 +81,11 @@ func TestRegisterRedirect_StatusAndLocation(t *testing.T) {
 func TestRegisterRedirect_ErrorPassesThroughUntouched(t *testing.T) {
 	_, api := humatest.New(t, httpapi.NewConfig())
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-error",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/error",
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "", ungerr.NotFoundError("thing not found")
 		},
 	})
@@ -106,12 +105,12 @@ func TestRegisterRedirect_PerRouteMiddlewareRuns(t *testing.T) {
 		next(ctx)
 	}
 
-	endpoint.RegisterRedirect(api, endpoint.RedirectEndpoint[struct{}]{
+	RegisterRedirect(api, RedirectEndpoint[struct{}]{
 		OperationID: "test-redirect-mw",
 		Method:      http.MethodGet,
 		Path:        "/test/redirect/mw",
 		Middlewares: []func(huma.Context, func(huma.Context)){routeMW},
-		ServiceFunc: func(context.Context, struct{}) (string, error) {
+		HandlerFunc: func(context.Context, struct{}) (string, error) {
 			return "https://example.com", nil
 		},
 	})

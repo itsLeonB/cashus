@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/mocks"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -25,11 +24,11 @@ import (
 
 func newTestFriendshipRequestService(
 	t *testing.T,
-) (service.FriendshipRequestService, *mocks.MockRepository[users.FriendshipRequest], *mocks.MockTransactor) {
+) (FriendshipRequestService, *mocks.MockRepository[users.FriendshipRequest], *mocks.MockTransactor) {
 	requestRepo := mocks.NewMockRepository[users.FriendshipRequest](t)
 	transactor := mocks.NewMockTransactor(t)
 
-	svc := service.NewFriendshipRequestService(
+	svc := NewFriendshipRequestService(
 		transactor,
 		nil, // friendshipSvc (unused by GetAllByType/HandleBlockCommand)
 		nil, // profileService (unused by GetAllByType/HandleBlockCommand)

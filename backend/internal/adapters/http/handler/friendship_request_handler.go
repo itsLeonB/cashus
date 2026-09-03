@@ -30,6 +30,10 @@ type SendFriendRequestInput struct {
 // routes/api_routes.go can register it with profilesMW instead of sharing
 // Routes()'s protectedMW group: it's rate-limited like RegisterSearch and
 // RegisterGetAllByFriendProfileID, using the same shared limiter instance.
+func (frh *FriendshipRequestHandler) sendFriendRequest(ctx context.Context, in SendFriendRequestInput) (dto.FriendshipRequestResponse, error) {
+	return frh.svc.Send(ctx, in.ProfileID, in.FriendProfileID)
+}
+
 func (frh *FriendshipRequestHandler) SendRoutes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[SendFriendRequestInput, dto.FriendshipRequestResponse]{
@@ -40,9 +44,7 @@ func (frh *FriendshipRequestHandler) SendRoutes() []endpoint.Registrable {
 			Tags:        []string{"friend-requests"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in SendFriendRequestInput) (dto.FriendshipRequestResponse, error) {
-				return frh.svc.Send(ctx, in.ProfileID, in.FriendProfileID)
-			},
+			HandlerFunc: frh.sendFriendRequest,
 		}),
 	}
 }
@@ -71,6 +73,26 @@ type BlockFriendRequestInput struct {
 // unrecognized path value, but that validation now lives in
 // service.FriendshipRequestService.GetAllByType, so GetAll fits here
 // alongside Accept.
+func (frh *FriendshipRequestHandler) acceptFriendRequest(ctx context.Context, in FriendRequestIDInput) (dto.FriendshipResponse, error) {
+	return frh.svc.Accept(ctx, in.ProfileID, in.FriendRequestID)
+}
+
+func (frh *FriendshipRequestHandler) getFriendRequests(ctx context.Context, in GetAllFriendRequestsInput) ([]dto.FriendshipRequestResponse, error) {
+	return frh.svc.GetAllByType(ctx, in.ProfileID, in.RequestType)
+}
+
+func (frh *FriendshipRequestHandler) cancelFriendRequest(ctx context.Context, in FriendRequestIDInput) error {
+	return frh.svc.Cancel(ctx, in.ProfileID, in.FriendRequestID)
+}
+
+func (frh *FriendshipRequestHandler) ignoreFriendRequest(ctx context.Context, in FriendRequestIDInput) error {
+	return frh.svc.Ignore(ctx, in.ProfileID, in.FriendRequestID)
+}
+
+func (frh *FriendshipRequestHandler) blockFriendRequest(ctx context.Context, in BlockFriendRequestInput) (dto.FriendshipRequestResponse, error) {
+	return frh.svc.HandleBlockCommand(ctx, in.ProfileID, in.FriendRequestID, in.Command)
+}
+
 func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[FriendRequestIDInput, dto.FriendshipResponse]{
@@ -81,9 +103,7 @@ func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"friend-requests"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in FriendRequestIDInput) (dto.FriendshipResponse, error) {
-				return frh.svc.Accept(ctx, in.ProfileID, in.FriendRequestID)
-			},
+			HandlerFunc: frh.acceptFriendRequest,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAllFriendRequestsInput, []dto.FriendshipRequestResponse]{
 			OperationID: "get-friend-requests",
@@ -93,9 +113,7 @@ func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"friend-requests"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllFriendRequestsInput) ([]dto.FriendshipRequestResponse, error) {
-				return frh.svc.GetAllByType(ctx, in.ProfileID, in.RequestType)
-			},
+			HandlerFunc: frh.getFriendRequests,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[FriendRequestIDInput]{
 			OperationID: "cancel-friend-request",
@@ -104,9 +122,7 @@ func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 			Summary:     "Cancel a sent friend request",
 			Tags:        []string{"friend-requests"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in FriendRequestIDInput) error {
-				return frh.svc.Cancel(ctx, in.ProfileID, in.FriendRequestID)
-			},
+			HandlerFunc: frh.cancelFriendRequest,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[FriendRequestIDInput]{
 			OperationID: "ignore-friend-request",
@@ -115,9 +131,7 @@ func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 			Summary:     "Ignore a received friend request",
 			Tags:        []string{"friend-requests"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in FriendRequestIDInput) error {
-				return frh.svc.Ignore(ctx, in.ProfileID, in.FriendRequestID)
-			},
+			HandlerFunc: frh.ignoreFriendRequest,
 		}),
 		endpoint.New(endpoint.Endpoint[BlockFriendRequestInput, dto.FriendshipRequestResponse]{
 			OperationID: "block-friend-request",
@@ -127,9 +141,7 @@ func (frh *FriendshipRequestHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"friend-requests"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in BlockFriendRequestInput) (dto.FriendshipRequestResponse, error) {
-				return frh.svc.HandleBlockCommand(ctx, in.ProfileID, in.FriendRequestID, in.Command)
-			},
+			HandlerFunc: frh.blockFriendRequest,
 		}),
 	}
 }

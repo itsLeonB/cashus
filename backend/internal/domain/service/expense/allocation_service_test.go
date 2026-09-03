@@ -1,17 +1,16 @@
-package expense_test
+package expense
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
-	"github.com/itsLeonB/cashback/internal/domain/service/expense"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAllocationService_EqualSplit(t *testing.T) {
-	service := expense.NewAllocationService()
+	service := NewAllocationService()
 	totalAmount := decimal.NewFromFloat(100.00)
 
 	participants := []expenses.ItemParticipant{
@@ -39,7 +38,7 @@ func TestAllocationService_EqualSplit(t *testing.T) {
 }
 
 func TestAllocationService_WeightedSplit(t *testing.T) {
-	service := expense.NewAllocationService()
+	service := NewAllocationService()
 	totalAmount := decimal.NewFromFloat(100.00)
 
 	participants := []expenses.ItemParticipant{
@@ -66,7 +65,7 @@ func TestAllocationService_WeightedSplit(t *testing.T) {
 }
 
 func TestAllocationService_MixedWeights_ShouldError(t *testing.T) {
-	service := expense.NewAllocationService()
+	service := NewAllocationService()
 	totalAmount := decimal.NewFromFloat(100.00)
 
 	participants := []expenses.ItemParticipant{
@@ -80,7 +79,7 @@ func TestAllocationService_MixedWeights_ShouldError(t *testing.T) {
 }
 
 func TestAllocationService_NegativeWeight_ShouldError(t *testing.T) {
-	service := expense.NewAllocationService()
+	service := NewAllocationService()
 	totalAmount := decimal.NewFromFloat(100.00)
 
 	participants := []expenses.ItemParticipant{
@@ -93,7 +92,7 @@ func TestAllocationService_NegativeWeight_ShouldError(t *testing.T) {
 }
 
 func TestAllocationService_EmptyParticipants_ShouldError(t *testing.T) {
-	service := expense.NewAllocationService()
+	service := NewAllocationService()
 	totalAmount := decimal.NewFromFloat(100.00)
 
 	participants := []expenses.ItemParticipant{}
@@ -104,7 +103,7 @@ func TestAllocationService_EmptyParticipants_ShouldError(t *testing.T) {
 }
 
 func TestAllocationService_RoundingRemainder(t *testing.T) {
-	service := expense.NewAllocationService()
+	service := NewAllocationService()
 	totalAmount := decimal.NewFromFloat(100.01) // Amount that will cause rounding issues
 
 	participants := []expenses.ItemParticipant{

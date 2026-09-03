@@ -64,6 +64,54 @@ type SyncExpenseItemParticipantsInput struct {
 
 // Routes returns every route ExpenseItemHandler exposes via
 // endpoint.NoBodyEndpoint, for registration via endpoint.RegisterAll.
+func (geh *ExpenseItemHandler) addExpenseItem(ctx context.Context, in AddExpenseItemInput) error {
+	request := dto.NewExpenseItemRequest{
+		UserProfileID:  in.ProfileID,
+		GroupExpenseID: in.GroupExpenseID,
+		Name:           in.Body.Name,
+		Amount:         in.Body.Amount.Decimal,
+		Quantity:       in.Body.Quantity,
+	}
+
+	return geh.expenseItemSvc.Add(ctx, request)
+}
+
+func (geh *ExpenseItemHandler) updateExpenseItem(ctx context.Context, in UpdateExpenseItemInput) error {
+	request := dto.UpdateExpenseItemRequest{
+		UserProfileID:  in.ProfileID,
+		ID:             in.ExpenseItemID,
+		GroupExpenseID: in.GroupExpenseID,
+		Name:           in.Body.Name,
+		Amount:         in.Body.Amount.Decimal,
+		Quantity:       in.Body.Quantity,
+	}
+
+	return geh.expenseItemSvc.Update(ctx, request)
+}
+
+func (geh *ExpenseItemHandler) removeExpenseItem(ctx context.Context, in RemoveExpenseItemInput) error {
+	return geh.expenseItemSvc.Remove(ctx, in.GroupExpenseID, in.ExpenseItemID, in.ProfileID)
+}
+
+func (geh *ExpenseItemHandler) syncExpenseItemParticipants(ctx context.Context, in SyncExpenseItemParticipantsInput) error {
+	participants := make([]dto.ItemParticipantRequest, 0, len(in.Body.Participants))
+	for _, p := range in.Body.Participants {
+		participants = append(participants, dto.ItemParticipantRequest{
+			ProfileID: p.ProfileID,
+			Weight:    p.Weight,
+		})
+	}
+
+	request := dto.SyncItemParticipantsRequest{
+		ProfileID:      in.ProfileID,
+		ID:             in.ExpenseItemID,
+		GroupExpenseID: in.GroupExpenseID,
+		Participants:   participants,
+	}
+
+	return geh.expenseItemSvc.SyncParticipants(ctx, request)
+}
+
 func (geh *ExpenseItemHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[AddExpenseItemInput]{
@@ -73,17 +121,7 @@ func (geh *ExpenseItemHandler) Routes() []endpoint.Registrable {
 			Summary:     "Add an item to a group expense",
 			Tags:        []string{"expense-items"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in AddExpenseItemInput) error {
-				request := dto.NewExpenseItemRequest{
-					UserProfileID:  in.ProfileID,
-					GroupExpenseID: in.GroupExpenseID,
-					Name:           in.Body.Name,
-					Amount:         in.Body.Amount.Decimal,
-					Quantity:       in.Body.Quantity,
-				}
-
-				return geh.expenseItemSvc.Add(ctx, request)
-			},
+			HandlerFunc: geh.addExpenseItem,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[UpdateExpenseItemInput]{
 			OperationID: "update-expense-item",
@@ -92,18 +130,7 @@ func (geh *ExpenseItemHandler) Routes() []endpoint.Registrable {
 			Summary:     "Update an expense item",
 			Tags:        []string{"expense-items"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UpdateExpenseItemInput) error {
-				request := dto.UpdateExpenseItemRequest{
-					UserProfileID:  in.ProfileID,
-					ID:             in.ExpenseItemID,
-					GroupExpenseID: in.GroupExpenseID,
-					Name:           in.Body.Name,
-					Amount:         in.Body.Amount.Decimal,
-					Quantity:       in.Body.Quantity,
-				}
-
-				return geh.expenseItemSvc.Update(ctx, request)
-			},
+			HandlerFunc: geh.updateExpenseItem,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[RemoveExpenseItemInput]{
 			OperationID: "remove-expense-item",
@@ -112,9 +139,7 @@ func (geh *ExpenseItemHandler) Routes() []endpoint.Registrable {
 			Summary:     "Remove an expense item",
 			Tags:        []string{"expense-items"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in RemoveExpenseItemInput) error {
-				return geh.expenseItemSvc.Remove(ctx, in.GroupExpenseID, in.ExpenseItemID, in.ProfileID)
-			},
+			HandlerFunc: geh.removeExpenseItem,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SyncExpenseItemParticipantsInput]{
 			OperationID: "sync-expense-item-participants",
@@ -123,24 +148,7 @@ func (geh *ExpenseItemHandler) Routes() []endpoint.Registrable {
 			Summary:     "Sync participants of an expense item",
 			Tags:        []string{"expense-items"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in SyncExpenseItemParticipantsInput) error {
-				participants := make([]dto.ItemParticipantRequest, 0, len(in.Body.Participants))
-				for _, p := range in.Body.Participants {
-					participants = append(participants, dto.ItemParticipantRequest{
-						ProfileID: p.ProfileID,
-						Weight:    p.Weight,
-					})
-				}
-
-				request := dto.SyncItemParticipantsRequest{
-					ProfileID:      in.ProfileID,
-					ID:             in.ExpenseItemID,
-					GroupExpenseID: in.GroupExpenseID,
-					Participants:   participants,
-				}
-
-				return geh.expenseItemSvc.SyncParticipants(ctx, request)
-			},
+			HandlerFunc: geh.syncExpenseItemParticipants,
 		}),
 	}
 }

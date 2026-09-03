@@ -71,6 +71,10 @@ type MakePaymentInput struct {
 // for registration via endpoint.RegisterAll. RegisterNotification is
 // registered separately (hand-written) because it's an unauthenticated
 // webhook with a bodyless response.
+func (ph *PaymentHandler) makePayment(ctx context.Context, in MakePaymentInput) (dto.PaymentResponse, error) {
+	return ph.svc.MakePayment(ctx, in.ProfileID, in.SubscriptionID)
+}
+
 func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[MakePaymentInput, dto.PaymentResponse]{
@@ -81,9 +85,7 @@ func (ph *PaymentHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"payments"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in MakePaymentInput) (dto.PaymentResponse, error) {
-				return ph.svc.MakePayment(ctx, in.ProfileID, in.SubscriptionID)
-			},
+			HandlerFunc: ph.makePayment,
 		}),
 	}
 }

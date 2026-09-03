@@ -47,6 +47,24 @@ type AssociateProfileInput struct {
 // registration via endpoint.RegisterAll. RegisterSearch is registered
 // separately (SearchRoutes) because it's rate-limited with profilesMW rather
 // than protectedMW.
+func (ph *ProfileHandler) getProfile(ctx context.Context, in GetProfileInput) (dto.ProfileResponse, error) {
+	return ph.profileService.GetByID(ctx, in.ProfileID)
+}
+
+func (ph *ProfileHandler) updateProfile(ctx context.Context, in UpdateProfileInput) (dto.ProfileResponse, error) {
+	request := dto.UpdateProfileRequest{
+		ID:           in.ProfileID,
+		Name:         in.Body.Name,
+		HomeCurrency: in.Body.HomeCurrency,
+	}
+
+	return ph.profileService.Update(ctx, request)
+}
+
+func (ph *ProfileHandler) associateProfile(ctx context.Context, in AssociateProfileInput) error {
+	return ph.profileService.MergeAnonymousProfile(ctx, in.ProfileID, in.Body.RealProfileID, in.Body.AnonProfileID)
+}
+
 func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetProfileInput, dto.ProfileResponse]{
@@ -57,9 +75,7 @@ func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"profile"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetProfileInput) (dto.ProfileResponse, error) {
-				return ph.profileService.GetByID(ctx, in.ProfileID)
-			},
+			HandlerFunc: ph.getProfile,
 		}),
 		endpoint.New(endpoint.Endpoint[UpdateProfileInput, dto.ProfileResponse]{
 			OperationID: "update-profile",
@@ -69,15 +85,7 @@ func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"profile"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UpdateProfileInput) (dto.ProfileResponse, error) {
-				request := dto.UpdateProfileRequest{
-					ID:           in.ProfileID,
-					Name:         in.Body.Name,
-					HomeCurrency: in.Body.HomeCurrency,
-				}
-
-				return ph.profileService.Update(ctx, request)
-			},
+			HandlerFunc: ph.updateProfile,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[AssociateProfileInput]{
 			OperationID: "associate-profile",
@@ -86,9 +94,7 @@ func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 			Summary:     "Associate anonymous profile with real profile",
 			Tags:        []string{"profile"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in AssociateProfileInput) error {
-				return ph.profileService.MergeAnonymousProfile(ctx, in.ProfileID, in.Body.RealProfileID, in.Body.AnonProfileID)
-			},
+			HandlerFunc: ph.associateProfile,
 		}),
 	}
 }
@@ -103,6 +109,10 @@ type SearchProfilesInput struct {
 // group: it's rate-limited like FriendshipRequestHandler.SendRoutes and
 // ProfileTransferMethodHandler.GetAllByFriendProfileIDRoutes, using the same
 // shared limiter instance.
+func (ph *ProfileHandler) searchProfiles(ctx context.Context, in SearchProfilesInput) ([]dto.SearchProfileResponse, error) {
+	return ph.profileService.Search(ctx, in.ProfileID, in.Query)
+}
+
 func (ph *ProfileHandler) SearchRoutes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[SearchProfilesInput, []dto.SearchProfileResponse]{
@@ -113,9 +123,7 @@ func (ph *ProfileHandler) SearchRoutes() []endpoint.Registrable {
 			Tags:        []string{"profile"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in SearchProfilesInput) ([]dto.SearchProfileResponse, error) {
-				return ph.profileService.Search(ctx, in.ProfileID, in.Query)
-			},
+			HandlerFunc: ph.searchProfiles,
 		}),
 	}
 }

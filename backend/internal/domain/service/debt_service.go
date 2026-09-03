@@ -67,7 +67,7 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
 
-	transactionDate, err := resolveTransactionDate(req.TransactionDate, time.Now())
+	transactionDate, err := resolveTransactionDate(req.TransactionDate, time.Now().UTC())
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
@@ -283,8 +283,11 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 const transactionDateLayout = "2006-01-02"
 
 // resolveTransactionDate defaults and validates the transactionDate field of a new
-// debt transaction request. An empty raw value defaults to now's date (server date).
-// A non-empty value must parse as YYYY-MM-DD and must not be later than now's date.
+// debt transaction request. An empty raw value - whether the field was omitted or
+// sent as an explicit "" - defaults to now's date (server date). A non-empty value
+// must parse as YYYY-MM-DD and must not be later than now's date. Callers should
+// pass now already normalized to the desired timezone convention (this codebase
+// uses UTC throughout); resolveTransactionDate does not convert it itself.
 func resolveTransactionDate(raw string, now time.Time) (time.Time, error) {
 	today := truncateToDate(now)
 

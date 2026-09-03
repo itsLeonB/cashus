@@ -28,9 +28,14 @@ type CreateDebtInput struct {
 		Amount           httpapi.Decimal              `json:"amount"`
 		TransferMethodID uuid.UUID                    `json:"transferMethodId"`
 		Description      string                       `json:"description,omitempty"`
-		// TransactionDate is an optional "YYYY-MM-DD" date. Omitted -> defaults to
-		// today's date (server date). Validated in DebtService.RecordNewTransaction.
-		TransactionDate string `json:"transactionDate,omitempty" format:"date"`
+		// TransactionDate is an optional "YYYY-MM-DD" date. Omitted or empty ->
+		// defaults to today's date (server date). Deliberately untagged with
+		// format:"date": huma's format validator runs time.Parse unconditionally,
+		// even on an empty string, which would reject "" before it reaches
+		// resolveTransactionDate's omitted-or-empty -> today branch below.
+		// DebtService.RecordNewTransaction is the single source of truth for
+		// parsing/defaulting/future-date validation.
+		TransactionDate string `json:"transactionDate,omitempty"`
 	}
 }
 

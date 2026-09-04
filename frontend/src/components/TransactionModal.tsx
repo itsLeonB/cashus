@@ -202,6 +202,16 @@ export function TransactionModal({
             </Select>
           </div>
 
+          {/* Currency */}
+          <div className="space-y-2">
+            <Label>Currency</Label>
+            <CurrencySelect
+              value={currency}
+              onChange={setCurrency}
+              placeholder="Select currency"
+            />
+          </div>
+
           {/* Amount */}
           <div className="space-y-2">
             <Label htmlFor="amount">
@@ -227,16 +237,6 @@ export function TransactionModal({
                 onChange={(e) => setAmount(e.target.value)}
               />
             )}
-          </div>
-
-          {/* Currency */}
-          <div className="space-y-2">
-            <Label>Currency</Label>
-            <CurrencySelect
-              value={currency}
-              onChange={setCurrency}
-              placeholder="Select currency"
-            />
           </div>
 
           {/* Transaction Date */}

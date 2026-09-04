@@ -29,31 +29,27 @@ export function RepaymentAmountSummary({
 }: Readonly<RepaymentAmountSummaryProps>) {
   if (!canPreview) {
     return (
-      <div
-        id={id}
-        className="rounded-lg border-2 border-border/50 bg-muted/30 p-3 text-sm"
-      >
-        <p className="text-muted-foreground">
-          Select a friend with an outstanding balance in {currency} to see
-          the repayment amount.
-        </p>
-      </div>
+      <p id={id} className="text-sm text-muted-foreground">
+        Select a friend with an outstanding balance in {currency} to see the
+        repayment amount.
+      </p>
     );
   }
 
   const { verb, preposition } = getRepaymentDirection(netBalance);
+  const name = friendName || "this friend";
 
   return (
-    <div
-      id={id}
-      className="rounded-lg border-2 border-border/50 bg-muted/30 p-3 text-sm"
-    >
-      <p>
+    <div id={id} className="space-y-1">
+      <p className="text-sm">
         You will {verb}{" "}
         <span className="font-semibold tabular-nums">
           {formatCurrency(Math.abs(netBalance), currency)}
         </span>{" "}
-        {preposition} {friendName || "this friend"}
+        {preposition} {name}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        This will bring your balance with {name} to zero.
       </p>
     </div>
   );

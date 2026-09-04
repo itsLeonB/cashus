@@ -104,6 +104,29 @@ func TestResolveTransactionDate_InvalidFormat_ReturnsValidationError(t *testing.
 	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
 }
 
+// TestRecordNewTransaction_NotRepayment_NonPositiveAmount_ReturnsValidationError
+// is an end-to-end regression guard for the isRepayment=false path (CASH-6):
+// the amount-must-be-positive check is the very first thing RecordNewTransaction
+// does, before touching any dependency, so a zero-value debtServiceImpl (every
+// collaborator nil) can exercise it directly without mocking the rest of the
+// dependency graph.
+func TestRecordNewTransaction_NotRepayment_NonPositiveAmount_ReturnsValidationError(t *testing.T) {
+	ds := &debtServiceImpl{}
+	req := dto.NewDebtTransactionRequest{
+		UserProfileID:   uuid.New(),
+		FriendProfileID: uuid.New(),
+		Direction:       dto.OutgoingDebt,
+		Amount:          decimal.Zero,
+	}
+
+	_, err := ds.RecordNewTransaction(context.Background(), req)
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
 // These tests cover resolveRepayment, the helper RecordNewTransaction uses to
 // compute direction+amount for an isRepayment=true request (CASH-6), and
 // validateDirection, the sibling helper that preserves the pre-CASH-6 "direction

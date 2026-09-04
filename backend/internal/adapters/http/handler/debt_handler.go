@@ -25,8 +25,8 @@ type CreateDebtInput struct {
 		FriendProfileID uuid.UUID `json:"friendProfileId"`
 		// Direction is required unless IsRepayment is true (CASH-6), in which case
 		// it's computed server-side and this field is ignored - so it's tagged
-		// omitempty and DebtService.RecordNewTransaction is the sole enforcer of
-		// "required unless isRepayment".
+		// omitempty and DebtService.RecordNewTransaction (via validateDirection)
+		// is the sole enforcer of "required unless isRepayment".
 		Direction dto.DebtTransactionDirection `json:"direction,omitempty" enum:"INCOMING,OUTGOING"`
 		Currency  string                       `json:"currency" minLength:"3" maxLength:"3"`
 		// Amount is required unless IsRepayment is true - see Direction's comment.

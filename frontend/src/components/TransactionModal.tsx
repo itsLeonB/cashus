@@ -21,8 +21,13 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCircle } from "@/components/AvatarCircle";
-import { ArrowUpRight, ArrowDownLeft, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowLeftRight,
+  Loader2,
+} from "lucide-react";
+import { cn, formatCurrency } from "@/lib/utils";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
@@ -78,6 +83,7 @@ export function TransactionModal({
   const { user } = useAuth();
   const [friendId, setFriendId] = useState(defaultFriendId || "");
   const [direction, setDirection] = useState<DebtDirection>(defaultDirection);
+  const [isRepayment, setIsRepayment] = useState(false);
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState(user?.homeCurrency || "IDR");
   const [description, setDescription] = useState("");
@@ -111,7 +117,8 @@ export function TransactionModal({
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    if (!friendId || !amount || !selectedMethod?.id) return;
+    if (!friendId || !selectedMethod?.id) return;
+    if (isRepayment ? !canZeroOutBalance : !amount) return;
 
     const dateResult = transactionDateSchema.safeParse(transactionDate);
     if (!dateResult.success) {
@@ -123,18 +130,26 @@ export function TransactionModal({
     try {
       await createDebt.mutateAsync({
         friendProfileId: friendId,
-        direction,
-        amount: Number.parseFloat(amount),
         currency,
         transferMethodId: selectedMethod.id,
-        description: description || undefined,
         transactionDate: dateResult.data,
+        ...(isRepayment
+          ? { isRepayment: true }
+          : {
+              direction,
+              amount: Number.parseFloat(amount),
+              description: description || undefined,
+            }),
       });
       toast({
         title: "Transaction recorded",
-        description: `Successfully recorded ${directionConfig[
-          direction
-        ].label.toLowerCase()}`,
+        description: isRepayment
+          ? `Successfully recorded repayment with ${
+              selectedFriendship?.profileName || "friend"
+            }`
+          : `Successfully recorded ${directionConfig[
+              direction
+            ].label.toLowerCase()}`,
       });
       resetForm();
       onOpenChange(false);
@@ -150,6 +165,7 @@ export function TransactionModal({
   const resetForm = () => {
     setFriendId(defaultFriendId || "");
     setDirection(defaultDirection);
+    setIsRepayment(false);
     setAmount("");
     setCurrency("IDR");
     setDescription("");
@@ -167,27 +183,51 @@ export function TransactionModal({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Direction Type */}
-          <div className="grid grid-cols-2 gap-2">
-            {DEBT_DIRECTIONS.map((key) => {
-              const config = directionConfig[key];
-              const Icon = config.icon;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setDirection(key)}
-                  className={cn(
-                    "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center",
-                    direction === key
-                      ? config.colorClass
-                      : "border-border/50 hover:border-border text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-sm font-medium">{config.label}</span>
-                </button>
-              );
-            })}
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              {DEBT_DIRECTIONS.map((key) => {
+                const config = directionConfig[key];
+                const Icon = config.icon;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setIsRepayment(false);
+                      setDirection(key);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center",
+                      !isRepayment && direction === key
+                        ? config.colorClass
+                        : "border-border/50 hover:border-border text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-sm font-medium">{config.label}</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                disabled={!canZeroOutBalance}
+                onClick={() => setIsRepayment(true)}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center disabled:opacity-40 disabled:cursor-not-allowed",
+                  isRepayment
+                    ? "border-primary text-primary bg-primary/10"
+                    : "border-border/50 hover:border-border text-muted-foreground",
+                )}
+              >
+                <ArrowLeftRight className="h-5 w-5" />
+                <span className="text-sm font-medium">Repayment</span>
+              </button>
+            </div>
+            {!canZeroOutBalance && friendId && (
+              <p className="text-xs text-muted-foreground">
+                Balance is already settled in {currency} — nothing to repay.
+              </p>
+            )}
           </div>
 
           {/* Friend Selection */}
@@ -220,28 +260,55 @@ export function TransactionModal({
           {/* Amount */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="amount">Amount</Label>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-                disabled={!canZeroOutBalance}
-                onClick={handleZeroOutBalance}
-              >
-                Zero out balance
-              </Button>
+              <Label htmlFor="amount">
+                {isRepayment ? "Repayment amount" : "Amount"}
+              </Label>
+              {!isRepayment && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  disabled={!canZeroOutBalance}
+                  onClick={handleZeroOutBalance}
+                >
+                  Zero out balance
+                </Button>
+              )}
             </div>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              className="text-lg tabular-nums"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+            {isRepayment ? (
+              <div
+                id="amount"
+                className="rounded-lg border-2 border-border/50 bg-muted/30 p-3 text-sm"
+              >
+                {canZeroOutBalance ? (
+                  <p>
+                    {zeroOutBalance > 0 ? "You will receive" : "You will pay"}{" "}
+                    <span className="font-semibold tabular-nums">
+                      {formatCurrency(Math.abs(zeroOutBalance), currency)}
+                    </span>{" "}
+                    {zeroOutBalance > 0 ? "from" : "to"}{" "}
+                    {selectedFriendship?.profileName || "this friend"}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Select a friend with an outstanding balance in {currency}{" "}
+                    to see the repayment amount.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                className="text-lg tabular-nums"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Currency */}
@@ -281,16 +348,18 @@ export function TransactionModal({
           />
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Note (optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="What's this for?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
+          {!isRepayment && (
+            <div className="space-y-2">
+              <Label htmlFor="description">Note (optional)</Label>
+              <Textarea
+                id="description"
+                placeholder="What's this for?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+          )}
 
           {/* Submit */}
           <Button
@@ -298,8 +367,8 @@ export function TransactionModal({
             className="w-full"
             disabled={
               !friendId ||
-              !amount ||
               !selectedMethod?.id ||
+              (isRepayment ? !canZeroOutBalance : !amount) ||
               createDebt.isPending
             }
           >

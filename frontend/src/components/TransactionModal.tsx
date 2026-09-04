@@ -21,13 +21,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCircle } from "@/components/AvatarCircle";
+import { Loader2 } from "lucide-react";
 import {
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowLeftRight,
-  Loader2,
-} from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+  TransactionDirectionSelector,
+  directionConfig,
+} from "@/components/TransactionDirectionSelector";
+import { RepaymentAmountSummary } from "@/components/RepaymentAmountSummary";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
@@ -44,35 +43,6 @@ interface TransactionModalProps {
   defaultFriendId?: string;
   defaultDirection?: DebtDirection;
 }
-
-const directionConfig = {
-  OUTGOING: {
-    label: "I gave money",
-    description: "You gave money to friend",
-    icon: ArrowUpRight,
-    colorClass: "border-success text-success bg-success/10",
-  },
-  INCOMING: {
-    label: "I received money",
-    description: "You received money from friend",
-    icon: ArrowDownLeft,
-    colorClass: "border-warning text-warning bg-warning/10",
-  },
-} satisfies Record<
-  DebtDirection,
-  {
-    label: string;
-    description: string;
-    icon: typeof ArrowUpRight;
-    colorClass: string;
-  }
->;
-
-// SAFETY: directionConfig above is checked with `satisfies
-// Record<DebtDirection, ...>`, so its keys are guaranteed to be exactly the
-// DebtDirection variants — Object.keys just can't express that in its
-// return type (string[]).
-const DEBT_DIRECTIONS = Object.keys(directionConfig) as DebtDirection[];
 
 export function TransactionModal({
   open,
@@ -99,7 +69,8 @@ export function TransactionModal({
   const { toast } = useToast();
 
   // Net balance for the selected friend in the selected currency, signed from
-  // the current user's perspective: positive means the friend owes the user.
+  // the current user's perspective: positive means the friend owes the
+  // user. Drives the Repayment option's preview and its disabled state.
   const selectedFriendship = friendships?.find(
     (friendship) => friendship.profileId === friendId,
   );
@@ -108,12 +79,6 @@ export function TransactionModal({
   );
   const canZeroOutBalance =
     !!friendId && !Number.isNaN(zeroOutBalance) && zeroOutBalance !== 0;
-
-  const handleZeroOutBalance = () => {
-    if (!canZeroOutBalance) return;
-    setDirection(zeroOutBalance > 0 ? "INCOMING" : "OUTGOING");
-    setAmount(Math.abs(zeroOutBalance).toFixed(2));
-  };
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -183,52 +148,18 @@ export function TransactionModal({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Direction Type */}
-          <div className="space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              {DEBT_DIRECTIONS.map((key) => {
-                const config = directionConfig[key];
-                const Icon = config.icon;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => {
-                      setIsRepayment(false);
-                      setDirection(key);
-                    }}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center",
-                      !isRepayment && direction === key
-                        ? config.colorClass
-                        : "border-border/50 hover:border-border text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-sm font-medium">{config.label}</span>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                disabled={!canZeroOutBalance}
-                onClick={() => setIsRepayment(true)}
-                className={cn(
-                  "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center disabled:opacity-40 disabled:cursor-not-allowed",
-                  isRepayment
-                    ? "border-primary text-primary bg-primary/10"
-                    : "border-border/50 hover:border-border text-muted-foreground",
-                )}
-              >
-                <ArrowLeftRight className="h-5 w-5" />
-                <span className="text-sm font-medium">Repayment</span>
-              </button>
-            </div>
-            {!canZeroOutBalance && friendId && (
-              <p className="text-xs text-muted-foreground">
-                Balance is already settled in {currency} — nothing to repay.
-              </p>
-            )}
-          </div>
+          <TransactionDirectionSelector
+            direction={direction}
+            isRepayment={isRepayment}
+            canRepay={canZeroOutBalance}
+            friendSelected={!!friendId}
+            currency={currency}
+            onSelectDirection={(key) => {
+              setIsRepayment(false);
+              setDirection(key);
+            }}
+            onSelectRepayment={() => setIsRepayment(true)}
+          />
 
           {/* Friend Selection */}
           <div className="space-y-2">
@@ -259,44 +190,17 @@ export function TransactionModal({
 
           {/* Amount */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="amount">
-                {isRepayment ? "Repayment amount" : "Amount"}
-              </Label>
-              {!isRepayment && (
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-xs"
-                  disabled={!canZeroOutBalance}
-                  onClick={handleZeroOutBalance}
-                >
-                  Zero out balance
-                </Button>
-              )}
-            </div>
+            <Label htmlFor="amount">
+              {isRepayment ? "Repayment amount" : "Amount"}
+            </Label>
             {isRepayment ? (
-              <div
+              <RepaymentAmountSummary
                 id="amount"
-                className="rounded-lg border-2 border-border/50 bg-muted/30 p-3 text-sm"
-              >
-                {canZeroOutBalance ? (
-                  <p>
-                    {zeroOutBalance > 0 ? "You will receive" : "You will pay"}{" "}
-                    <span className="font-semibold tabular-nums">
-                      {formatCurrency(Math.abs(zeroOutBalance), currency)}
-                    </span>{" "}
-                    {zeroOutBalance > 0 ? "from" : "to"}{" "}
-                    {selectedFriendship?.profileName || "this friend"}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground">
-                    Select a friend with an outstanding balance in {currency}{" "}
-                    to see the repayment amount.
-                  </p>
-                )}
-              </div>
+                canPreview={canZeroOutBalance}
+                netBalance={zeroOutBalance}
+                currency={currency}
+                friendName={selectedFriendship?.profileName}
+              />
             ) : (
               <Input
                 id="amount"

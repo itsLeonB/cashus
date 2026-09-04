@@ -102,6 +102,16 @@ type FriendshipBalanceService interface {
 	// GetNetBalancesForProfile serves GET /friendships: net balance per currency per
 	// counterparty, signed so positive = profileID is net lender, zero balances omitted.
 	GetNetBalancesForProfile(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error)
+
+	// GetNetBalanceForPairForUpdate is the locked, single-pair equivalent of
+	// GetNetBalancesForProfile, for callers that must read-then-write the balance for one pair
+	// atomically (e.g. a repayment computing its amount from the current balance before
+	// inserting the settling transaction). It locks the friendship row via
+	// FindByProfileIDsForUpdate before reading, so a concurrent caller for the same pair blocks
+	// until this one's transaction commits, instead of both reading the same stale balance.
+	// Caller must already be inside transactor.WithinTransaction. Signed so positive =
+	// profileID1 is net lender; a missing friendship or balance row is zero, not an error.
+	GetNetBalanceForPairForUpdate(ctx context.Context, profileID1, profileID2 uuid.UUID, currency string) (decimal.Decimal, error)
 }
 
 type TransferMethodService interface {

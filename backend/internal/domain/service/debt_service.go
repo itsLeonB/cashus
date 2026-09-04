@@ -96,25 +96,32 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	}
 
 	// direction, amount and description default to the request as-is; a repayment
-	// overrides all three from the current net balance instead (see resolveRepayment).
+	// overrides all three from the current net balance instead (see resolveRepayment). A
+	// non-repayment direction can be validated up front since it's fixed by the request; a
+	// repayment's direction/amount depend on the balance and must be resolved inside the
+	// transaction below (see resolveRepayment's doc comment for why).
 	direction, amount, description := req.Direction, req.Amount, req.Description
-	if req.IsRepayment {
-		direction, amount, err = ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
-		if err != nil {
+	if !req.IsRepayment {
+		if err := validateDirection(direction); err != nil {
 			return dto.DebtTransactionResponse{}, err
 		}
-		description = ""
-	} else if err := validateDirection(direction); err != nil {
-		return dto.DebtTransactionResponse{}, err
-	}
-
-	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
-	if direction == dto.IncomingDebt {
-		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
 	}
 
 	var insertedDebt debts.DebtTransaction
 	err = ds.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		if req.IsRepayment {
+			direction, amount, err = ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
+			if err != nil {
+				return err
+			}
+			description = ""
+		}
+
+		lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
+		if direction == dto.IncomingDebt {
+			lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
+		}
+
 		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 			LenderProfileID:   lenderID,
 			BorrowerProfileID: borrowerID,
@@ -150,7 +157,16 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 // current by RecalculatePair on every debt-transaction write) rather than
 // re-deriving it from the transaction history.
 //
-// GetNetBalancesForProfile returns the balance signed so that positive means
+// It must be called from inside the same transactor.WithinTransaction block that goes on to
+// insert the settling debt transaction and call RecalculatePair, using
+// GetNetBalanceForPairForUpdate rather than the unlocked GetNetBalancesForProfile: that method
+// locks the friendship row first, so two concurrent isRepayment requests for the same pair
+// serialize instead of both reading the same pre-repayment balance and both inserting a
+// settling transaction - the second must instead see the balance already zeroed by the first
+// (once its RecalculatePair, sharing the same lock, has committed) and be rejected below. See
+// GetNetBalanceForPairForUpdate's doc comment for the locking detail.
+//
+// GetNetBalanceForPairForUpdate returns the balance signed so that positive means
 // userProfileID is the net lender (friendProfileID owes userProfileID); a
 // repayment settling that must record friendProfileID paying userProfileID
 // back, i.e. userProfileID *receiving* money, so direction is INCOMING with
@@ -166,12 +182,11 @@ func (ds *debtServiceImpl) resolveRepayment(
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.resolveRepayment")
 	defer span.End()
 
-	netBalances, err := ds.friendshipBalanceService.GetNetBalancesForProfile(ctx, userProfileID)
+	netBalance, err := ds.friendshipBalanceService.GetNetBalanceForPairForUpdate(ctx, userProfileID, friendProfileID, currency)
 	if err != nil {
 		return "", decimal.Decimal{}, err
 	}
 
-	netBalance := netBalances[friendProfileID][currency]
 	if netBalance.IsZero() {
 		return "", decimal.Decimal{}, ungerr.UnprocessableEntityError("nothing to repay: balance is already zero")
 	}

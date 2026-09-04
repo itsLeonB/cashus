@@ -150,10 +150,8 @@ func TestResolveRepayment_FriendOwesUser_ReturnsIncomingDirectionAndAbsoluteAmou
 
 	balanceService := mocks.NewMockFriendshipBalanceService(t)
 	balanceService.EXPECT().
-		GetNetBalancesForProfile(mock.Anything, userID).
-		Return(map[uuid.UUID]map[string]decimal.Decimal{
-			friendID: {currency: decimal.NewFromInt(150)},
-		}, nil)
+		GetNetBalanceForPairForUpdate(mock.Anything, userID, friendID, currency).
+		Return(decimal.NewFromInt(150), nil)
 	ds := newDebtServiceForRepaymentTest(balanceService)
 
 	direction, amount, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
@@ -170,10 +168,8 @@ func TestResolveRepayment_UserOwesFriend_ReturnsOutgoingDirectionAndAbsoluteAmou
 
 	balanceService := mocks.NewMockFriendshipBalanceService(t)
 	balanceService.EXPECT().
-		GetNetBalancesForProfile(mock.Anything, userID).
-		Return(map[uuid.UUID]map[string]decimal.Decimal{
-			friendID: {currency: decimal.NewFromInt(-75)},
-		}, nil)
+		GetNetBalanceForPairForUpdate(mock.Anything, userID, friendID, currency).
+		Return(decimal.NewFromInt(-75), nil)
 	ds := newDebtServiceForRepaymentTest(balanceService)
 
 	direction, amount, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
@@ -190,10 +186,8 @@ func TestResolveRepayment_ZeroBalance_ReturnsUnprocessableEntityError(t *testing
 
 	balanceService := mocks.NewMockFriendshipBalanceService(t)
 	balanceService.EXPECT().
-		GetNetBalancesForProfile(mock.Anything, userID).
-		Return(map[uuid.UUID]map[string]decimal.Decimal{
-			friendID: {currency: decimal.Zero},
-		}, nil)
+		GetNetBalanceForPairForUpdate(mock.Anything, userID, friendID, currency).
+		Return(decimal.Zero, nil)
 	ds := newDebtServiceForRepaymentTest(balanceService)
 
 	_, _, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
@@ -206,7 +200,9 @@ func TestResolveRepayment_ZeroBalance_ReturnsUnprocessableEntityError(t *testing
 
 // No FriendshipBalance row at all (e.g. the pair has never transacted, or the
 // currency has no history between them) reads back as a zero balance, same as
-// an explicit zero - also rejected as "nothing to repay".
+// an explicit zero - also rejected as "nothing to repay". GetNetBalanceForPairForUpdate
+// itself is what collapses "no row" to decimal.Zero (see its own tests); this test just
+// confirms resolveRepayment treats that zero the same as an explicit one.
 func TestResolveRepayment_NoCachedBalanceForPair_ReturnsUnprocessableEntityError(t *testing.T) {
 	userID := uuid.New()
 	friendID := uuid.New()
@@ -214,8 +210,8 @@ func TestResolveRepayment_NoCachedBalanceForPair_ReturnsUnprocessableEntityError
 
 	balanceService := mocks.NewMockFriendshipBalanceService(t)
 	balanceService.EXPECT().
-		GetNetBalancesForProfile(mock.Anything, userID).
-		Return(map[uuid.UUID]map[string]decimal.Decimal{}, nil)
+		GetNetBalanceForPairForUpdate(mock.Anything, userID, friendID, currency).
+		Return(decimal.Zero, nil)
 	ds := newDebtServiceForRepaymentTest(balanceService)
 
 	_, _, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)

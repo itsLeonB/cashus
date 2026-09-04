@@ -162,3 +162,47 @@ func (fbs *friendshipBalanceServiceImpl) GetNetBalancesForProfile(ctx context.Co
 
 	return result, nil
 }
+
+func (fbs *friendshipBalanceServiceImpl) GetNetBalanceForPairForUpdate(
+	ctx context.Context,
+	profileID1, profileID2 uuid.UUID,
+	currency string,
+) (decimal.Decimal, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipBalanceService.GetNetBalanceForPairForUpdate")
+	defer span.End()
+
+	// Locks the friendship row first so a concurrent read-then-write for the same pair (e.g. two
+	// repayments racing) blocks until this one's transaction commits, instead of both reading
+	// the same stale balance and both deciding there's something to settle.
+	friendship, err := fbs.friendshipRepository.FindByProfileIDsForUpdate(ctx, profileID1, profileID2)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	if friendship.IsZero() {
+		// No Friendship row for this pair - nothing to owe.
+		return decimal.Zero, nil
+	}
+
+	balances, err := fbs.balanceRepository.FindAllByFriendshipID(ctx, friendship.ID)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+
+	for _, balance := range balances {
+		if balance.Currency != currency {
+			continue
+		}
+
+		netBalance := balance.NetBalance
+		if friendship.ProfileID1 != profileID1 {
+			// netBalance is stored signed relative to the friendship's own ProfileID1, flip it
+			// to be relative to the profileID1 argument if that differs.
+			netBalance = netBalance.Neg()
+		}
+
+		return netBalance, nil
+	}
+
+	// No row for this currency - balance is zero.
+	return decimal.Zero, nil
+}

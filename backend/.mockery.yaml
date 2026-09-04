@@ -29,6 +29,7 @@ packages:
     interfaces:
       ProfileRepository:
       FriendshipRepository:
+      FriendshipBalanceRepository:
       GroupExpenseRepository:
   github.com/itsLeonB/go-crud:
     config:

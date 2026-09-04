@@ -3388,6 +3388,84 @@ func (_m *MockFriendshipBalanceService) EXPECT() *MockFriendshipBalanceService_E
 	return &MockFriendshipBalanceService_Expecter{mock: &_m.Mock}
 }
 
+// GetNetBalanceForPairForUpdate provides a mock function for the type MockFriendshipBalanceService
+func (_mock *MockFriendshipBalanceService) GetNetBalanceForPairForUpdate(ctx context.Context, profileID1 uuid.UUID, profileID2 uuid.UUID, currency string) (decimal.Decimal, error) {
+	ret := _mock.Called(ctx, profileID1, profileID2, currency)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNetBalanceForPairForUpdate")
+	}
+
+	var r0 decimal.Decimal
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (decimal.Decimal, error)); ok {
+		return returnFunc(ctx, profileID1, profileID2, currency)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) decimal.Decimal); ok {
+		r0 = returnFunc(ctx, profileID1, profileID2, currency)
+	} else {
+		r0 = ret.Get(0).(decimal.Decimal)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = returnFunc(ctx, profileID1, profileID2, currency)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNetBalanceForPairForUpdate'
+type MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call struct {
+	*mock.Call
+}
+
+// GetNetBalanceForPairForUpdate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - profileID1 uuid.UUID
+//   - profileID2 uuid.UUID
+//   - currency string
+func (_e *MockFriendshipBalanceService_Expecter) GetNetBalanceForPairForUpdate(ctx any, profileID1 any, profileID2 any, currency any) *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call {
+	return &MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call{Call: _e.mock.On("GetNetBalanceForPairForUpdate", ctx, profileID1, profileID2, currency)}
+}
+
+func (_c *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call) Run(run func(ctx context.Context, profileID1 uuid.UUID, profileID2 uuid.UUID, currency string)) *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call) Return(decimal1 decimal.Decimal, err error) *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call {
+	_c.Call.Return(decimal1, err)
+	return _c
+}
+
+func (_c *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call) RunAndReturn(run func(ctx context.Context, profileID1 uuid.UUID, profileID2 uuid.UUID, currency string) (decimal.Decimal, error)) *MockFriendshipBalanceService_GetNetBalanceForPairForUpdate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetNetBalancesForProfile provides a mock function for the type MockFriendshipBalanceService
 func (_mock *MockFriendshipBalanceService) GetNetBalancesForProfile(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error) {
 	ret := _mock.Called(ctx, profileID)

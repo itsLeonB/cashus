@@ -42,7 +42,7 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByMultipleProfileIDs(ctx contex
 		Where("lender_profile_id IN ? AND borrower_profile_id IN ?", userProfileIDs, friendProfileIDs).
 		Or("lender_profile_id IN ? AND borrower_profile_id IN ?", friendProfileIDs, userProfileIDs).
 		Preload("TransferMethod").
-		Order("created_at DESC").
+		Order("transaction_date DESC, created_at DESC").
 		Find(&transactions).
 		Error
 
@@ -73,11 +73,14 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByProfileIDs(
 		return nil, err
 	}
 
+	// transaction_date is the user-facing (possibly backdated) date; created_at DESC
+	// breaks ties between same-day transactions in insertion order, matching
+	// crud.DefaultOrder()'s behavior before transaction_date existed.
 	query := db.
 		Where(db.Where("lender_profile_id IN ?", profileIDs).
 			Or("borrower_profile_id IN ?", profileIDs)).
 		Preload("TransferMethod").
-		Scopes(crud.DefaultOrder())
+		Order("transaction_date DESC, created_at DESC")
 
 	if limit > 0 {
 		query = query.Limit(limit)

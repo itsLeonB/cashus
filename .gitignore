@@ -11,3 +11,6 @@ Thumbs.db
 # Safety net for stray env files at repo root
 .env
 .envrc
+
+# Agent worktree checkouts (isolation for parallel subagent dispatches)
+.claude/worktrees/

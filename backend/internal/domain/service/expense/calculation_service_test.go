@@ -1,17 +1,16 @@
-package expense_test
+package expense
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
-	"github.com/itsLeonB/cashback/internal/domain/service/expense"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCalculationServiceRecalculateExpense(t *testing.T) {
-	svc := expense.NewCalculationService()
+	svc := NewCalculationService()
 
 	type args struct {
 		expense       expenses.GroupExpense

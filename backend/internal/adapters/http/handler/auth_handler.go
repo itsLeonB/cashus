@@ -282,7 +282,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Summary:     "Register a new user account",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusCreated,
-			ServiceFunc: ah.register,
+			HandlerFunc: ah.register,
 		}),
 		endpoint.New(endpoint.Endpoint[LoginAuthInput, authMessageBody]{
 			OperationID: "auth-login",
@@ -291,7 +291,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Summary:     "Login with email and password",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: ah.login,
+			HandlerFunc: ah.login,
 		}),
 		endpoint.NewRedirect(endpoint.RedirectEndpoint[OAuthLoginInput]{
 			OperationID: "auth-oauth-login",
@@ -299,7 +299,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Path:        "/api/v1/auth/{provider}",
 			Summary:     "Redirect to the OAuth provider's login page",
 			Tags:        []string{"auth"},
-			ServiceFunc: ah.oauthLogin,
+			HandlerFunc: ah.oauthLogin,
 		}),
 		endpoint.New(endpoint.Endpoint[OAuthCallbackInput, authMessageBody]{
 			OperationID: "auth-oauth-callback",
@@ -308,7 +308,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Summary:     "Handle the OAuth provider's callback",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: ah.oauthCallback,
+			HandlerFunc: ah.oauthCallback,
 		}),
 		endpoint.New(endpoint.Endpoint[VerifyRegistrationInput, authMessageBody]{
 			OperationID: "auth-verify-registration",
@@ -317,7 +317,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Summary:     "Verify a registration email token",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: ah.verifyRegistration,
+			HandlerFunc: ah.verifyRegistration,
 		}),
 		endpoint.New(endpoint.Endpoint[RefreshTokenInput, authMessageBody]{
 			OperationID: "auth-refresh",
@@ -326,7 +326,7 @@ func (ah *AuthHandler) Routes() []endpoint.Registrable {
 			Summary:     "Refresh the access token",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: ah.refreshToken,
+			HandlerFunc: ah.refreshToken,
 		}),
 	}
 }
@@ -344,7 +344,7 @@ func (ah *AuthHandler) PasswordResetRoutes() []endpoint.Registrable {
 			Summary:     "Send a password reset email",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusCreated,
-			ServiceFunc: ah.sendPasswordReset,
+			HandlerFunc: ah.sendPasswordReset,
 		}),
 	}
 }
@@ -362,7 +362,7 @@ func (ah *AuthHandler) ResetPasswordRoutes() []endpoint.Registrable {
 			Summary:     "Reset a password using a reset token",
 			Tags:        []string{"auth"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: ah.resetPassword,
+			HandlerFunc: ah.resetPassword,
 		}),
 	}
 }
@@ -380,7 +380,7 @@ func (ah *AuthHandler) LogoutRoutes() []endpoint.Registrable {
 			Summary:     "Logout the current session",
 			Tags:        []string{"auth"},
 			Secured:     true,
-			ServiceFunc: ah.logout,
+			HandlerFunc: ah.logout,
 		}),
 	}
 }

@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 
+	"github.com/google/wire"
 	adminauth "github.com/itsLeonB/cashback/internal/adapters/auth/admin"
 	adminConfig "github.com/itsLeonB/cashback/internal/core/config/admin"
 	admin "github.com/itsLeonB/cashback/internal/domain/entity/admin"
@@ -11,11 +12,15 @@ import (
 	"github.com/itsLeonB/ungerr"
 )
 
+// ProviderSet is the wire provider set for the admin sub-package's
+// repositories and services.
+var ProviderSet = wire.NewSet(ProvideRepositories, ProvideServices)
+
 type Services struct {
 	Kit *authkit.AuthKit
 }
 
-func ProvideServices(repos *Repositories, cfg *adminConfig.Config) *Services {
+func ProvideServices(repos *Repositories, cfg *adminConfig.Config) (*Services, error) {
 	kit, err := authkit.New(authkit.Config{
 		Stateless:   true,
 		JWTIssuer:   cfg.Issuer,
@@ -37,8 +42,8 @@ func ProvideServices(repos *Repositories, cfg *adminConfig.Config) *Services {
 		},
 	})
 	if err != nil {
-		panic(err)
+		return nil, ungerr.Wrap(err, "error creating admin authkit instance")
 	}
 
-	return &Services{Kit: kit}
+	return &Services{Kit: kit}, nil
 }

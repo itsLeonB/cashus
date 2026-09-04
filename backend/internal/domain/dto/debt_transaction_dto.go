@@ -20,6 +20,9 @@ type NewDebtTransactionRequest struct {
 	Amount           decimal.Decimal          `json:"amount" binding:"required"`
 	TransferMethodID uuid.UUID                `json:"transferMethodId" binding:"required"`
 	Description      string                   `json:"description"`
+	// TransactionDate is the raw "YYYY-MM-DD" value from the request, or empty
+	// if omitted. DebtService.RecordNewTransaction defaults and validates it.
+	TransactionDate string `json:"transactionDate"`
 }
 
 type DebtTransactionResponse struct {
@@ -32,4 +35,7 @@ type DebtTransactionResponse struct {
 	Description    string          `json:"description"`
 	GroupExpenseID uuid.UUID       `json:"groupExpenseId"`
 	IsFromExpense  bool            `json:"isFromExpense"`
+	// TransactionDate is the effective (possibly backdated) transaction date,
+	// formatted "YYYY-MM-DD". Independent of BaseDTO.CreatedAt.
+	TransactionDate string `json:"transactionDate"`
 }

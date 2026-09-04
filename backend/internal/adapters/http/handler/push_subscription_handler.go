@@ -40,6 +40,30 @@ type UnsubscribeFromPushInput struct {
 
 // Routes returns every route PushSubscriptionHandler exposes via
 // endpoint.NoBodyEndpoint, for registration via endpoint.RegisterAll.
+func (h *PushSubscriptionHandler) subscribeToPush(ctx context.Context, in SubscribeToPushInput) error {
+	request := dto.PushSubscriptionRequest{
+		ProfileID: in.ProfileID,
+		SessionID: in.SessionID,
+		Endpoint:  in.Body.Endpoint,
+		Keys: dto.PushSubscriptionKeys{
+			P256dh: in.Body.Keys.P256dh,
+			Auth:   in.Body.Keys.Auth,
+		},
+		UserAgent: in.Body.UserAgent,
+	}
+
+	return h.pushNotificationSvc.Subscribe(ctx, request)
+}
+
+func (h *PushSubscriptionHandler) unsubscribeFromPush(ctx context.Context, in UnsubscribeFromPushInput) error {
+	request := dto.PushUnsubscribeRequest{
+		ProfileID: in.ProfileID,
+		Endpoint:  in.Body.Endpoint,
+	}
+
+	return h.pushNotificationSvc.Unsubscribe(ctx, request)
+}
+
 func (h *PushSubscriptionHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[SubscribeToPushInput]{
@@ -49,20 +73,7 @@ func (h *PushSubscriptionHandler) Routes() []endpoint.Registrable {
 			Summary:     "Subscribe to push notifications",
 			Tags:        []string{"push"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in SubscribeToPushInput) error {
-				request := dto.PushSubscriptionRequest{
-					ProfileID: in.ProfileID,
-					SessionID: in.SessionID,
-					Endpoint:  in.Body.Endpoint,
-					Keys: dto.PushSubscriptionKeys{
-						P256dh: in.Body.Keys.P256dh,
-						Auth:   in.Body.Keys.Auth,
-					},
-					UserAgent: in.Body.UserAgent,
-				}
-
-				return h.pushNotificationSvc.Subscribe(ctx, request)
-			},
+			HandlerFunc: h.subscribeToPush,
 		}),
 		endpoint.NewNoBody(endpoint.NoBodyEndpoint[UnsubscribeFromPushInput]{
 			OperationID: "unsubscribe-from-push",
@@ -71,14 +82,7 @@ func (h *PushSubscriptionHandler) Routes() []endpoint.Registrable {
 			Summary:     "Unsubscribe from push notifications",
 			Tags:        []string{"push"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in UnsubscribeFromPushInput) error {
-				request := dto.PushUnsubscribeRequest{
-					ProfileID: in.ProfileID,
-					Endpoint:  in.Body.Endpoint,
-				}
-
-				return h.pushNotificationSvc.Unsubscribe(ctx, request)
-			},
+			HandlerFunc: h.unsubscribeFromPush,
 		}),
 	}
 }

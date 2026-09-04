@@ -1,4 +1,4 @@
-package httpapi_test
+package httpapi
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
-	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,7 +49,7 @@ func TestUngerrSatisfiesHumaStatusError(t *testing.T) {
 // HTTP status on the wire, not a generic 500, with no huma.NewError override
 // or wrapper needed anywhere in this codebase.
 func TestUngerrErrorProducesRealHTTPStatus(t *testing.T) {
-	_, api := humatest.New(t, httpapi.NewConfig())
+	_, api := humatest.New(t, NewConfig())
 
 	huma.Register(api, huma.Operation{
 		OperationID: "test-not-found",

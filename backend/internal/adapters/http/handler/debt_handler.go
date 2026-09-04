@@ -28,6 +28,14 @@ type CreateDebtInput struct {
 		Amount           httpapi.Decimal              `json:"amount"`
 		TransferMethodID uuid.UUID                    `json:"transferMethodId"`
 		Description      string                       `json:"description,omitempty"`
+		// TransactionDate is an optional "YYYY-MM-DD" date. Omitted or empty ->
+		// defaults to today's date (server date). Deliberately untagged with
+		// format:"date": huma's format validator runs time.Parse unconditionally,
+		// even on an empty string, which would reject "" before it reaches
+		// resolveTransactionDate's omitted-or-empty -> today branch below.
+		// DebtService.RecordNewTransaction is the single source of truth for
+		// parsing/defaulting/future-date validation.
+		TransactionDate string `json:"transactionDate,omitempty"`
 	}
 }
 
@@ -45,6 +53,33 @@ type GetRecentDebtsInput struct {
 
 // Routes returns every route DebtHandler exposes, for registration via
 // endpoint.RegisterAll.
+func (dh *DebtHandler) createDebt(ctx context.Context, in CreateDebtInput) (dto.DebtTransactionResponse, error) {
+	request := dto.NewDebtTransactionRequest{
+		UserProfileID:    in.ProfileID,
+		FriendProfileID:  in.Body.FriendProfileID,
+		Direction:        in.Body.Direction,
+		Currency:         in.Body.Currency,
+		Amount:           in.Body.Amount.Decimal,
+		TransferMethodID: in.Body.TransferMethodID,
+		Description:      in.Body.Description,
+		TransactionDate:  in.Body.TransactionDate,
+	}
+
+	return dh.debtService.RecordNewTransaction(ctx, request)
+}
+
+func (dh *DebtHandler) getDebts(ctx context.Context, in GetAllDebtsInput) ([]dto.DebtTransactionResponse, error) {
+	return dh.debtService.GetTransactions(ctx, in.ProfileID)
+}
+
+func (dh *DebtHandler) getDebtsSummary(ctx context.Context, in GetDebtsSummaryInput) (map[string]dto.FriendBalance, error) {
+	return dh.debtService.GetTransactionSummary(ctx, in.ProfileID)
+}
+
+func (dh *DebtHandler) getRecentDebts(ctx context.Context, in GetRecentDebtsInput) ([]dto.DebtTransactionResponse, error) {
+	return dh.debtService.GetRecent(ctx, in.ProfileID)
+}
+
 func (dh *DebtHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[CreateDebtInput, dto.DebtTransactionResponse]{
@@ -55,19 +90,7 @@ func (dh *DebtHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"debts"},
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in CreateDebtInput) (dto.DebtTransactionResponse, error) {
-				request := dto.NewDebtTransactionRequest{
-					UserProfileID:    in.ProfileID,
-					FriendProfileID:  in.Body.FriendProfileID,
-					Direction:        in.Body.Direction,
-					Currency:         in.Body.Currency,
-					Amount:           in.Body.Amount.Decimal,
-					TransferMethodID: in.Body.TransferMethodID,
-					Description:      in.Body.Description,
-				}
-
-				return dh.debtService.RecordNewTransaction(ctx, request)
-			},
+			HandlerFunc: dh.createDebt,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAllDebtsInput, []dto.DebtTransactionResponse]{
 			OperationID: "get-debts",
@@ -77,9 +100,7 @@ func (dh *DebtHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"debts"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAllDebtsInput) ([]dto.DebtTransactionResponse, error) {
-				return dh.debtService.GetTransactions(ctx, in.ProfileID)
-			},
+			HandlerFunc: dh.getDebts,
 		}),
 		endpoint.New(endpoint.Endpoint[GetDebtsSummaryInput, map[string]dto.FriendBalance]{
 			OperationID: "get-debts-summary",
@@ -89,9 +110,7 @@ func (dh *DebtHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"debts"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetDebtsSummaryInput) (map[string]dto.FriendBalance, error) {
-				return dh.debtService.GetTransactionSummary(ctx, in.ProfileID)
-			},
+			HandlerFunc: dh.getDebtsSummary,
 		}),
 		endpoint.New(endpoint.Endpoint[GetRecentDebtsInput, []dto.DebtTransactionResponse]{
 			OperationID: "get-recent-debts",
@@ -101,9 +120,7 @@ func (dh *DebtHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"debts"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetRecentDebtsInput) ([]dto.DebtTransactionResponse, error) {
-				return dh.debtService.GetRecent(ctx, in.ProfileID)
-			},
+			HandlerFunc: dh.getRecentDebts,
 		}),
 	}
 }

@@ -17,7 +17,7 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup
         uses: ./.github/actions/setup-bun
         with:
@@ -28,7 +28,7 @@ jobs:
     name: Run Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup
         uses: ./.github/actions/setup-bun
         with:
@@ -39,7 +39,7 @@ jobs:
     name: Build Project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup
         uses: ./.github/actions/setup-bun
         with:
@@ -50,7 +50,7 @@ jobs:
     name: Quality Audits
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup
         uses: ./.github/actions/setup-bun
         with:

@@ -1,0 +1,68 @@
+import { z } from "zod";
+
+// "YYYY-MM-DD" — zero-padded ISO date strings sort/compare lexicographically,
+// so string comparison against today's date is sufficient to reject future dates.
+// Derived from UTC date parts (not local getFullYear()/etc.) to match the
+// backend's convention: transactionDate's "today" is the server's UTC
+// calendar day, not the client's local day (see CASH-2 — timezone-aware
+// client-local selection is explicitly out of scope).
+export const getTodayDateString = () => {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Converts a "YYYY-MM-DD" transactionDate value into a Date for the
+// Calendar widget's `selected` prop. The Calendar is rendered with
+// `timeZone="UTC"` (see TransactionModal), which makes react-day-picker
+// re-anchor whatever Date `selected` holds onto a UTC-wall-clock TZDate by
+// reusing its *instant*, not its local Y/M/D — so `new Date(value)` (which
+// parses a date-only ISO string as UTC midnight, per spec) is exactly the
+// Date whose instant already matches that anchoring. Do NOT swap this for a
+// locally-constructed `new Date(year, month - 1, day)`: its instant would be
+// local midnight, which is a different moment than UTC midnight for any
+// viewer not at UTC+0, and would make `selected` land on the wrong day in
+// the grid.
+export const parseTransactionDateValue = (value: string): Date => new Date(value);
+
+// Inverse of parseTransactionDateValue: reads a Date's calendar components
+// back into a "YYYY-MM-DD" string. Used for the Calendar's onSelect and for
+// comparing a grid cell's day against getTodayDateString() to disable
+// future dates. Callers only ever pass this the TZDate instances the
+// `timeZone="UTC"`-anchored Calendar itself constructs for its cells (never
+// a plain local Date) — react-day-picker's TZDate overrides getFullYear/
+// getMonth/getDate to read that UTC wall clock instead of the system
+// timezone, so these plain local-style getters come back UTC-correct.
+export const formatTransactionDateValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// True only if value round-trips through the local Date constructor unchanged
+// — catches calendar-invalid-but-regex-valid dates like "2026-02-30", which
+// JS Date otherwise silently rolls over (to March 2) instead of producing NaN.
+const isValidCalendarDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+};
+
+export const transactionDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date")
+  .refine(isValidCalendarDate, {
+    message: "Enter a valid date",
+  })
+  .refine((value) => value <= getTodayDateString(), {
+    message: "Transaction date can't be in the future",
+  });
+
+export type TransactionDateValue = z.infer<typeof transactionDateSchema>;

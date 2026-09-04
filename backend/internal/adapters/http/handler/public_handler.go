@@ -23,6 +23,10 @@ type GetPublicProfileInput struct {
 
 // Routes returns every route PublicHandler exposes, for registration via
 // endpoint.RegisterAll.
+func (ph *PublicHandler) getPublicProfile(ctx context.Context, in GetPublicProfileInput) (dto.FriendDetailsResponse, error) {
+	return ph.friendDetailsSvc.GetDetailsBySlug(ctx, in.Slug)
+}
+
 func (ph *PublicHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.New(endpoint.Endpoint[GetPublicProfileInput, dto.FriendDetailsResponse]{
@@ -32,9 +36,7 @@ func (ph *PublicHandler) Routes() []endpoint.Registrable {
 			Summary:     "Get a public profile by slug",
 			Tags:        []string{"public"},
 			SuccessCode: http.StatusOK,
-			ServiceFunc: func(ctx context.Context, in GetPublicProfileInput) (dto.FriendDetailsResponse, error) {
-				return ph.friendDetailsSvc.GetDetailsBySlug(ctx, in.Slug)
-			},
+			HandlerFunc: ph.getPublicProfile,
 		}),
 	}
 }

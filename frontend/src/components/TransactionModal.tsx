@@ -26,7 +26,12 @@ import { cn } from "@/lib/utils";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
+import { TransactionDateField } from "@/components/TransactionDateField";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import {
+  getTodayDateString,
+  transactionDateSchema,
+} from "@/lib/validations/transaction";
 
 interface TransactionModalProps {
   open: boolean;
@@ -78,6 +83,8 @@ export function TransactionModal({
   const [description, setDescription] = useState("");
   const [selectedMethod, setSelectedMethod] = useState<TransferMethod>(null);
   const [transferMethodOpen, setTransferMethodOpen] = useState(false);
+  const [transactionDate, setTransactionDate] = useState(getTodayDateString());
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const { data: friendships } = useFriendships();
   const { data: transferMethods, isLoading: isLoadingMethods } =
@@ -85,9 +92,33 @@ export function TransactionModal({
   const createDebt = useCreateDebt();
   const { toast } = useToast();
 
+  // Net balance for the selected friend in the selected currency, signed from
+  // the current user's perspective: positive means the friend owes the user.
+  const selectedFriendship = friendships?.find(
+    (friendship) => friendship.profileId === friendId,
+  );
+  const zeroOutBalance = Number.parseFloat(
+    selectedFriendship?.balancesPerCurrency?.[currency] ?? "0",
+  );
+  const canZeroOutBalance =
+    !!friendId && !Number.isNaN(zeroOutBalance) && zeroOutBalance !== 0;
+
+  const handleZeroOutBalance = () => {
+    if (!canZeroOutBalance) return;
+    setDirection(zeroOutBalance > 0 ? "INCOMING" : "OUTGOING");
+    setAmount(Math.abs(zeroOutBalance).toFixed(2));
+  };
+
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     if (!friendId || !amount || !selectedMethod?.id) return;
+
+    const dateResult = transactionDateSchema.safeParse(transactionDate);
+    if (!dateResult.success) {
+      setDateError(dateResult.error.issues[0]?.message || "Invalid date");
+      return;
+    }
+    setDateError(null);
 
     try {
       await createDebt.mutateAsync({
@@ -97,6 +128,7 @@ export function TransactionModal({
         currency,
         transferMethodId: selectedMethod.id,
         description: description || undefined,
+        transactionDate: dateResult.data,
       });
       toast({
         title: "Transaction recorded",
@@ -122,6 +154,8 @@ export function TransactionModal({
     setCurrency("IDR");
     setDescription("");
     setSelectedMethod(null);
+    setTransactionDate(getTodayDateString());
+    setDateError(null);
   };
 
   return (
@@ -185,7 +219,19 @@ export function TransactionModal({
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="amount">Amount</Label>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                disabled={!canZeroOutBalance}
+                onClick={handleZeroOutBalance}
+              >
+                Zero out balance
+              </Button>
+            </div>
             <Input
               id="amount"
               type="number"
@@ -206,6 +252,22 @@ export function TransactionModal({
               onChange={setCurrency}
               placeholder="Select currency"
             />
+          </div>
+
+          {/* Transaction Date */}
+          <div className="space-y-2">
+            <Label htmlFor="transactionDate">Date</Label>
+            <TransactionDateField
+              id="transactionDate"
+              value={transactionDate}
+              onChange={(value) => {
+                setTransactionDate(value);
+                setDateError(null);
+              }}
+            />
+            {dateError && (
+              <p className="text-xs text-destructive">{dateError}</p>
+            )}
           </div>
 
           {/* Transfer Method */}

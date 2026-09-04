@@ -26,6 +26,14 @@ type GetAdminProfileInput struct {
 
 // Routes returns every route ProfileHandler exposes via endpoint.Endpoint,
 // for registration via endpoint.RegisterAll.
+func (ph *ProfileHandler) getAdminProfiles(ctx context.Context, in GetAdminProfileListInput) ([]dto.ProfileResponse, error) {
+	return ph.svc.GetAllReal(ctx)
+}
+
+func (ph *ProfileHandler) getAdminProfile(ctx context.Context, in GetAdminProfileInput) (dto.ProfileResponse, error) {
+	return ph.svc.GetByID(ctx, in.ProfileID)
+}
+
 func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 	return []endpoint.Registrable{
 		endpoint.NewList(endpoint.ListEndpoint[GetAdminProfileListInput, dto.ProfileResponse]{
@@ -35,9 +43,7 @@ func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 			Summary:     "Get all real profiles",
 			Tags:        []string{"admin-profiles"},
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAdminProfileListInput) ([]dto.ProfileResponse, error) {
-				return ph.svc.GetAllReal(ctx)
-			},
+			HandlerFunc: ph.getAdminProfiles,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAdminProfileInput, dto.ProfileResponse]{
 			OperationID: "get-admin-profile",
@@ -47,9 +53,7 @@ func (ph *ProfileHandler) Routes() []endpoint.Registrable {
 			Tags:        []string{"admin-profiles"},
 			SuccessCode: http.StatusOK,
 			Secured:     true,
-			ServiceFunc: func(ctx context.Context, in GetAdminProfileInput) (dto.ProfileResponse, error) {
-				return ph.svc.GetByID(ctx, in.ProfileID)
-			},
+			HandlerFunc: ph.getAdminProfile,
 		}),
 	}
 }

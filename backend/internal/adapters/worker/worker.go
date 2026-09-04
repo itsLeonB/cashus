@@ -14,32 +14,28 @@ import (
 type Worker struct {
 	*subscriber.Subscriber
 	*scheduler.Scheduler
-	shutdownFunc func() error
+	shutdownFunc func()
 }
 
 func Setup() (*Worker, error) {
-	providers, err := provider.All()
+	providers, cleanup, err := provider.InitializeProviders()
 	if err != nil {
 		return nil, err
 	}
 
 	subs, err := subscriber.Setup(providers)
 	if err != nil {
-		if e := providers.Shutdown(); e != nil {
-			logger.Errorf("error shutting down resources: %v", e)
-		}
+		cleanup()
 		return nil, err
 	}
 
 	sched, err := scheduler.Setup(providers)
 	if err != nil {
-		if e := providers.Shutdown(); e != nil {
-			logger.Errorf("error shutting down resources: %v", e)
-		}
+		cleanup()
 		return nil, err
 	}
 
-	return &Worker{subs, sched, providers.Shutdown}, nil
+	return &Worker{subs, sched, cleanup}, nil
 }
 
 func (w *Worker) Run() {
@@ -60,7 +56,5 @@ func (w *Worker) Run() {
 	w.Scheduler.Stop()
 	logger.Info("worker stopped")
 
-	if err := w.shutdownFunc(); err != nil {
-		logger.Error(err)
-	}
+	w.shutdownFunc()
 }

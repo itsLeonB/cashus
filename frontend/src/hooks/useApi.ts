@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  QueryClient,
+} from "@tanstack/react-query";
 import {
   friendshipsApi,
   debtsApi,
@@ -180,17 +185,21 @@ export function useDebts() {
   });
 }
 
+// Shared by useCreateDebt and useCreateRepayment: both endpoints write a
+// debt transaction, so both invalidate the same cached data.
+function invalidateDebtQueries(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.debts.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.debts.summary });
+  queryClient.invalidateQueries({ queryKey: queryKeys.debts.recent });
+  queryClient.invalidateQueries({ queryKey: queryKeys.friendships.all });
+}
+
 export function useCreateDebt() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: NewDebtTransactionRequest) => debtsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts.summary });
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts.recent });
-      queryClient.invalidateQueries({ queryKey: queryKeys.friendships.all });
-    },
+    onSuccess: () => invalidateDebtQueries(queryClient),
   });
 }
 
@@ -199,12 +208,7 @@ export function useCreateRepayment() {
 
   return useMutation({
     mutationFn: (data: NewRepaymentRequest) => debtsApi.repay(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts.summary });
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts.recent });
-      queryClient.invalidateQueries({ queryKey: queryKeys.friendships.all });
-    },
+    onSuccess: () => invalidateDebtQueries(queryClient),
   });
 }
 

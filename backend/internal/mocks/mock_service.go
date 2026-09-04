@@ -3361,6 +3361,72 @@ func (_c *MockDebtService_RecordNewTransaction_Call) RunAndReturn(run func(ctx c
 	return _c
 }
 
+// RecordRepayment provides a mock function for the type MockDebtService
+func (_mock *MockDebtService) RecordRepayment(ctx context.Context, request dto.NewRepaymentRequest) (dto.DebtTransactionResponse, error) {
+	ret := _mock.Called(ctx, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordRepayment")
+	}
+
+	var r0 dto.DebtTransactionResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.NewRepaymentRequest) (dto.DebtTransactionResponse, error)); ok {
+		return returnFunc(ctx, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.NewRepaymentRequest) dto.DebtTransactionResponse); ok {
+		r0 = returnFunc(ctx, request)
+	} else {
+		r0 = ret.Get(0).(dto.DebtTransactionResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.NewRepaymentRequest) error); ok {
+		r1 = returnFunc(ctx, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockDebtService_RecordRepayment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecordRepayment'
+type MockDebtService_RecordRepayment_Call struct {
+	*mock.Call
+}
+
+// RecordRepayment is a helper method to define mock.On call
+//   - ctx context.Context
+//   - request dto.NewRepaymentRequest
+func (_e *MockDebtService_Expecter) RecordRepayment(ctx any, request any) *MockDebtService_RecordRepayment_Call {
+	return &MockDebtService_RecordRepayment_Call{Call: _e.mock.On("RecordRepayment", ctx, request)}
+}
+
+func (_c *MockDebtService_RecordRepayment_Call) Run(run func(ctx context.Context, request dto.NewRepaymentRequest)) *MockDebtService_RecordRepayment_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 dto.NewRepaymentRequest
+		if args[1] != nil {
+			arg1 = args[1].(dto.NewRepaymentRequest)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockDebtService_RecordRepayment_Call) Return(debtTransactionResponse dto.DebtTransactionResponse, err error) *MockDebtService_RecordRepayment_Call {
+	_c.Call.Return(debtTransactionResponse, err)
+	return _c
+}
+
+func (_c *MockDebtService_RecordRepayment_Call) RunAndReturn(run func(ctx context.Context, request dto.NewRepaymentRequest) (dto.DebtTransactionResponse, error)) *MockDebtService_RecordRepayment_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockFriendshipBalanceService creates a new instance of MockFriendshipBalanceService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockFriendshipBalanceService(t interface {

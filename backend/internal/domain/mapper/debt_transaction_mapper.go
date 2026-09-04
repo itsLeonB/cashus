@@ -69,6 +69,7 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 			TransferMethod:  tx.TransferMethod.Display,
 			Description:     tx.Description,
 			TransactionDate: tx.TransactionDate.Format(transactionDateLayout),
+			IsRepayment:     tx.IsRepayment,
 		})
 	}
 

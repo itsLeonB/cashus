@@ -22,17 +22,12 @@ func NewDebtHandler(debtService service.DebtService) *DebtHandler {
 type CreateDebtInput struct {
 	httpapi.AuthInput
 	Body struct {
-		FriendProfileID uuid.UUID `json:"friendProfileId"`
-		// Direction is required unless IsRepayment is true (CASH-6), in which case
-		// it's computed server-side and this field is ignored - so it's tagged
-		// omitempty and DebtService.RecordNewTransaction (via validateDirection)
-		// is the sole enforcer of "required unless isRepayment".
-		Direction dto.DebtTransactionDirection `json:"direction,omitempty" enum:"INCOMING,OUTGOING"`
-		Currency  string                       `json:"currency" minLength:"3" maxLength:"3"`
-		// Amount is required unless IsRepayment is true - see Direction's comment.
-		Amount           httpapi.Decimal `json:"amount,omitempty"`
-		TransferMethodID uuid.UUID       `json:"transferMethodId"`
-		Description      string          `json:"description,omitempty"`
+		FriendProfileID  uuid.UUID                    `json:"friendProfileId"`
+		Direction        dto.DebtTransactionDirection `json:"direction" enum:"INCOMING,OUTGOING"`
+		Currency         string                       `json:"currency" minLength:"3" maxLength:"3"`
+		Amount           httpapi.Decimal              `json:"amount"`
+		TransferMethodID uuid.UUID                    `json:"transferMethodId"`
+		Description      string                       `json:"description,omitempty"`
 		// TransactionDate is an optional "YYYY-MM-DD" date. Omitted or empty ->
 		// defaults to today's date (server date). Deliberately untagged with
 		// format:"date": huma's format validator runs time.Parse unconditionally,
@@ -41,10 +36,22 @@ type CreateDebtInput struct {
 		// DebtService.RecordNewTransaction is the single source of truth for
 		// parsing/defaulting/future-date validation.
 		TransactionDate string `json:"transactionDate,omitempty"`
-		// IsRepayment marks this transaction as an auto-computed balance-settling
-		// repayment (CASH-6): when true, Amount, Direction and Description are
-		// ignored and instead derived server-side from the current net balance.
-		IsRepayment bool `json:"isRepayment,omitempty"`
+	}
+}
+
+// CreateRepaymentInput is the request for POST /api/v1/debts/repayment: unlike
+// CreateDebtInput, direction/amount/description are never supplied by the
+// caller - they're always computed server-side from the current net balance
+// (see DebtService.RecordRepayment).
+type CreateRepaymentInput struct {
+	httpapi.AuthInput
+	Body struct {
+		FriendProfileID  uuid.UUID `json:"friendProfileId"`
+		Currency         string    `json:"currency" minLength:"3" maxLength:"3"`
+		TransferMethodID uuid.UUID `json:"transferMethodId"`
+		// TransactionDate is an optional "YYYY-MM-DD" date - see CreateDebtInput's
+		// field of the same name for why it's untagged with format:"date".
+		TransactionDate string `json:"transactionDate,omitempty"`
 	}
 }
 
@@ -72,10 +79,21 @@ func (dh *DebtHandler) createDebt(ctx context.Context, in CreateDebtInput) (dto.
 		TransferMethodID: in.Body.TransferMethodID,
 		Description:      in.Body.Description,
 		TransactionDate:  in.Body.TransactionDate,
-		IsRepayment:      in.Body.IsRepayment,
 	}
 
 	return dh.debtService.RecordNewTransaction(ctx, request)
+}
+
+func (dh *DebtHandler) createDebtRepayment(ctx context.Context, in CreateRepaymentInput) (dto.DebtTransactionResponse, error) {
+	request := dto.NewRepaymentRequest{
+		UserProfileID:    in.ProfileID,
+		FriendProfileID:  in.Body.FriendProfileID,
+		Currency:         in.Body.Currency,
+		TransferMethodID: in.Body.TransferMethodID,
+		TransactionDate:  in.Body.TransactionDate,
+	}
+
+	return dh.debtService.RecordRepayment(ctx, request)
 }
 
 func (dh *DebtHandler) getDebts(ctx context.Context, in GetAllDebtsInput) ([]dto.DebtTransactionResponse, error) {
@@ -101,6 +119,16 @@ func (dh *DebtHandler) Routes() []endpoint.Registrable {
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
 			HandlerFunc: dh.createDebt,
+		}),
+		endpoint.New(endpoint.Endpoint[CreateRepaymentInput, dto.DebtTransactionResponse]{
+			OperationID: "create-debt-repayment",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/debts/repayment",
+			Summary:     "Record a new debt repayment",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			HandlerFunc: dh.createDebtRepayment,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAllDebtsInput, []dto.DebtTransactionResponse]{
 			OperationID: "get-debts",

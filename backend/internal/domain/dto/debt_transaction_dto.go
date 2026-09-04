@@ -13,26 +13,31 @@ const (
 )
 
 type NewDebtTransactionRequest struct {
-	UserProfileID   uuid.UUID `json:"-"`
-	FriendProfileID uuid.UUID `json:"friendProfileId" binding:"required"`
-	// Direction is required unless IsRepayment is true, in which case it is
-	// computed from the net balance instead - enforced in the service layer,
-	// since gin binding tags can't express a condition on a sibling field.
-	Direction DebtTransactionDirection `json:"direction" binding:"omitempty,oneof=INCOMING OUTGOING"`
-	Currency  string                   `json:"currency" binding:"len=3"`
-	// Amount is required unless IsRepayment is true, in which case it is
-	// computed from the net balance instead - see Direction's comment.
-	Amount           decimal.Decimal `json:"amount" binding:"omitempty"`
-	TransferMethodID uuid.UUID       `json:"transferMethodId" binding:"required"`
-	Description      string          `json:"description"`
+	UserProfileID    uuid.UUID                `json:"-"`
+	FriendProfileID  uuid.UUID                `json:"friendProfileId" binding:"required"`
+	Direction        DebtTransactionDirection `json:"direction" binding:"oneof=INCOMING OUTGOING"`
+	Currency         string                   `json:"currency" binding:"len=3"`
+	Amount           decimal.Decimal          `json:"amount" binding:"required"`
+	TransferMethodID uuid.UUID                `json:"transferMethodId" binding:"required"`
+	Description      string                   `json:"description"`
 	// TransactionDate is the raw "YYYY-MM-DD" value from the request, or empty
 	// if omitted. DebtService.RecordNewTransaction defaults and validates it.
 	TransactionDate string `json:"transactionDate"`
-	// IsRepayment marks this transaction as an auto-computed balance-settling
-	// repayment (CASH-6): when true, Amount, Direction and Description are
-	// ignored from the request and instead derived from the current net
-	// balance between UserProfileID and FriendProfileID in Currency.
-	IsRepayment bool `json:"isRepayment"`
+}
+
+// NewRepaymentRequest is the request for DebtService.RecordRepayment: a
+// repayment's direction, amount and description are always computed
+// server-side from the current net balance between UserProfileID and
+// FriendProfileID in Currency, so unlike NewDebtTransactionRequest it carries
+// none of those fields.
+type NewRepaymentRequest struct {
+	UserProfileID    uuid.UUID `json:"-"`
+	FriendProfileID  uuid.UUID `json:"friendProfileId" binding:"required"`
+	Currency         string    `json:"currency" binding:"len=3"`
+	TransferMethodID uuid.UUID `json:"transferMethodId" binding:"required"`
+	// TransactionDate is the raw "YYYY-MM-DD" value from the request, or empty
+	// if omitted. DebtService.RecordRepayment defaults and validates it.
+	TransactionDate string `json:"transactionDate"`
 }
 
 type DebtTransactionResponse struct {

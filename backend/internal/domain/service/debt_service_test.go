@@ -104,13 +104,12 @@ func TestResolveTransactionDate_InvalidFormat_ReturnsValidationError(t *testing.
 	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
 }
 
-// TestRecordNewTransaction_NotRepayment_NonPositiveAmount_ReturnsValidationError
-// is an end-to-end regression guard for the isRepayment=false path (CASH-6):
-// the amount-must-be-positive check is the very first thing RecordNewTransaction
-// does, before touching any dependency, so a zero-value debtServiceImpl (every
-// collaborator nil) can exercise it directly without mocking the rest of the
-// dependency graph.
-func TestRecordNewTransaction_NotRepayment_NonPositiveAmount_ReturnsValidationError(t *testing.T) {
+// TestRecordNewTransaction_NonPositiveAmount_ReturnsValidationError is an
+// end-to-end regression guard: the amount-must-be-positive check is the very
+// first thing RecordNewTransaction does, before touching any dependency, so a
+// zero-value debtServiceImpl (every collaborator nil) can exercise it directly
+// without mocking the rest of the dependency graph.
+func TestRecordNewTransaction_NonPositiveAmount_ReturnsValidationError(t *testing.T) {
 	ds := &debtServiceImpl{}
 	req := dto.NewDebtTransactionRequest{
 		UserProfileID:   uuid.New(),
@@ -127,12 +126,11 @@ func TestRecordNewTransaction_NotRepayment_NonPositiveAmount_ReturnsValidationEr
 	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
 }
 
-// These tests cover resolveRepayment, the helper RecordNewTransaction uses to
-// compute direction+amount for an isRepayment=true request (CASH-6), and
-// validateDirection, the sibling helper that preserves the pre-CASH-6 "direction
-// is required and must be INCOMING/OUTGOING" rule for isRepayment=false requests
-// now that binding tags alone can no longer enforce it (Direction became
-// omitempty since it's only conditionally required).
+// These tests cover resolveRepayment, the helper RecordRepayment uses to
+// compute direction+amount from the current net balance, and validateDirection,
+// the sibling helper RecordNewTransaction uses as a defense-in-depth check that
+// direction is INCOMING/OUTGOING, behind huma's enum tag on
+// CreateDebtInput.Body.Direction which enforces it over HTTP.
 
 // newDebtServiceForRepaymentTest builds a debtServiceImpl with only
 // friendshipBalanceService set - the only dependency resolveRepayment touches -
@@ -230,10 +228,6 @@ func TestValidateDirection_Outgoing_ReturnsNoError(t *testing.T) {
 	assert.NoError(t, validateDirection(dto.OutgoingDebt))
 }
 
-// Regression guard for the isRepayment=false path (CASH-6): Direction's binding
-// tag was relaxed to omitempty since it's now only conditionally required, so
-// this rule - previously enforced by gin binding alone - must still hold when
-// it's not a repayment.
 func TestValidateDirection_Empty_ReturnsValidationError(t *testing.T) {
 	err := validateDirection("")
 

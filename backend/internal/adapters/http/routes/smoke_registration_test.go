@@ -60,6 +60,9 @@ func TestFullRegistrationSmoke(t *testing.T) {
 	_, hasDebtsPost := paths["/api/v1/debts"]
 	assert.True(t, hasDebtsPost, "expected /api/v1/debts to be registered")
 
+	_, hasDebtsRepaymentPost := paths["/api/v1/debts/repayment"]
+	assert.True(t, hasDebtsRepaymentPost, "expected /api/v1/debts/repayment to be registered")
+
 	_, hasAdminPlansGet := paths["/admin/v1/plans"]
 	assert.True(t, hasAdminPlansGet, "expected /admin/v1/plans to be registered")
 

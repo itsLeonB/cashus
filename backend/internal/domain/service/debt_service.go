@@ -61,19 +61,65 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordNewTransaction")
 	defer span.End()
 
-	if !req.IsRepayment && !req.Amount.IsPositive() {
+	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
-	if req.UserProfileID == req.FriendProfileID {
+	if err := validateDirection(req.Direction); err != nil {
+		return dto.DebtTransactionResponse{}, err
+	}
+
+	return ds.recordTransaction(
+		ctx, req.UserProfileID, req.FriendProfileID, req.Currency, req.TransferMethodID, req.TransactionDate, false,
+		func(context.Context, string) (dto.DebtTransactionDirection, decimal.Decimal, string, error) {
+			return req.Direction, req.Amount, req.Description, nil
+		},
+	)
+}
+
+// RecordRepayment records a balance-settling repayment: direction and amount are
+// always computed from the current net balance (see resolveRepayment), never
+// supplied by the caller.
+func (ds *debtServiceImpl) RecordRepayment(ctx context.Context, req dto.NewRepaymentRequest) (dto.DebtTransactionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordRepayment")
+	defer span.End()
+
+	return ds.recordTransaction(
+		ctx, req.UserProfileID, req.FriendProfileID, req.Currency, req.TransferMethodID, req.TransactionDate, true,
+		func(ctx context.Context, currency string) (dto.DebtTransactionDirection, decimal.Decimal, string, error) {
+			direction, amount, err := ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
+			return direction, amount, "", err
+		},
+	)
+}
+
+// recordTransaction holds the logic shared by RecordNewTransaction and
+// RecordRepayment: friend validation, transfer-method lookup, currency
+// resolution, transaction-date resolution, the insert + RecalculatePair call
+// inside WithinTransaction, and the async notification enqueue. The two callers
+// differ only in how direction/amount/description get resolved before the
+// insert, which resolve encapsulates; it's called inside the transaction (not
+// before it) so that a repayment's resolution - which must run under
+// GetNetBalanceForPairForUpdate's lock - is covered by the same transaction
+// that inserts the settling row and recalculates the pair's balance.
+func (ds *debtServiceImpl) recordTransaction(
+	ctx context.Context,
+	userProfileID, friendProfileID uuid.UUID,
+	reqCurrency string,
+	transferMethodID uuid.UUID,
+	rawTransactionDate string,
+	isRepayment bool,
+	resolve func(ctx context.Context, currency string) (dto.DebtTransactionDirection, decimal.Decimal, string, error),
+) (dto.DebtTransactionResponse, error) {
+	if userProfileID == friendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
 
-	transactionDate, err := resolveTransactionDate(req.TransactionDate, time.Now().UTC())
+	transactionDate, err := resolveTransactionDate(rawTransactionDate, time.Now().UTC())
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
+	isFriends, _, err := ds.friendshipService.IsFriends(ctx, userProfileID, friendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
@@ -81,56 +127,41 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
 	}
 
-	transferMethod, err := ds.transferMethodService.GetByID(ctx, req.TransferMethodID)
+	transferMethod, err := ds.transferMethodService.GetByID(ctx, transferMethodID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	currency := req.Currency
+	currency := reqCurrency
 	if currency == "" {
-		userProfile, err := ds.profileService.GetEntityByID(ctx, req.UserProfileID)
+		userProfile, err := ds.profileService.GetEntityByID(ctx, userProfileID)
 		if err != nil {
 			return dto.DebtTransactionResponse{}, err
 		}
 		currency = userProfile.HomeCurrency
 	}
 
-	// direction, amount and description default to the request as-is; a repayment
-	// overrides all three from the current net balance instead (see resolveRepayment). A
-	// non-repayment direction can be validated up front since it's fixed by the request; a
-	// repayment's direction/amount depend on the balance and must be resolved inside the
-	// transaction below (see resolveRepayment's doc comment for why).
-	direction, amount, description := req.Direction, req.Amount, req.Description
-	if !req.IsRepayment {
-		if err := validateDirection(direction); err != nil {
-			return dto.DebtTransactionResponse{}, err
-		}
-	}
-
 	var insertedDebt debts.DebtTransaction
 	err = ds.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		if req.IsRepayment {
-			direction, amount, err = ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
-			if err != nil {
-				return err
-			}
-			description = ""
+		direction, amount, description, err := resolve(ctx, currency)
+		if err != nil {
+			return err
 		}
 
-		lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
+		lenderID, borrowerID := userProfileID, friendProfileID
 		if direction == dto.IncomingDebt {
-			lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
+			lenderID, borrowerID = friendProfileID, userProfileID
 		}
 
 		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 			LenderProfileID:   lenderID,
 			BorrowerProfileID: borrowerID,
 			Amount:            amount,
-			TransferMethodID:  req.TransferMethodID,
+			TransferMethodID:  transferMethodID,
 			Description:       description,
 			Currency:          currency,
 			TransactionDate:   transactionDate,
-			IsRepayment:       req.IsRepayment,
+			IsRepayment:       isRepayment,
 		})
 		if err != nil {
 			return err
@@ -144,15 +175,15 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 
 	go ds.taskQueue.AsyncEnqueue(ctx, message.DebtCreated{
 		ID:               insertedDebt.ID,
-		CreatorProfileID: req.UserProfileID,
+		CreatorProfileID: userProfileID,
 	})
 
 	insertedDebt.TransferMethod = transferMethod
-	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
+	return mapper.DebtTransactionToResponse(userProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
 }
 
-// resolveRepayment computes the direction and amount for an isRepayment=true debt
-// transaction: it nets userProfileID's current balance with friendProfileID in
+// resolveRepayment computes the direction and amount for a RecordRepayment
+// request: it nets userProfileID's current balance with friendProfileID in
 // currency down to zero, reusing FriendshipBalanceService's cached balance (kept
 // current by RecalculatePair on every debt-transaction write) rather than
 // re-deriving it from the transaction history.
@@ -348,10 +379,10 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 }
 
 // validateDirection returns a 422 ungerr error unless direction is INCOMING or
-// OUTGOING. Only called for non-repayment requests (a repayment computes its own
-// direction from the balance instead, via resolveRepayment) - binding tags alone
-// can no longer enforce this, since Direction is omitempty now that it's only
-// conditionally required.
+// OUTGOING. Only called by RecordNewTransaction - a repayment computes its own
+// direction from the balance instead, via resolveRepayment - as a defense-in-depth
+// check behind huma's enum:"INCOMING,OUTGOING" tag on CreateDebtInput.Body.Direction,
+// which is what actually enforces this over HTTP.
 func validateDirection(direction dto.DebtTransactionDirection) error {
 	if direction != dto.IncomingDebt && direction != dto.OutgoingDebt {
 		return ungerr.ValidationError("direction must be either INCOMING or OUTGOING")

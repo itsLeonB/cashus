@@ -78,6 +78,11 @@ type FriendDetailsService interface {
 
 type DebtService interface {
 	RecordNewTransaction(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error)
+	// RecordRepayment records a balance-settling repayment: direction and amount
+	// are always computed server-side from the current net balance between
+	// request.UserProfileID and request.FriendProfileID in request.Currency (see
+	// debtServiceImpl.resolveRepayment), never supplied by the caller.
+	RecordRepayment(ctx context.Context, request dto.NewRepaymentRequest) (dto.DebtTransactionResponse, error)
 	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
 	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (map[string]dto.FriendBalance, error)

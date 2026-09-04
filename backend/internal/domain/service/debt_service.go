@@ -68,8 +68,15 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, err
 	}
 
+	params := recordTransactionParams{
+		userProfileID:    req.UserProfileID,
+		friendProfileID:  req.FriendProfileID,
+		currency:         req.Currency,
+		transferMethodID: req.TransferMethodID,
+		transactionDate:  req.TransactionDate,
+	}
 	return ds.recordTransaction(
-		ctx, req.UserProfileID, req.FriendProfileID, req.Currency, req.TransferMethodID, req.TransactionDate, false,
+		ctx, params, false,
 		func(context.Context, string) (dto.DebtTransactionDirection, decimal.Decimal, string, error) {
 			return req.Direction, req.Amount, req.Description, nil
 		},
@@ -83,13 +90,33 @@ func (ds *debtServiceImpl) RecordRepayment(ctx context.Context, req dto.NewRepay
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordRepayment")
 	defer span.End()
 
+	params := recordTransactionParams{
+		userProfileID:    req.UserProfileID,
+		friendProfileID:  req.FriendProfileID,
+		currency:         req.Currency,
+		transferMethodID: req.TransferMethodID,
+		transactionDate:  req.TransactionDate,
+	}
 	return ds.recordTransaction(
-		ctx, req.UserProfileID, req.FriendProfileID, req.Currency, req.TransferMethodID, req.TransactionDate, true,
+		ctx, params, true,
 		func(ctx context.Context, currency string) (dto.DebtTransactionDirection, decimal.Decimal, string, error) {
 			direction, amount, err := ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
 			return direction, amount, "", err
 		},
 	)
+}
+
+// recordTransactionParams bundles the fields RecordNewTransaction and
+// RecordRepayment both pass to recordTransaction - exactly the subset their own
+// request DTOs (dto.NewDebtTransactionRequest / dto.NewRepaymentRequest) already
+// group, factored out here to avoid repeating it a third time as a loose
+// parameter list.
+type recordTransactionParams struct {
+	userProfileID    uuid.UUID
+	friendProfileID  uuid.UUID
+	currency         string
+	transferMethodID uuid.UUID
+	transactionDate  string
 }
 
 // recordTransaction holds the logic shared by RecordNewTransaction and
@@ -103,23 +130,20 @@ func (ds *debtServiceImpl) RecordRepayment(ctx context.Context, req dto.NewRepay
 // that inserts the settling row and recalculates the pair's balance.
 func (ds *debtServiceImpl) recordTransaction(
 	ctx context.Context,
-	userProfileID, friendProfileID uuid.UUID,
-	reqCurrency string,
-	transferMethodID uuid.UUID,
-	rawTransactionDate string,
+	params recordTransactionParams,
 	isRepayment bool,
 	resolve func(ctx context.Context, currency string) (dto.DebtTransactionDirection, decimal.Decimal, string, error),
 ) (dto.DebtTransactionResponse, error) {
-	if userProfileID == friendProfileID {
+	if params.userProfileID == params.friendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
 
-	transactionDate, err := resolveTransactionDate(rawTransactionDate, time.Now().UTC())
+	transactionDate, err := resolveTransactionDate(params.transactionDate, time.Now().UTC())
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	isFriends, _, err := ds.friendshipService.IsFriends(ctx, userProfileID, friendProfileID)
+	isFriends, _, err := ds.friendshipService.IsFriends(ctx, params.userProfileID, params.friendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
@@ -127,14 +151,14 @@ func (ds *debtServiceImpl) recordTransaction(
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
 	}
 
-	transferMethod, err := ds.transferMethodService.GetByID(ctx, transferMethodID)
+	transferMethod, err := ds.transferMethodService.GetByID(ctx, params.transferMethodID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	currency := reqCurrency
+	currency := params.currency
 	if currency == "" {
-		userProfile, err := ds.profileService.GetEntityByID(ctx, userProfileID)
+		userProfile, err := ds.profileService.GetEntityByID(ctx, params.userProfileID)
 		if err != nil {
 			return dto.DebtTransactionResponse{}, err
 		}
@@ -148,16 +172,16 @@ func (ds *debtServiceImpl) recordTransaction(
 			return err
 		}
 
-		lenderID, borrowerID := userProfileID, friendProfileID
+		lenderID, borrowerID := params.userProfileID, params.friendProfileID
 		if direction == dto.IncomingDebt {
-			lenderID, borrowerID = friendProfileID, userProfileID
+			lenderID, borrowerID = params.friendProfileID, params.userProfileID
 		}
 
 		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 			LenderProfileID:   lenderID,
 			BorrowerProfileID: borrowerID,
 			Amount:            amount,
-			TransferMethodID:  transferMethodID,
+			TransferMethodID:  params.transferMethodID,
 			Description:       description,
 			Currency:          currency,
 			TransactionDate:   transactionDate,
@@ -175,11 +199,11 @@ func (ds *debtServiceImpl) recordTransaction(
 
 	go ds.taskQueue.AsyncEnqueue(ctx, message.DebtCreated{
 		ID:               insertedDebt.ID,
-		CreatorProfileID: userProfileID,
+		CreatorProfileID: params.userProfileID,
 	})
 
 	insertedDebt.TransferMethod = transferMethod
-	return mapper.DebtTransactionToResponse(userProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
+	return mapper.DebtTransactionToResponse(params.userProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
 }
 
 // resolveRepayment computes the direction and amount for a RecordRepayment

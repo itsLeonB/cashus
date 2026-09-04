@@ -31,6 +31,7 @@ packages:
       FriendshipRepository:
       FriendshipBalanceRepository:
       GroupExpenseRepository:
+      DebtTransactionRepository:
   github.com/itsLeonB/go-crud:
     config:
       filename: "mock_crud.go"
@@ -41,3 +42,8 @@ packages:
       filename: "mock_langfuse.go"
     interfaces:
       Client:
+  github.com/itsLeonB/cashback/internal/core/service/queue:
+    config:
+      filename: "mock_queue.go"
+    interfaces:
+      TaskQueue:

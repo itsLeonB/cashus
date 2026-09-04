@@ -7,8 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/mocks"
+	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -239,6 +242,264 @@ func TestValidateDirection_Empty_ReturnsValidationError(t *testing.T) {
 
 func TestValidateDirection_Invalid_ReturnsValidationError(t *testing.T) {
 	err := validateDirection(dto.DebtTransactionDirection("SIDEWAYS"))
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+// TestRecordRepayment_SelfTransaction_ReturnsUnprocessableEntityError mirrors
+// TestRecordNewTransaction_NonPositiveAmount_ReturnsValidationError: the
+// self-transaction check is the very first thing recordTransaction does,
+// before touching any dependency, so a zero-value debtServiceImpl (every
+// collaborator nil) can exercise it directly without mocking the rest of the
+// dependency graph.
+func TestRecordRepayment_SelfTransaction_ReturnsUnprocessableEntityError(t *testing.T) {
+	ds := &debtServiceImpl{}
+	profileID := uuid.New()
+	req := dto.NewRepaymentRequest{
+		UserProfileID:   profileID,
+		FriendProfileID: profileID,
+	}
+
+	_, err := ds.RecordRepayment(context.Background(), req)
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+// These tests exercise RecordRepayment itself end-to-end (mocking every
+// collaborator it reaches through recordTransaction), rather than only its
+// resolveRepayment helper: they cover the wiring this diff actually added -
+// dto.NewRepaymentRequest's fields reaching the friend-validation/transfer-method
+// checks and the inserted row, and isRepayment=true landing on that row -
+// which the resolveRepayment-only tests above don't touch. Same three balance
+// scenarios as those tests (friend-owes-user/user-owes-friend/zero-balance),
+// so the two sets together cover both the pure balance->direction/amount math
+// and the full request-to-insert path around it.
+
+// recordRepaymentTestDeps bundles every mock RecordRepayment's dependency graph
+// touches, wired into a debtServiceImpl via field names (profileService and
+// expenseService are left nil - RecordRepayment never reaches them as long as
+// the request's Currency is non-empty).
+type recordRepaymentTestDeps struct {
+	debtRepo    *mocks.MockDebtTransactionRepository
+	transferSvc *mocks.MockTransferMethodService
+	friendSvc   *mocks.MockFriendshipService
+	transactor  *mocks.MockTransactor
+	balanceSvc  *mocks.MockFriendshipBalanceService
+	taskQueue   *mocks.MockTaskQueue
+}
+
+func newRecordRepaymentTestService(t *testing.T) (*debtServiceImpl, recordRepaymentTestDeps) {
+	deps := recordRepaymentTestDeps{
+		debtRepo:    mocks.NewMockDebtTransactionRepository(t),
+		transferSvc: mocks.NewMockTransferMethodService(t),
+		friendSvc:   mocks.NewMockFriendshipService(t),
+		transactor:  mocks.NewMockTransactor(t),
+		balanceSvc:  mocks.NewMockFriendshipBalanceService(t),
+		taskQueue:   mocks.NewMockTaskQueue(t),
+	}
+
+	ds := &debtServiceImpl{
+		debtTransactionRepository: deps.debtRepo,
+		transferMethodService:     deps.transferSvc,
+		friendshipService:         deps.friendSvc,
+		transactor:                deps.transactor,
+		friendshipBalanceService:  deps.balanceSvc,
+		taskQueue:                 deps.taskQueue,
+	}
+
+	return ds, deps
+}
+
+// expectRecordRepaymentPreamble sets up the mock expectations recordTransaction
+// runs before it ever calls resolve: friend validation and transfer-method
+// lookup, both keyed off req/transferMethodID. WithinTransaction is stubbed to
+// just invoke the callback it's given, same pattern as
+// friendship_request_service_test.go.
+func expectRecordRepaymentPreamble(deps recordRepaymentTestDeps, req dto.NewRepaymentRequest, transferMethod debts.TransferMethod) {
+	deps.friendSvc.EXPECT().
+		IsFriends(mock.Anything, req.UserProfileID, req.FriendProfileID).
+		Return(true, false, nil)
+
+	deps.transferSvc.EXPECT().
+		GetByID(mock.Anything, req.TransferMethodID).
+		Return(transferMethod, nil)
+
+	deps.transactor.EXPECT().
+		WithinTransaction(mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(ctx)
+		})
+}
+
+func TestRecordRepayment_FriendOwesUser_InsertsIncomingSettlingTransactionAsRepayment(t *testing.T) {
+	ds, deps := newRecordRepaymentTestService(t)
+
+	req := dto.NewRepaymentRequest{
+		UserProfileID:    uuid.New(),
+		FriendProfileID:  uuid.New(),
+		Currency:         "USD",
+		TransferMethodID: uuid.New(),
+	}
+	transferMethod := debts.TransferMethod{
+		BaseEntity: crud.BaseEntity{ID: req.TransferMethodID},
+		Display:    "Cash",
+	}
+	expectRecordRepaymentPreamble(deps, req, transferMethod)
+
+	// Friend owes user (positive balance) -> resolveRepayment settles it with
+	// an INCOMING transaction for the request's currency specifically.
+	deps.balanceSvc.EXPECT().
+		GetNetBalanceForPairForUpdate(mock.Anything, req.UserProfileID, req.FriendProfileID, req.Currency).
+		Return(decimal.NewFromInt(150), nil)
+
+	insertedID := uuid.New()
+	deps.debtRepo.EXPECT().
+		Insert(mock.Anything, mock.MatchedBy(func(tx debts.DebtTransaction) bool {
+			// direction=INCOMING flips lender/borrower relative to the request:
+			// the friend (who owed the balance) becomes the settling transaction's
+			// lender, the user its borrower - see recordTransaction's direction
+			// handling and resolveRepayment's doc comment.
+			return tx.LenderProfileID == req.FriendProfileID &&
+				tx.BorrowerProfileID == req.UserProfileID &&
+				tx.Amount.Equal(decimal.NewFromInt(150)) &&
+				tx.Currency == req.Currency &&
+				tx.TransferMethodID == req.TransferMethodID &&
+				tx.Description == "" &&
+				tx.IsRepayment
+		})).
+		Return(debts.DebtTransaction{
+			BaseEntity:        crud.BaseEntity{ID: insertedID},
+			LenderProfileID:   req.FriendProfileID,
+			BorrowerProfileID: req.UserProfileID,
+			Amount:            decimal.NewFromInt(150),
+			Currency:          req.Currency,
+			TransferMethodID:  req.TransferMethodID,
+			TransactionDate:   time.Now().UTC(),
+			IsRepayment:       true,
+		}, nil)
+
+	deps.balanceSvc.EXPECT().
+		RecalculatePair(mock.Anything, req.FriendProfileID, req.UserProfileID).
+		Return(nil)
+
+	asyncDone := make(chan struct{})
+	deps.taskQueue.EXPECT().
+		AsyncEnqueue(mock.Anything, mock.Anything).
+		Run(func(context.Context, queue.TaskMessage) { close(asyncDone) })
+
+	res, err := ds.RecordRepayment(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.True(t, res.IsRepayment)
+	assert.True(t, decimal.NewFromInt(150).Equal(res.Amount), "expected 150, got %s", res.Amount)
+	assert.Equal(t, req.Currency, res.Currency)
+
+	// AsyncEnqueue runs in its own goroutine (see recordTransaction) - wait for
+	// it instead of letting the mock's expectation-check-on-cleanup race it.
+	select {
+	case <-asyncDone:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for AsyncEnqueue")
+	}
+}
+
+func TestRecordRepayment_UserOwesFriend_InsertsOutgoingSettlingTransactionAsRepayment(t *testing.T) {
+	ds, deps := newRecordRepaymentTestService(t)
+
+	req := dto.NewRepaymentRequest{
+		UserProfileID:    uuid.New(),
+		FriendProfileID:  uuid.New(),
+		Currency:         "USD",
+		TransferMethodID: uuid.New(),
+	}
+	transferMethod := debts.TransferMethod{
+		BaseEntity: crud.BaseEntity{ID: req.TransferMethodID},
+		Display:    "Cash",
+	}
+	expectRecordRepaymentPreamble(deps, req, transferMethod)
+
+	// User owes friend (negative balance) -> resolveRepayment settles it with
+	// an OUTGOING transaction, absolute-valued.
+	deps.balanceSvc.EXPECT().
+		GetNetBalanceForPairForUpdate(mock.Anything, req.UserProfileID, req.FriendProfileID, req.Currency).
+		Return(decimal.NewFromInt(-75), nil)
+
+	insertedID := uuid.New()
+	deps.debtRepo.EXPECT().
+		Insert(mock.Anything, mock.MatchedBy(func(tx debts.DebtTransaction) bool {
+			// direction=OUTGOING keeps the request's lender/borrower ordering as-is.
+			return tx.LenderProfileID == req.UserProfileID &&
+				tx.BorrowerProfileID == req.FriendProfileID &&
+				tx.Amount.Equal(decimal.NewFromInt(75)) &&
+				tx.Currency == req.Currency &&
+				tx.TransferMethodID == req.TransferMethodID &&
+				tx.Description == "" &&
+				tx.IsRepayment
+		})).
+		Return(debts.DebtTransaction{
+			BaseEntity:        crud.BaseEntity{ID: insertedID},
+			LenderProfileID:   req.UserProfileID,
+			BorrowerProfileID: req.FriendProfileID,
+			Amount:            decimal.NewFromInt(75),
+			Currency:          req.Currency,
+			TransferMethodID:  req.TransferMethodID,
+			TransactionDate:   time.Now().UTC(),
+			IsRepayment:       true,
+		}, nil)
+
+	deps.balanceSvc.EXPECT().
+		RecalculatePair(mock.Anything, req.UserProfileID, req.FriendProfileID).
+		Return(nil)
+
+	asyncDone := make(chan struct{})
+	deps.taskQueue.EXPECT().
+		AsyncEnqueue(mock.Anything, mock.Anything).
+		Run(func(context.Context, queue.TaskMessage) { close(asyncDone) })
+
+	res, err := ds.RecordRepayment(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.True(t, res.IsRepayment)
+	assert.True(t, decimal.NewFromInt(75).Equal(res.Amount), "expected 75, got %s", res.Amount)
+
+	select {
+	case <-asyncDone:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for AsyncEnqueue")
+	}
+}
+
+// TestRecordRepayment_ZeroBalance_ReturnsUnprocessableEntityError confirms the
+// "nothing to repay" error surfaces through the full RecordRepayment path -
+// friend/transfer-method checks still ran, but resolveRepayment's rejection
+// (inside WithinTransaction) stops the insert, RecalculatePair and the async
+// enqueue from ever happening.
+func TestRecordRepayment_ZeroBalance_ReturnsUnprocessableEntityError(t *testing.T) {
+	ds, deps := newRecordRepaymentTestService(t)
+
+	req := dto.NewRepaymentRequest{
+		UserProfileID:    uuid.New(),
+		FriendProfileID:  uuid.New(),
+		Currency:         "USD",
+		TransferMethodID: uuid.New(),
+	}
+	transferMethod := debts.TransferMethod{
+		BaseEntity: crud.BaseEntity{ID: req.TransferMethodID},
+		Display:    "Cash",
+	}
+	expectRecordRepaymentPreamble(deps, req, transferMethod)
+
+	deps.balanceSvc.EXPECT().
+		GetNetBalanceForPairForUpdate(mock.Anything, req.UserProfileID, req.FriendProfileID, req.Currency).
+		Return(decimal.Zero, nil)
+
+	_, err := ds.RecordRepayment(context.Background(), req)
 
 	assert.Error(t, err)
 	var appErr ungerr.AppError

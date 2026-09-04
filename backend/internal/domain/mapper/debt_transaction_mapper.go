@@ -126,6 +126,7 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 		GroupExpenseID:  transaction.GroupExpenseID.UUID,
 		IsFromExpense:   transaction.GroupExpenseID.Valid,
 		TransactionDate: transaction.TransactionDate.Format(transactionDateLayout),
+		IsRepayment:     transaction.IsRepayment,
 	}
 }
 

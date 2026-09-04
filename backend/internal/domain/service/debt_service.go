@@ -20,6 +20,7 @@ import (
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 )
 
@@ -60,7 +61,7 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordNewTransaction")
 	defer span.End()
 
-	if !req.Amount.IsPositive() {
+	if !req.IsRepayment && !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
 	if req.UserProfileID == req.FriendProfileID {
@@ -85,11 +86,6 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
-	if req.Direction == dto.IncomingDebt {
-		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
-	}
-
 	currency := req.Currency
 	if currency == "" {
 		userProfile, err := ds.profileService.GetEntityByID(ctx, req.UserProfileID)
@@ -99,16 +95,35 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		currency = userProfile.HomeCurrency
 	}
 
+	// direction, amount and description default to the request as-is; a repayment
+	// overrides all three from the current net balance instead (see resolveRepayment).
+	direction, amount, description := req.Direction, req.Amount, req.Description
+	if req.IsRepayment {
+		direction, amount, err = ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
+		if err != nil {
+			return dto.DebtTransactionResponse{}, err
+		}
+		description = ""
+	} else if err := validateDirection(direction); err != nil {
+		return dto.DebtTransactionResponse{}, err
+	}
+
+	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
+	if direction == dto.IncomingDebt {
+		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
+	}
+
 	var insertedDebt debts.DebtTransaction
 	err = ds.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 			LenderProfileID:   lenderID,
 			BorrowerProfileID: borrowerID,
-			Amount:            req.Amount,
+			Amount:            amount,
 			TransferMethodID:  req.TransferMethodID,
-			Description:       req.Description,
+			Description:       description,
 			Currency:          currency,
 			TransactionDate:   transactionDate,
+			IsRepayment:       req.IsRepayment,
 		})
 		if err != nil {
 			return err
@@ -127,6 +142,45 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 
 	insertedDebt.TransferMethod = transferMethod
 	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
+}
+
+// resolveRepayment computes the direction and amount for an isRepayment=true debt
+// transaction: it nets userProfileID's current balance with friendProfileID in
+// currency down to zero, reusing FriendshipBalanceService's cached balance (kept
+// current by RecalculatePair on every debt-transaction write) rather than
+// re-deriving it from the transaction history.
+//
+// GetNetBalancesForProfile returns the balance signed so that positive means
+// userProfileID is the net lender (friendProfileID owes userProfileID); a
+// repayment settling that must record friendProfileID paying userProfileID
+// back, i.e. userProfileID *receiving* money, so direction is INCOMING with
+// amount equal to the (positive) balance. A negative balance means
+// userProfileID owes friendProfileID, so the repayment is userProfileID
+// *giving* money back: direction OUTGOING, amount the balance's absolute
+// value. A zero (or absent) balance means there's nothing to repay.
+func (ds *debtServiceImpl) resolveRepayment(
+	ctx context.Context,
+	userProfileID, friendProfileID uuid.UUID,
+	currency string,
+) (dto.DebtTransactionDirection, decimal.Decimal, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.resolveRepayment")
+	defer span.End()
+
+	netBalances, err := ds.friendshipBalanceService.GetNetBalancesForProfile(ctx, userProfileID)
+	if err != nil {
+		return "", decimal.Decimal{}, err
+	}
+
+	netBalance := netBalances[friendProfileID][currency]
+	if netBalance.IsZero() {
+		return "", decimal.Decimal{}, ungerr.UnprocessableEntityError("nothing to repay: balance is already zero")
+	}
+
+	if netBalance.IsPositive() {
+		return dto.IncomingDebt, netBalance, nil
+	}
+
+	return dto.OutgoingDebt, netBalance.Neg(), nil
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
@@ -276,6 +330,18 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 		EntityID:   msg.ID,
 		Metadata:   datatypes.JSON(metadata),
 	}, nil
+}
+
+// validateDirection returns a 422 ungerr error unless direction is INCOMING or
+// OUTGOING. Only called for non-repayment requests (a repayment computes its own
+// direction from the balance instead, via resolveRepayment) - binding tags alone
+// can no longer enforce this, since Direction is omitempty now that it's only
+// conditionally required.
+func validateDirection(direction dto.DebtTransactionDirection) error {
+	if direction != dto.IncomingDebt && direction != dto.OutgoingDebt {
+		return ungerr.ValidationError("direction must be either INCOMING or OUTGOING")
+	}
+	return nil
 }
 
 // transactionDateLayout is the wire format for a debt transaction's date: date-only,

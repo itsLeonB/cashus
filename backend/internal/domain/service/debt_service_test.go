@@ -1,12 +1,18 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/mocks"
 	"github.com/itsLeonB/ungerr"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // These tests cover resolveTransactionDate, the pure helper RecordNewTransaction
@@ -91,6 +97,135 @@ func TestResolveTransactionDate_InvalidFormat_ReturnsValidationError(t *testing.
 	now := time.Date(2026, time.September, 3, 14, 30, 0, 0, time.UTC)
 
 	_, err := resolveTransactionDate("03-09-2026", now)
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+// These tests cover resolveRepayment, the helper RecordNewTransaction uses to
+// compute direction+amount for an isRepayment=true request (CASH-6), and
+// validateDirection, the sibling helper that preserves the pre-CASH-6 "direction
+// is required and must be INCOMING/OUTGOING" rule for isRepayment=false requests
+// now that binding tags alone can no longer enforce it (Direction became
+// omitempty since it's only conditionally required).
+
+// newDebtServiceForRepaymentTest builds a debtServiceImpl with only
+// friendshipBalanceService set - the only dependency resolveRepayment touches -
+// leaving every other field at its zero value, same as this file's existing
+// resolveTransactionDate tests isolate that pure helper from the rest of the
+// service's dependency graph.
+func newDebtServiceForRepaymentTest(balanceService *mocks.MockFriendshipBalanceService) *debtServiceImpl {
+	return &debtServiceImpl{friendshipBalanceService: balanceService}
+}
+
+func TestResolveRepayment_FriendOwesUser_ReturnsIncomingDirectionAndAbsoluteAmount(t *testing.T) {
+	userID := uuid.New()
+	friendID := uuid.New()
+	currency := "USD"
+
+	balanceService := mocks.NewMockFriendshipBalanceService(t)
+	balanceService.EXPECT().
+		GetNetBalancesForProfile(mock.Anything, userID).
+		Return(map[uuid.UUID]map[string]decimal.Decimal{
+			friendID: {currency: decimal.NewFromInt(150)},
+		}, nil)
+	ds := newDebtServiceForRepaymentTest(balanceService)
+
+	direction, amount, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
+
+	assert.NoError(t, err)
+	assert.Equal(t, dto.IncomingDebt, direction)
+	assert.True(t, decimal.NewFromInt(150).Equal(amount), "expected 150, got %s", amount)
+}
+
+func TestResolveRepayment_UserOwesFriend_ReturnsOutgoingDirectionAndAbsoluteAmount(t *testing.T) {
+	userID := uuid.New()
+	friendID := uuid.New()
+	currency := "USD"
+
+	balanceService := mocks.NewMockFriendshipBalanceService(t)
+	balanceService.EXPECT().
+		GetNetBalancesForProfile(mock.Anything, userID).
+		Return(map[uuid.UUID]map[string]decimal.Decimal{
+			friendID: {currency: decimal.NewFromInt(-75)},
+		}, nil)
+	ds := newDebtServiceForRepaymentTest(balanceService)
+
+	direction, amount, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
+
+	assert.NoError(t, err)
+	assert.Equal(t, dto.OutgoingDebt, direction)
+	assert.True(t, decimal.NewFromInt(75).Equal(amount), "expected 75, got %s", amount)
+}
+
+func TestResolveRepayment_ZeroBalance_ReturnsUnprocessableEntityError(t *testing.T) {
+	userID := uuid.New()
+	friendID := uuid.New()
+	currency := "USD"
+
+	balanceService := mocks.NewMockFriendshipBalanceService(t)
+	balanceService.EXPECT().
+		GetNetBalancesForProfile(mock.Anything, userID).
+		Return(map[uuid.UUID]map[string]decimal.Decimal{
+			friendID: {currency: decimal.Zero},
+		}, nil)
+	ds := newDebtServiceForRepaymentTest(balanceService)
+
+	_, _, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+// No FriendshipBalance row at all (e.g. the pair has never transacted, or the
+// currency has no history between them) reads back as a zero balance, same as
+// an explicit zero - also rejected as "nothing to repay".
+func TestResolveRepayment_NoCachedBalanceForPair_ReturnsUnprocessableEntityError(t *testing.T) {
+	userID := uuid.New()
+	friendID := uuid.New()
+	currency := "USD"
+
+	balanceService := mocks.NewMockFriendshipBalanceService(t)
+	balanceService.EXPECT().
+		GetNetBalancesForProfile(mock.Anything, userID).
+		Return(map[uuid.UUID]map[string]decimal.Decimal{}, nil)
+	ds := newDebtServiceForRepaymentTest(balanceService)
+
+	_, _, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+func TestValidateDirection_Incoming_ReturnsNoError(t *testing.T) {
+	assert.NoError(t, validateDirection(dto.IncomingDebt))
+}
+
+func TestValidateDirection_Outgoing_ReturnsNoError(t *testing.T) {
+	assert.NoError(t, validateDirection(dto.OutgoingDebt))
+}
+
+// Regression guard for the isRepayment=false path (CASH-6): Direction's binding
+// tag was relaxed to omitempty since it's now only conditionally required, so
+// this rule - previously enforced by gin binding alone - must still hold when
+// it's not a repayment.
+func TestValidateDirection_Empty_ReturnsValidationError(t *testing.T) {
+	err := validateDirection("")
+
+	assert.Error(t, err)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+func TestValidateDirection_Invalid_ReturnsValidationError(t *testing.T) {
+	err := validateDirection(dto.DebtTransactionDirection("SIDEWAYS"))
 
 	assert.Error(t, err)
 	var appErr ungerr.AppError

@@ -5,6 +5,9 @@ Thumbs.db
 # Editor
 .idea/
 
+# Local agent worktree isolation (see root CLAUDE.md)
+.claude/worktrees/
+
 # Safety net for stray env files at repo root
 .env
 .envrc

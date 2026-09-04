@@ -21,8 +21,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCircle } from "@/components/AvatarCircle";
-import { ArrowUpRight, ArrowDownLeft, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import {
+  TransactionDirectionSelector,
+  directionConfig,
+} from "@/components/TransactionDirectionSelector";
+import { RepaymentAmountSummary } from "@/components/RepaymentAmountSummary";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
@@ -40,35 +44,6 @@ interface TransactionModalProps {
   defaultDirection?: DebtDirection;
 }
 
-const directionConfig = {
-  OUTGOING: {
-    label: "I gave money",
-    description: "You gave money to friend",
-    icon: ArrowUpRight,
-    colorClass: "border-success text-success bg-success/10",
-  },
-  INCOMING: {
-    label: "I received money",
-    description: "You received money from friend",
-    icon: ArrowDownLeft,
-    colorClass: "border-warning text-warning bg-warning/10",
-  },
-} satisfies Record<
-  DebtDirection,
-  {
-    label: string;
-    description: string;
-    icon: typeof ArrowUpRight;
-    colorClass: string;
-  }
->;
-
-// SAFETY: directionConfig above is checked with `satisfies
-// Record<DebtDirection, ...>`, so its keys are guaranteed to be exactly the
-// DebtDirection variants — Object.keys just can't express that in its
-// return type (string[]).
-const DEBT_DIRECTIONS = Object.keys(directionConfig) as DebtDirection[];
-
 export function TransactionModal({
   open,
   onOpenChange,
@@ -78,6 +53,7 @@ export function TransactionModal({
   const { user } = useAuth();
   const [friendId, setFriendId] = useState(defaultFriendId || "");
   const [direction, setDirection] = useState<DebtDirection>(defaultDirection);
+  const [isRepayment, setIsRepayment] = useState(false);
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState(user?.homeCurrency || "IDR");
   const [description, setDescription] = useState("");
@@ -93,7 +69,8 @@ export function TransactionModal({
   const { toast } = useToast();
 
   // Net balance for the selected friend in the selected currency, signed from
-  // the current user's perspective: positive means the friend owes the user.
+  // the current user's perspective: positive means the friend owes the
+  // user. Drives the Repayment option's preview and its disabled state.
   const selectedFriendship = friendships?.find(
     (friendship) => friendship.profileId === friendId,
   );
@@ -103,15 +80,10 @@ export function TransactionModal({
   const canZeroOutBalance =
     !!friendId && !Number.isNaN(zeroOutBalance) && zeroOutBalance !== 0;
 
-  const handleZeroOutBalance = () => {
-    if (!canZeroOutBalance) return;
-    setDirection(zeroOutBalance > 0 ? "INCOMING" : "OUTGOING");
-    setAmount(Math.abs(zeroOutBalance).toFixed(2));
-  };
-
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    if (!friendId || !amount || !selectedMethod?.id) return;
+    if (!friendId || !selectedMethod?.id) return;
+    if (isRepayment ? !canZeroOutBalance : !amount) return;
 
     const dateResult = transactionDateSchema.safeParse(transactionDate);
     if (!dateResult.success) {
@@ -123,18 +95,26 @@ export function TransactionModal({
     try {
       await createDebt.mutateAsync({
         friendProfileId: friendId,
-        direction,
-        amount: Number.parseFloat(amount),
         currency,
         transferMethodId: selectedMethod.id,
-        description: description || undefined,
         transactionDate: dateResult.data,
+        ...(isRepayment
+          ? { isRepayment: true }
+          : {
+              direction,
+              amount: Number.parseFloat(amount),
+              description: description || undefined,
+            }),
       });
       toast({
         title: "Transaction recorded",
-        description: `Successfully recorded ${directionConfig[
-          direction
-        ].label.toLowerCase()}`,
+        description: isRepayment
+          ? `Successfully recorded repayment with ${
+              selectedFriendship?.profileName || "friend"
+            }`
+          : `Successfully recorded ${directionConfig[
+              direction
+            ].label.toLowerCase()}`,
       });
       resetForm();
       onOpenChange(false);
@@ -150,6 +130,7 @@ export function TransactionModal({
   const resetForm = () => {
     setFriendId(defaultFriendId || "");
     setDirection(defaultDirection);
+    setIsRepayment(false);
     setAmount("");
     setCurrency("IDR");
     setDescription("");
@@ -167,28 +148,18 @@ export function TransactionModal({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Direction Type */}
-          <div className="grid grid-cols-2 gap-2">
-            {DEBT_DIRECTIONS.map((key) => {
-              const config = directionConfig[key];
-              const Icon = config.icon;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setDirection(key)}
-                  className={cn(
-                    "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-center",
-                    direction === key
-                      ? config.colorClass
-                      : "border-border/50 hover:border-border text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-sm font-medium">{config.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <TransactionDirectionSelector
+            direction={direction}
+            isRepayment={isRepayment}
+            canRepay={canZeroOutBalance}
+            friendSelected={!!friendId}
+            currency={currency}
+            onSelectDirection={(key) => {
+              setIsRepayment(false);
+              setDirection(key);
+            }}
+            onSelectRepayment={() => setIsRepayment(true)}
+          />
 
           {/* Friend Selection */}
           <div className="space-y-2">
@@ -219,29 +190,29 @@ export function TransactionModal({
 
           {/* Amount */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="amount">Amount</Label>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-                disabled={!canZeroOutBalance}
-                onClick={handleZeroOutBalance}
-              >
-                Zero out balance
-              </Button>
-            </div>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              className="text-lg tabular-nums"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+            <Label htmlFor="amount">
+              {isRepayment ? "Repayment amount" : "Amount"}
+            </Label>
+            {isRepayment ? (
+              <RepaymentAmountSummary
+                id="amount"
+                canPreview={canZeroOutBalance}
+                netBalance={zeroOutBalance}
+                currency={currency}
+                friendName={selectedFriendship?.profileName}
+              />
+            ) : (
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                className="text-lg tabular-nums"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Currency */}
@@ -281,16 +252,18 @@ export function TransactionModal({
           />
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Note (optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="What's this for?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
+          {!isRepayment && (
+            <div className="space-y-2">
+              <Label htmlFor="description">Note (optional)</Label>
+              <Textarea
+                id="description"
+                placeholder="What's this for?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+          )}
 
           {/* Submit */}
           <Button
@@ -298,8 +271,8 @@ export function TransactionModal({
             className="w-full"
             disabled={
               !friendId ||
-              !amount ||
               !selectedMethod?.id ||
+              (isRepayment ? !canZeroOutBalance : !amount) ||
               createDebt.isPending
             }
           >

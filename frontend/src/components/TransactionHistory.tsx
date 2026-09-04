@@ -64,7 +64,11 @@ export function TransactionHistory({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">
-                        {isCredit ? "Lent" : "Borrowed"}
+                        {debt.isRepayment
+                          ? "Repayment"
+                          : isCredit
+                            ? "Lent"
+                            : "Borrowed"}
                       </p>
                       {debt.transferMethod && (
                         <Badge variant="outline" className="text-xs">

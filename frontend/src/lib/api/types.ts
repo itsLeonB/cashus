@@ -112,6 +112,7 @@ export interface FriendTransaction {
   createdAt: string;
   updatedAt: string;
   transactionDate: string; // "YYYY-MM-DD", the effective (possibly backdated) transaction date
+  isRepayment?: boolean;
 }
 
 export interface NewAnonymousFriendshipRequest {
@@ -131,16 +132,21 @@ export interface DebtTransactionResponse {
   description: string;
   createdAt: string;
   transactionDate: string; // "YYYY-MM-DD", the effective (possibly backdated) transaction date
+  isRepayment: boolean;
 }
 
 export interface NewDebtTransactionRequest {
   friendProfileId: string;
-  direction: DebtDirection;
-  amount: number;
+  // direction, amount and description are ignored by the server when
+  // isRepayment is true (the server computes them from the net balance) —
+  // omit them from the payload in that case.
+  direction?: DebtDirection;
+  amount?: number;
   currency: string;
   transferMethodId: string;
   description?: string;
   transactionDate?: string; // "YYYY-MM-DD". Omitted -> defaults to today's date (server date).
+  isRepayment?: boolean; // default false. When true, nets the friend's balance in `currency` to zero.
 }
 
 export interface TransferMethod {

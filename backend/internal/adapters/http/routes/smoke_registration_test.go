@@ -57,11 +57,15 @@ func TestFullRegistrationSmoke(t *testing.T) {
 
 	t.Logf("total registered Huma operations: %d", opCount)
 
-	_, hasDebtsPost := paths["/api/v1/debts"]
-	assert.True(t, hasDebtsPost, "expected /api/v1/debts to be registered")
+	debtsMethods, hasDebtsPath := paths["/api/v1/debts"].(map[string]any)
+	require.True(t, hasDebtsPath, "expected /api/v1/debts to be registered")
+	_, hasDebtsPost := debtsMethods["post"]
+	assert.True(t, hasDebtsPost, "expected POST /api/v1/debts to be registered")
 
-	_, hasDebtsRepaymentPost := paths["/api/v1/debts/repayment"]
-	assert.True(t, hasDebtsRepaymentPost, "expected /api/v1/debts/repayment to be registered")
+	repaymentMethods, hasRepaymentPath := paths["/api/v1/debts/repayment"].(map[string]any)
+	require.True(t, hasRepaymentPath, "expected /api/v1/debts/repayment to be registered")
+	_, hasRepaymentPost := repaymentMethods["post"]
+	assert.True(t, hasRepaymentPost, "expected POST /api/v1/debts/repayment to be registered")
 
 	_, hasAdminPlansGet := paths["/admin/v1/plans"]
 	assert.True(t, hasAdminPlansGet, "expected /admin/v1/plans to be registered")

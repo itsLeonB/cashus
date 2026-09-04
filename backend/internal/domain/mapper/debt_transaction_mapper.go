@@ -69,6 +69,7 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 			TransferMethod:  tx.TransferMethod.Display,
 			Description:     tx.Description,
 			TransactionDate: tx.TransactionDate.Format(transactionDateLayout),
+			IsRepayment:     tx.IsRepayment,
 		})
 	}
 
@@ -126,6 +127,7 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 		GroupExpenseID:  transaction.GroupExpenseID.UUID,
 		IsFromExpense:   transaction.GroupExpenseID.Valid,
 		TransactionDate: transaction.TransactionDate.Format(transactionDateLayout),
+		IsRepayment:     transaction.IsRepayment,
 	}
 }
 

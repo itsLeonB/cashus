@@ -3,6 +3,7 @@ import {
   DebtTransactionResponse,
   FriendBalance,
   NewDebtTransactionRequest,
+  NewRepaymentRequest,
   TransferMethod,
 } from "./types";
 
@@ -13,6 +14,9 @@ export const debtsApi = {
 
   create: (data: NewDebtTransactionRequest) =>
     apiClient.post<DebtTransactionResponse>("/debts", data),
+
+  repay: (data: NewRepaymentRequest) =>
+    apiClient.post<DebtTransactionResponse>("/debts/repayment", data),
 
   getTransferMethods: (filter: TransferMethodFilter) =>
     apiClient.get<TransferMethod[]>("/transfer-methods", {

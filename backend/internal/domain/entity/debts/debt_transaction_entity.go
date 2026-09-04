@@ -25,6 +25,10 @@ type DebtTransaction struct {
 	// independent of BaseEntity.CreatedAt (the actual record-creation timestamp).
 	// Stored as a date-only Postgres column; time-of-day is not meaningful here.
 	TransactionDate time.Time `gorm:"type:date;not null"`
+	// IsRepayment marks a transaction as an auto-computed balance-settling repayment
+	// (CASH-6): Amount, LenderProfileID/BorrowerProfileID and Description are derived
+	// from the net balance at creation time rather than taken from the request as-is.
+	IsRepayment bool `gorm:"not null;default:false"`
 
 	// Relationships
 	TransferMethod TransferMethod

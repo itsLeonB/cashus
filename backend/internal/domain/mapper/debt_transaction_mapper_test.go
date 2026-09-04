@@ -62,3 +62,37 @@ func TestCalculateBalances_SetsTransactionDateOnHistoryItems(t *testing.T) {
 	assert.Len(t, balance.TransactionHistory, 1)
 	assert.Equal(t, "2026-08-27", balance.TransactionHistory[0].TransactionDate)
 }
+
+// TestCalculateBalances_SetsIsRepaymentOnHistoryItems is a regression guard for
+// isRepayment being missing from GET /api/v1/debts/summary's transaction
+// history: FriendTransactionItem must mirror DebtTransaction.IsRepayment, same
+// as DebtTransactionToResponse already does for DebtTransactionResponse.
+func TestCalculateBalances_SetsIsRepaymentOnHistoryItems(t *testing.T) {
+	lenderID := uuid.New()
+	borrowerID := uuid.New()
+
+	transactions := []debts.DebtTransaction{
+		{
+			BaseEntity:        crud.BaseEntity{ID: uuid.New()},
+			LenderProfileID:   lenderID,
+			BorrowerProfileID: borrowerID,
+			Amount:            decimal.NewFromInt(100),
+			Currency:          "IDR",
+			IsRepayment:       true,
+		},
+		{
+			BaseEntity:        crud.BaseEntity{ID: uuid.New()},
+			LenderProfileID:   lenderID,
+			BorrowerProfileID: borrowerID,
+			Amount:            decimal.NewFromInt(50),
+			Currency:          "IDR",
+			IsRepayment:       false,
+		},
+	}
+
+	balance := MapToFriendBalanceSummary(transactions, []uuid.UUID{lenderID})
+
+	assert.Len(t, balance.TransactionHistory, 2)
+	assert.True(t, balance.TransactionHistory[0].IsRepayment)
+	assert.False(t, balance.TransactionHistory[1].IsRepayment)
+}

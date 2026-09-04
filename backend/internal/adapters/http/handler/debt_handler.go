@@ -39,6 +39,22 @@ type CreateDebtInput struct {
 	}
 }
 
+// CreateRepaymentInput is the request for POST /api/v1/debts/repayment: unlike
+// CreateDebtInput, direction/amount/description are never supplied by the
+// caller - they're always computed server-side from the current net balance
+// (see DebtService.RecordRepayment).
+type CreateRepaymentInput struct {
+	httpapi.AuthInput
+	Body struct {
+		FriendProfileID  uuid.UUID `json:"friendProfileId"`
+		Currency         string    `json:"currency" minLength:"3" maxLength:"3"`
+		TransferMethodID uuid.UUID `json:"transferMethodId"`
+		// TransactionDate is an optional "YYYY-MM-DD" date - see CreateDebtInput's
+		// field of the same name for why it's untagged with format:"date".
+		TransactionDate string `json:"transactionDate,omitempty"`
+	}
+}
+
 type GetAllDebtsInput struct {
 	httpapi.AuthInput
 }
@@ -68,6 +84,18 @@ func (dh *DebtHandler) createDebt(ctx context.Context, in CreateDebtInput) (dto.
 	return dh.debtService.RecordNewTransaction(ctx, request)
 }
 
+func (dh *DebtHandler) createDebtRepayment(ctx context.Context, in CreateRepaymentInput) (dto.DebtTransactionResponse, error) {
+	request := dto.NewRepaymentRequest{
+		UserProfileID:    in.ProfileID,
+		FriendProfileID:  in.Body.FriendProfileID,
+		Currency:         in.Body.Currency,
+		TransferMethodID: in.Body.TransferMethodID,
+		TransactionDate:  in.Body.TransactionDate,
+	}
+
+	return dh.debtService.RecordRepayment(ctx, request)
+}
+
 func (dh *DebtHandler) getDebts(ctx context.Context, in GetAllDebtsInput) ([]dto.DebtTransactionResponse, error) {
 	return dh.debtService.GetTransactions(ctx, in.ProfileID)
 }
@@ -91,6 +119,16 @@ func (dh *DebtHandler) Routes() []endpoint.Registrable {
 			SuccessCode: http.StatusCreated,
 			Secured:     true,
 			HandlerFunc: dh.createDebt,
+		}),
+		endpoint.New(endpoint.Endpoint[CreateRepaymentInput, dto.DebtTransactionResponse]{
+			OperationID: "create-debt-repayment",
+			Method:      http.MethodPost,
+			Path:        "/api/v1/debts/repayment",
+			Summary:     "Record a new debt repayment",
+			Tags:        []string{"debts"},
+			SuccessCode: http.StatusCreated,
+			Secured:     true,
+			HandlerFunc: dh.createDebtRepayment,
 		}),
 		endpoint.New(endpoint.Endpoint[GetAllDebtsInput, []dto.DebtTransactionResponse]{
 			OperationID: "get-debts",

@@ -7,6 +7,7 @@ import {
   ExpenseParticipantsRequest,
   NewAnonymousFriendshipRequest,
   NewDebtTransactionRequest,
+  NewRepaymentRequest,
   SyncItemParticipantsRequest,
   NewExpenseItemRequest,
   NewOtherFeeRequest,
@@ -184,6 +185,20 @@ export function useCreateDebt() {
 
   return useMutation({
     mutationFn: (data: NewDebtTransactionRequest) => debtsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.debts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.debts.summary });
+      queryClient.invalidateQueries({ queryKey: queryKeys.debts.recent });
+      queryClient.invalidateQueries({ queryKey: queryKeys.friendships.all });
+    },
+  });
+}
+
+export function useCreateRepayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: NewRepaymentRequest) => debtsApi.repay(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.debts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.debts.summary });

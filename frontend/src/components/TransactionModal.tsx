@@ -1,5 +1,9 @@
 import { useState, type FormEventHandler } from "react";
-import { useFriendships, useCreateDebt } from "@/hooks/useApi";
+import {
+  useFriendships,
+  useCreateDebt,
+  useCreateRepayment,
+} from "@/hooks/useApi";
 import { useFilteredTransferMethods } from "@/hooks/useMasterData";
 import { DebtDirection, TransferMethod } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
@@ -66,7 +70,9 @@ export function TransactionModal({
   const { data: transferMethods, isLoading: isLoadingMethods } =
     useFilteredTransferMethods("for-transaction", open);
   const createDebt = useCreateDebt();
+  const createRepayment = useCreateRepayment();
   const { toast } = useToast();
+  const isPending = isRepayment ? createRepayment.isPending : createDebt.isPending;
 
   // Net balance for the selected friend in the selected currency, signed from
   // the current user's perspective: positive means the friend owes the
@@ -93,19 +99,24 @@ export function TransactionModal({
     setDateError(null);
 
     try {
-      await createDebt.mutateAsync({
-        friendProfileId: friendId,
-        currency,
-        transferMethodId: selectedMethod.id,
-        transactionDate: dateResult.data,
-        ...(isRepayment
-          ? { isRepayment: true }
-          : {
-              direction,
-              amount: Number.parseFloat(amount),
-              description: description || undefined,
-            }),
-      });
+      if (isRepayment) {
+        await createRepayment.mutateAsync({
+          friendProfileId: friendId,
+          currency,
+          transferMethodId: selectedMethod.id,
+          transactionDate: dateResult.data,
+        });
+      } else {
+        await createDebt.mutateAsync({
+          friendProfileId: friendId,
+          direction,
+          amount: Number.parseFloat(amount),
+          currency,
+          transferMethodId: selectedMethod.id,
+          description: description || undefined,
+          transactionDate: dateResult.data,
+        });
+      }
       toast({
         title: "Transaction recorded",
         description: isRepayment
@@ -148,18 +159,21 @@ export function TransactionModal({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Direction Type */}
-          <TransactionDirectionSelector
-            direction={direction}
-            isRepayment={isRepayment}
-            canRepay={canZeroOutBalance}
-            friendSelected={!!friendId}
-            currency={currency}
-            onSelectDirection={(key) => {
-              setIsRepayment(false);
-              setDirection(key);
-            }}
-            onSelectRepayment={() => setIsRepayment(true)}
-          />
+          <div className="space-y-2">
+            <Label>Transaction type</Label>
+            <TransactionDirectionSelector
+              direction={direction}
+              isRepayment={isRepayment}
+              canRepay={canZeroOutBalance}
+              friendSelected={!!friendId}
+              currency={currency}
+              onSelectDirection={(key) => {
+                setIsRepayment(false);
+                setDirection(key);
+              }}
+              onSelectRepayment={() => setIsRepayment(true)}
+            />
+          </div>
 
           {/* Friend Selection */}
           <div className="space-y-2">
@@ -273,12 +287,10 @@ export function TransactionModal({
               !friendId ||
               !selectedMethod?.id ||
               (isRepayment ? !canZeroOutBalance : !amount) ||
-              createDebt.isPending
+              isPending
             }
           >
-            {createDebt.isPending && (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            )}
+            {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Record Transaction
           </Button>
         </form>

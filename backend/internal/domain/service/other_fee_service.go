@@ -14,7 +14,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
-	"github.com/shopspring/decimal"
 )
 
 type otherFeeServiceImpl struct {
@@ -82,8 +81,8 @@ func (ofs *otherFeeServiceImpl) Update(ctx context.Context, req dto.UpdateOtherF
 
 	var response dto.OtherFeeResponse
 
-	if req.Amount.Cmp(decimal.Zero) <= 0 {
-		return dto.OtherFeeResponse{}, ungerr.UnprocessableEntityError("amount must be more than 0")
+	if req.Amount.IsZero() {
+		return dto.OtherFeeResponse{}, ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
 	}
 
 	err := ofs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {

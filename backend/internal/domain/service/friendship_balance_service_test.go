@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/mocks"
+	"github.com/itsLeonB/go-crud"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -48,10 +49,10 @@ func TestGetNetBalanceForPairForUpdate_FriendshipOrientedAsArgs_ReturnsBalanceAs
 
 	balanceRepository := mocks.NewMockFriendshipBalanceRepository(t)
 	balanceRepository.EXPECT().
-		FindAllByFriendshipID(mock.Anything, friendshipID).
-		Return([]users.FriendshipBalance{
-			{FriendshipID: friendshipID, Currency: currency, NetBalance: decimal.NewFromInt(150)},
-		}, nil)
+		FindFirst(mock.Anything, crud.Specification[users.FriendshipBalance]{
+			Model: users.FriendshipBalance{FriendshipID: friendshipID, Currency: currency},
+		}).
+		Return(users.FriendshipBalance{FriendshipID: friendshipID, Currency: currency, NetBalance: decimal.NewFromInt(150)}, nil)
 
 	fbs := newFriendshipBalanceServiceForTest(friendshipRepository, balanceRepository)
 
@@ -82,12 +83,12 @@ func TestGetNetBalanceForPairForUpdate_FriendshipOrientedOppositeOfArgs_FlipsSig
 
 	balanceRepository := mocks.NewMockFriendshipBalanceRepository(t)
 	balanceRepository.EXPECT().
-		FindAllByFriendshipID(mock.Anything, friendshipID).
-		Return([]users.FriendshipBalance{
-			// Stored relative to friendship.ProfileID1 (== profileID2): profileID2 is the net
-			// lender, so relative to the profileID1 argument this must come back negative.
-			{FriendshipID: friendshipID, Currency: currency, NetBalance: decimal.NewFromInt(150)},
-		}, nil)
+		FindFirst(mock.Anything, crud.Specification[users.FriendshipBalance]{
+			Model: users.FriendshipBalance{FriendshipID: friendshipID, Currency: currency},
+		}).
+		// Stored relative to friendship.ProfileID1 (== profileID2): profileID2 is the net
+		// lender, so relative to the profileID1 argument this must come back negative.
+		Return(users.FriendshipBalance{FriendshipID: friendshipID, Currency: currency, NetBalance: decimal.NewFromInt(150)}, nil)
 
 	fbs := newFriendshipBalanceServiceForTest(friendshipRepository, balanceRepository)
 
@@ -113,11 +114,12 @@ func TestGetNetBalanceForPairForUpdate_NoBalanceRowForCurrency_ReturnsZero(t *te
 
 	balanceRepository := mocks.NewMockFriendshipBalanceRepository(t)
 	balanceRepository.EXPECT().
-		FindAllByFriendshipID(mock.Anything, friendshipID).
-		Return([]users.FriendshipBalance{
-			// A different currency exists for the pair, but not the one being asked about.
-			{FriendshipID: friendshipID, Currency: "EUR", NetBalance: decimal.NewFromInt(50)},
-		}, nil)
+		FindFirst(mock.Anything, crud.Specification[users.FriendshipBalance]{
+			Model: users.FriendshipBalance{FriendshipID: friendshipID, Currency: currency},
+		}).
+		// No row for this (friendship, currency) pair - go-crud's FindFirst resolves a
+		// gorm.ErrRecordNotFound to the zero value with a nil error, not an error return.
+		Return(users.FriendshipBalance{}, nil)
 
 	fbs := newFriendshipBalanceServiceForTest(friendshipRepository, balanceRepository)
 
@@ -148,5 +150,5 @@ func TestGetNetBalanceForPairForUpdate_NoFriendshipRow_ReturnsZero(t *testing.T)
 
 	assert.NoError(t, err)
 	assert.True(t, decimal.Zero.Equal(got), "expected 0, got %s", got)
-	balanceRepository.AssertNotCalled(t, "FindAllByFriendshipID", mock.Anything, mock.Anything)
+	balanceRepository.AssertNotCalled(t, "FindFirst", mock.Anything, mock.Anything)
 }

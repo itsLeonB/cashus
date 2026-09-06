@@ -416,7 +416,7 @@ func validateDirection(direction dto.DebtTransactionDirection) error {
 
 // transactionDateLayout is the wire format for a debt transaction's date: date-only,
 // no time-of-day or timezone component (matches mapper.transactionDateLayout).
-const transactionDateLayout = "2006-01-02"
+const transactionDateLayout = time.DateOnly
 
 // resolveTransactionDate defaults and validates the transactionDate field of a new
 // debt transaction request. An empty raw value - whether the field was omitted or

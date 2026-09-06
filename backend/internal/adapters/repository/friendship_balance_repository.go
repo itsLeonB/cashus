@@ -47,23 +47,6 @@ func (fbr *friendshipBalanceRepositoryGorm) UpsertMany(ctx context.Context, bala
 	return nil
 }
 
-func (fbr *friendshipBalanceRepositoryGorm) FindAllByFriendshipID(ctx context.Context, friendshipID uuid.UUID) ([]users.FriendshipBalance, error) {
-	ctx, span := otel.Tracer.Start(ctx, "FriendshipBalanceRepository.FindAllByFriendshipID")
-	defer span.End()
-
-	db, err := fbr.GetGormInstance(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var balances []users.FriendshipBalance
-	if err := db.Where("friendship_id = ?", friendshipID).Find(&balances).Error; err != nil {
-		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
-	}
-
-	return balances, nil
-}
-
 func (fbr *friendshipBalanceRepositoryGorm) FindAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]repository.FriendshipBalanceRow, error) {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipBalanceRepository.FindAllByProfileID")
 	defer span.End()

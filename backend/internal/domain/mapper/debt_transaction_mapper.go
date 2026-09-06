@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -10,7 +12,7 @@ import (
 
 // transactionDateLayout is the wire format for DebtTransaction.TransactionDate:
 // date-only, no time-of-day or timezone component.
-const transactionDateLayout = "2006-01-02"
+const transactionDateLayout = time.DateOnly
 
 func MapToFriendBalanceSummary(transactions []debts.DebtTransaction, userAssociatedIDs []uuid.UUID) dto.FriendBalance {
 	totalLent, totalBorrowed, history := calculateBalances(userAssociatedIDs, transactions)
@@ -69,6 +71,7 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 			TransferMethod:  tx.TransferMethod.Display,
 			Description:     tx.Description,
 			TransactionDate: tx.TransactionDate.Format(transactionDateLayout),
+			IsRepayment:     tx.IsRepayment,
 		})
 	}
 
@@ -126,6 +129,7 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 		GroupExpenseID:  transaction.GroupExpenseID.UUID,
 		IsFromExpense:   transaction.GroupExpenseID.Valid,
 		TransactionDate: transaction.TransactionDate.Format(transactionDateLayout),
+		IsRepayment:     transaction.IsRepayment,
 	}
 }
 

@@ -54,6 +54,9 @@ type FriendTransactionItem struct {
 	// TransactionDate is the effective (possibly backdated) transaction date,
 	// formatted "YYYY-MM-DD". Independent of BaseDTO.CreatedAt.
 	TransactionDate string `json:"transactionDate"`
+	// IsRepayment mirrors DebtTransaction.IsRepayment, same as
+	// DebtTransactionResponse.IsRepayment.
+	IsRepayment bool `json:"isRepayment"`
 }
 
 type FriendDetailsResponse struct {

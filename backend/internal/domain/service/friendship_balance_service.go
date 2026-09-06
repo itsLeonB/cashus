@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/go-crud"
 	"github.com/shopspring/decimal"
 )
 
@@ -161,4 +162,45 @@ func (fbs *friendshipBalanceServiceImpl) GetNetBalancesForProfile(ctx context.Co
 	}
 
 	return result, nil
+}
+
+func (fbs *friendshipBalanceServiceImpl) GetNetBalanceForPairForUpdate(
+	ctx context.Context,
+	profileID1, profileID2 uuid.UUID,
+	currency string,
+) (decimal.Decimal, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipBalanceService.GetNetBalanceForPairForUpdate")
+	defer span.End()
+
+	// Locks the friendship row first so a concurrent read-then-write for the same pair (e.g. two
+	// repayments racing) blocks until this one's transaction commits, instead of both reading
+	// the same stale balance and both deciding there's something to settle.
+	friendship, err := fbs.friendshipRepository.FindByProfileIDsForUpdate(ctx, profileID1, profileID2)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	if friendship.IsZero() {
+		// No Friendship row for this pair - nothing to owe.
+		return decimal.Zero, nil
+	}
+
+	// FindFirst on the embedded crud.Repository, not a bespoke lookup method - the
+	// (friendship_id, currency) pair is unique (see UpsertMany's OnConflict target), and a
+	// missing row resolves to the zero value with a nil error (crud's FindFirst behavior on
+	// gorm.ErrRecordNotFound), which is exactly "balance is zero" here.
+	balance, err := fbs.balanceRepository.FindFirst(ctx, crud.Specification[users.FriendshipBalance]{
+		Model: users.FriendshipBalance{FriendshipID: friendship.ID, Currency: currency},
+	})
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+
+	netBalance := balance.NetBalance
+	if friendship.ProfileID1 != profileID1 {
+		// netBalance is stored signed relative to the friendship's own ProfileID1, flip it
+		// to be relative to the profileID1 argument if that differs.
+		netBalance = netBalance.Neg()
+	}
+
+	return netBalance, nil
 }

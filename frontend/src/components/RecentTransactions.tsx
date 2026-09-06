@@ -7,6 +7,7 @@ import { useRecentDebts } from "@/hooks/useApi";
 import { DebtTransactionResponse } from "@/lib/api";
 
 const descriptionDisplay = (transaction: DebtTransactionResponse) => {
+  if (transaction?.isRepayment) return "Repayment";
   if (transaction?.description) return transaction.description;
   if (transaction?.type === "LENT")
     return `Lent to ${transaction.profile.name}`;

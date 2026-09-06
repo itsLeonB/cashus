@@ -20,6 +20,7 @@ import (
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 )
 
@@ -63,16 +64,83 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
-	if req.UserProfileID == req.FriendProfileID {
+
+	params := recordTransactionParams{
+		userProfileID:    req.UserProfileID,
+		friendProfileID:  req.FriendProfileID,
+		currency:         req.Currency,
+		transferMethodID: req.TransferMethodID,
+		transactionDate:  req.TransactionDate,
+	}
+	return ds.recordTransaction(
+		ctx, params, false,
+		func(context.Context, string) (dto.DebtTransactionDirection, decimal.Decimal, string, error) {
+			return req.Direction, req.Amount, req.Description, nil
+		},
+	)
+}
+
+// RecordRepayment records a balance-settling repayment: direction and amount are
+// always computed from the current net balance (see resolveRepayment), never
+// supplied by the caller.
+func (ds *debtServiceImpl) RecordRepayment(ctx context.Context, req dto.NewRepaymentRequest) (dto.DebtTransactionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordRepayment")
+	defer span.End()
+
+	params := recordTransactionParams{
+		userProfileID:    req.UserProfileID,
+		friendProfileID:  req.FriendProfileID,
+		currency:         req.Currency,
+		transferMethodID: req.TransferMethodID,
+		transactionDate:  req.TransactionDate,
+	}
+	return ds.recordTransaction(
+		ctx, params, true,
+		func(ctx context.Context, currency string) (dto.DebtTransactionDirection, decimal.Decimal, string, error) {
+			direction, amount, err := ds.resolveRepayment(ctx, req.UserProfileID, req.FriendProfileID, currency)
+			return direction, amount, "", err
+		},
+	)
+}
+
+// recordTransactionParams bundles the fields RecordNewTransaction and
+// RecordRepayment both pass to recordTransaction - exactly the subset their own
+// request DTOs (dto.NewDebtTransactionRequest / dto.NewRepaymentRequest) already
+// group, factored out here to avoid repeating it a third time as a loose
+// parameter list.
+type recordTransactionParams struct {
+	userProfileID    uuid.UUID
+	friendProfileID  uuid.UUID
+	currency         string
+	transferMethodID uuid.UUID
+	transactionDate  string
+}
+
+// recordTransaction holds the logic shared by RecordNewTransaction and
+// RecordRepayment: friend validation, transfer-method lookup, currency
+// resolution, transaction-date resolution, the insert + RecalculatePair call
+// inside WithinTransaction, and the async notification enqueue. The two callers
+// differ only in how direction/amount/description get resolved before the
+// insert, which resolve encapsulates; it's called inside the transaction (not
+// before it) so that a repayment's resolution - which must run under
+// GetNetBalanceForPairForUpdate's lock - is covered by the same transaction
+// that inserts the settling row and recalculates the pair's balance.
+func (ds *debtServiceImpl) recordTransaction(
+	ctx context.Context,
+	params recordTransactionParams,
+	isRepayment bool,
+	resolve func(ctx context.Context, currency string) (dto.DebtTransactionDirection, decimal.Decimal, string, error),
+) (dto.DebtTransactionResponse, error) {
+	if params.userProfileID == params.friendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
 
-	transactionDate, err := resolveTransactionDate(req.TransactionDate, time.Now().UTC())
+	transactionDate, err := resolveTransactionDate(params.transactionDate, time.Now().UTC())
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
+	isFriends, _, err := ds.friendshipService.IsFriends(ctx, params.userProfileID, params.friendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
@@ -80,19 +148,14 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
 	}
 
-	transferMethod, err := ds.transferMethodService.GetByID(ctx, req.TransferMethodID)
+	transferMethod, err := ds.transferMethodService.GetByID(ctx, params.transferMethodID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
-	if req.Direction == dto.IncomingDebt {
-		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
-	}
-
-	currency := req.Currency
+	currency := params.currency
 	if currency == "" {
-		userProfile, err := ds.profileService.GetEntityByID(ctx, req.UserProfileID)
+		userProfile, err := ds.profileService.GetEntityByID(ctx, params.userProfileID)
 		if err != nil {
 			return dto.DebtTransactionResponse{}, err
 		}
@@ -101,14 +164,25 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 
 	var insertedDebt debts.DebtTransaction
 	err = ds.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		direction, amount, description, err := resolve(ctx, currency)
+		if err != nil {
+			return err
+		}
+
+		lenderID, borrowerID := params.userProfileID, params.friendProfileID
+		if direction == dto.IncomingDebt {
+			lenderID, borrowerID = params.friendProfileID, params.userProfileID
+		}
+
 		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 			LenderProfileID:   lenderID,
 			BorrowerProfileID: borrowerID,
-			Amount:            req.Amount,
-			TransferMethodID:  req.TransferMethodID,
-			Description:       req.Description,
+			Amount:            amount,
+			TransferMethodID:  params.transferMethodID,
+			Description:       description,
 			Currency:          currency,
 			TransactionDate:   transactionDate,
+			IsRepayment:       isRepayment,
 		})
 		if err != nil {
 			return err
@@ -122,11 +196,58 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 
 	go ds.taskQueue.AsyncEnqueue(ctx, message.DebtCreated{
 		ID:               insertedDebt.ID,
-		CreatorProfileID: req.UserProfileID,
+		CreatorProfileID: params.userProfileID,
 	})
 
 	insertedDebt.TransferMethod = transferMethod
-	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
+	return mapper.DebtTransactionToResponse(params.userProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
+}
+
+// resolveRepayment computes the direction and amount for a RecordRepayment
+// request: it nets userProfileID's current balance with friendProfileID in
+// currency down to zero, reusing FriendshipBalanceService's cached balance (kept
+// current by RecalculatePair on every debt-transaction write) rather than
+// re-deriving it from the transaction history.
+//
+// It must be called from inside the same transactor.WithinTransaction block that goes on to
+// insert the settling debt transaction and call RecalculatePair, using
+// GetNetBalanceForPairForUpdate rather than the unlocked GetNetBalancesForProfile: that method
+// locks the friendship row first, so two concurrent isRepayment requests for the same pair
+// serialize instead of both reading the same pre-repayment balance and both inserting a
+// settling transaction - the second must instead see the balance already zeroed by the first
+// (once its RecalculatePair, sharing the same lock, has committed) and be rejected below. See
+// GetNetBalanceForPairForUpdate's doc comment for the locking detail.
+//
+// GetNetBalanceForPairForUpdate returns the balance signed so that positive means
+// userProfileID is the net lender (friendProfileID owes userProfileID); a
+// repayment settling that must record friendProfileID paying userProfileID
+// back, i.e. userProfileID *receiving* money, so direction is INCOMING with
+// amount equal to the (positive) balance. A negative balance means
+// userProfileID owes friendProfileID, so the repayment is userProfileID
+// *giving* money back: direction OUTGOING, amount the balance's absolute
+// value. A zero (or absent) balance means there's nothing to repay.
+func (ds *debtServiceImpl) resolveRepayment(
+	ctx context.Context,
+	userProfileID, friendProfileID uuid.UUID,
+	currency string,
+) (dto.DebtTransactionDirection, decimal.Decimal, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.resolveRepayment")
+	defer span.End()
+
+	netBalance, err := ds.friendshipBalanceService.GetNetBalanceForPairForUpdate(ctx, userProfileID, friendProfileID, currency)
+	if err != nil {
+		return "", decimal.Decimal{}, err
+	}
+
+	if netBalance.IsZero() {
+		return "", decimal.Decimal{}, ungerr.UnprocessableEntityError("nothing to repay: balance is already zero")
+	}
+
+	if netBalance.IsPositive() {
+		return dto.IncomingDebt, netBalance, nil
+	}
+
+	return dto.OutgoingDebt, netBalance.Neg(), nil
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
@@ -280,7 +401,7 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 
 // transactionDateLayout is the wire format for a debt transaction's date: date-only,
 // no time-of-day or timezone component (matches mapper.transactionDateLayout).
-const transactionDateLayout = "2006-01-02"
+const transactionDateLayout = time.DateOnly
 
 // resolveTransactionDate defaults and validates the transactionDate field of a new
 // debt transaction request. An empty raw value - whether the field was omitted or

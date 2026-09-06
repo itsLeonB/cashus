@@ -89,7 +89,6 @@ type FriendshipBalanceRepository interface {
 	// UpsertMany always overwrites (friendship_id, currency) with a freshly computed value,
 	// never an increment, so it self-corrects regardless of call order.
 	UpsertMany(ctx context.Context, balances []users.FriendshipBalance) error
-	FindAllByFriendshipID(ctx context.Context, friendshipID uuid.UUID) ([]users.FriendshipBalance, error)
 	// FindAllByProfileID returns every non-zero balance row for a friendship profileID is party
 	// to, joined against friendships to resolve the pair's profile IDs in one query.
 	FindAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]FriendshipBalanceRow, error)

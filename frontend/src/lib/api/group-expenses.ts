@@ -68,15 +68,20 @@ export const groupExpensesApi = {
     apiClient.delete(`/group-expenses/${expenseId}`),
 
   addItem: (groupExpenseId: string, data: NewExpenseItemRequest) =>
-    apiClient.post<ExpenseItem>(
-      `/group-expenses/${groupExpenseId}/items`,
-      data,
-    ),
+    apiClient.post<ExpenseItem>(`/group-expenses/${groupExpenseId}/items`, {
+      name: data.name,
+      amount: data.amount,
+      quantity: data.quantity,
+    }),
 
   updateItem: (itemId: string, data: UpdateExpenseItemRequest) =>
     apiClient.put<ExpenseItem>(
       `/group-expenses/${data.groupExpenseId}/items/${itemId}`,
-      data,
+      {
+        name: data.name,
+        amount: data.amount,
+        quantity: data.quantity,
+      },
     ),
 
   removeItem: (groupExpenseId: string, itemId: string) =>
@@ -93,17 +98,22 @@ export const groupExpensesApi = {
     ),
 
   addFee: (groupExpenseId: string, data: NewOtherFeeRequest) =>
-    apiClient.post<OtherFee>(`/group-expenses/${groupExpenseId}/fees`, data),
+    apiClient.post<OtherFee>(`/group-expenses/${groupExpenseId}/fees`, {
+      name: data.name,
+      amount: data.amount,
+      calculationMethod: data.calculationMethod,
+    }),
 
   updateFee: (
     groupExpenseId: string,
     feeId: string,
     data: UpdateOtherFeeRequest,
   ) =>
-    apiClient.put<OtherFee>(
-      `/group-expenses/${groupExpenseId}/fees/${feeId}`,
-      data,
-    ),
+    apiClient.put<OtherFee>(`/group-expenses/${groupExpenseId}/fees/${feeId}`, {
+      name: data.name,
+      amount: data.amount,
+      calculationMethod: data.calculationMethod,
+    }),
 
   removeFee: (groupExpenseId: string, feeId: string) =>
     apiClient.delete(`/group-expenses/${groupExpenseId}/fees/${feeId}`),

@@ -1,6 +1,6 @@
 import type { ApiError } from "./types";
 
-const DEFAULT_ERROR_MESSAGE = "Something went wrong";
+export const DEFAULT_ERROR_MESSAGE = "Something went wrong";
 
 /**
  * Extracts a user-facing message from an error caught after awaiting an API

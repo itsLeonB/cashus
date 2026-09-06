@@ -130,10 +130,10 @@ func TestRecordNewTransaction_NonPositiveAmount_ReturnsValidationError(t *testin
 }
 
 // These tests cover resolveRepayment, the helper RecordRepayment uses to
-// compute direction+amount from the current net balance, and validateDirection,
-// the sibling helper RecordNewTransaction uses as a defense-in-depth check that
-// direction is INCOMING/OUTGOING, behind huma's enum tag on
-// CreateDebtInput.Body.Direction which enforces it over HTTP.
+// compute direction+amount from the current net balance. Direction validity for
+// RecordNewTransaction's non-repayment path is enforced entirely at the API
+// boundary by huma's enum tag on CreateDebtInput.Body.Direction - there's no
+// service-layer duplicate of that check.
 
 // newDebtServiceForRepaymentTest builds a debtServiceImpl with only
 // friendshipBalanceService set - the only dependency resolveRepayment touches -
@@ -216,32 +216,6 @@ func TestResolveRepayment_NoCachedBalanceForPair_ReturnsUnprocessableEntityError
 	ds := newDebtServiceForRepaymentTest(balanceService)
 
 	_, _, err := ds.resolveRepayment(context.Background(), userID, friendID, currency)
-
-	assert.Error(t, err)
-	var appErr ungerr.AppError
-	assert.ErrorAs(t, err, &appErr)
-	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
-}
-
-func TestValidateDirection_Incoming_ReturnsNoError(t *testing.T) {
-	assert.NoError(t, validateDirection(dto.IncomingDebt))
-}
-
-func TestValidateDirection_Outgoing_ReturnsNoError(t *testing.T) {
-	assert.NoError(t, validateDirection(dto.OutgoingDebt))
-}
-
-func TestValidateDirection_Empty_ReturnsValidationError(t *testing.T) {
-	err := validateDirection("")
-
-	assert.Error(t, err)
-	var appErr ungerr.AppError
-	assert.ErrorAs(t, err, &appErr)
-	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
-}
-
-func TestValidateDirection_Invalid_ReturnsValidationError(t *testing.T) {
-	err := validateDirection(dto.DebtTransactionDirection("SIDEWAYS"))
 
 	assert.Error(t, err)
 	var appErr ungerr.AppError

@@ -64,9 +64,6 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
-	if err := validateDirection(req.Direction); err != nil {
-		return dto.DebtTransactionResponse{}, err
-	}
 
 	params := recordTransactionParams{
 		userProfileID:    req.UserProfileID,
@@ -400,18 +397,6 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 		EntityID:   msg.ID,
 		Metadata:   datatypes.JSON(metadata),
 	}, nil
-}
-
-// validateDirection returns a 422 ungerr error unless direction is INCOMING or
-// OUTGOING. Only called by RecordNewTransaction - a repayment computes its own
-// direction from the balance instead, via resolveRepayment - as a defense-in-depth
-// check behind huma's enum:"INCOMING,OUTGOING" tag on CreateDebtInput.Body.Direction,
-// which is what actually enforces this over HTTP.
-func validateDirection(direction dto.DebtTransactionDirection) error {
-	if direction != dto.IncomingDebt && direction != dto.OutgoingDebt {
-		return ungerr.ValidationError("direction must be either INCOMING or OUTGOING")
-	}
-	return nil
 }
 
 // transactionDateLayout is the wire format for a debt transaction's date: date-only,

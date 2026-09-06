@@ -294,7 +294,15 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 		return err
 	}
 
-	debtTransactions := mapper.GroupExpenseToDebtTransactions(groupExpense, transferMethod.ID)
+	// The confirmation flow has no per-request date override (see
+	// GroupExpenseToDebtTransactions' doc comment) - every debt transaction
+	// created from this confirmation is stamped with today's UTC calendar date,
+	// same "now" convention resolveTransactionDate uses for the
+	// RecordNewTransaction/RecordRepayment paths. Without this, TransactionDate
+	// was left at its Go zero value (0001-01-01) all the way to the insert - the
+	// root cause of CASH-8.
+	transactionDate := truncateToDate(time.Now().UTC())
+	debtTransactions := mapper.GroupExpenseToDebtTransactions(groupExpense, transferMethod.ID, transactionDate)
 
 	if _, err = ds.debtTransactionRepository.InsertMany(ctx, debtTransactions); err != nil {
 		return err

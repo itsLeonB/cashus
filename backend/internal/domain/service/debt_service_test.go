@@ -10,6 +10,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
+	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/mocks"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -479,4 +480,263 @@ func TestRecordRepayment_ZeroBalance_ReturnsUnprocessableEntityError(t *testing.
 	var appErr ungerr.AppError
 	assert.ErrorAs(t, err, &appErr)
 	assert.Equal(t, http.StatusUnprocessableEntity, appErr.HttpStatus())
+}
+
+// These tests cover CASH-8: confirming a group expense must stamp every
+// resulting debt transaction with today's date, not the Go zero value
+// (0001-01-01) that reached the DB before this fix, and RecordNewTransaction
+// must keep behaving correctly on both sides of that fix (explicit date
+// respected, omitted date still defaulted) - end-to-end through the insert,
+// not just through the resolveTransactionDate/mapper unit tests above.
+
+// processConfirmedGroupExpenseTestDeps bundles every mock ProcessConfirmedGroupExpense's
+// dependency graph touches: transfer-method lookup, the InsertMany call and the
+// per-pair balance recalculation. expenseService/friendshipService/profileService/
+// transactor are left nil - ProcessConfirmedGroupExpense never reaches them.
+type processConfirmedGroupExpenseTestDeps struct {
+	debtRepo    *mocks.MockDebtTransactionRepository
+	transferSvc *mocks.MockTransferMethodService
+	balanceSvc  *mocks.MockFriendshipBalanceService
+}
+
+func newProcessConfirmedGroupExpenseTestService(t *testing.T) (*debtServiceImpl, processConfirmedGroupExpenseTestDeps) {
+	deps := processConfirmedGroupExpenseTestDeps{
+		debtRepo:    mocks.NewMockDebtTransactionRepository(t),
+		transferSvc: mocks.NewMockTransferMethodService(t),
+		balanceSvc:  mocks.NewMockFriendshipBalanceService(t),
+	}
+
+	ds := &debtServiceImpl{
+		debtTransactionRepository: deps.debtRepo,
+		transferMethodService:     deps.transferSvc,
+		friendshipBalanceService:  deps.balanceSvc,
+	}
+
+	return ds, deps
+}
+
+func TestProcessConfirmedGroupExpense_InsertsDebtTransactionsWithNonZeroTransactionDate(t *testing.T) {
+	ds, deps := newProcessConfirmedGroupExpenseTestService(t)
+
+	payerID := uuid.New()
+	participantID := uuid.New()
+	transferMethod := debts.TransferMethod{
+		BaseEntity: crud.BaseEntity{ID: uuid.New()},
+		Display:    "Group expense",
+	}
+	groupExpense := expenses.GroupExpense{
+		BaseEntity:     crud.BaseEntity{ID: uuid.New()},
+		PayerProfileID: uuid.NullUUID{UUID: payerID, Valid: true},
+		Currency:       "USD",
+		Description:    "Lunch",
+		Participants: []expenses.ExpenseParticipant{
+			{
+				ParticipantProfileID: participantID,
+				ShareAmount:          decimal.NewFromInt(25),
+			},
+		},
+	}
+
+	deps.transferSvc.EXPECT().
+		GetByName(mock.Anything, debts.GroupExpenseTransferMethod).
+		Return(transferMethod, nil)
+
+	deps.debtRepo.EXPECT().
+		InsertMany(mock.Anything, mock.MatchedBy(func(txs []debts.DebtTransaction) bool {
+			if len(txs) != 1 {
+				return false
+			}
+			tx := txs[0]
+			// The bug (CASH-8): TransactionDate left at its Go zero value because
+			// GroupExpenseToDebtTransactions never set it. Guard against regressing
+			// back to that zero value, and against it drifting from today's UTC
+			// calendar date (mirrors resolveTransactionDate's "now" convention used
+			// by RecordNewTransaction/RecordRepayment).
+			return !tx.TransactionDate.IsZero() &&
+				tx.TransactionDate.Equal(truncateToDate(time.Now().UTC())) &&
+				tx.LenderProfileID == payerID &&
+				tx.BorrowerProfileID == participantID
+		})).
+		Return([]debts.DebtTransaction{
+			{
+				BaseEntity:        crud.BaseEntity{ID: uuid.New()},
+				LenderProfileID:   payerID,
+				BorrowerProfileID: participantID,
+				Amount:            decimal.NewFromInt(25),
+				Currency:          "USD",
+				TransferMethodID:  transferMethod.ID,
+				TransactionDate:   truncateToDate(time.Now().UTC()),
+			},
+		}, nil)
+
+	deps.balanceSvc.EXPECT().
+		RecalculatePair(mock.Anything, payerID, participantID).
+		Return(nil)
+
+	err := ds.ProcessConfirmedGroupExpense(context.Background(), groupExpense)
+
+	assert.NoError(t, err)
+}
+
+// recordNewTransactionTestDeps bundles every mock RecordNewTransaction's dependency
+// graph touches with a non-empty Currency request (profileService is left nil -
+// RecordNewTransaction only reaches it when req.Currency == "").
+type recordNewTransactionTestDeps struct {
+	debtRepo    *mocks.MockDebtTransactionRepository
+	transferSvc *mocks.MockTransferMethodService
+	friendSvc   *mocks.MockFriendshipService
+	transactor  *mocks.MockTransactor
+	balanceSvc  *mocks.MockFriendshipBalanceService
+	taskQueue   *mocks.MockTaskQueue
+}
+
+func newRecordNewTransactionTestService(t *testing.T) (*debtServiceImpl, recordNewTransactionTestDeps) {
+	deps := recordNewTransactionTestDeps{
+		debtRepo:    mocks.NewMockDebtTransactionRepository(t),
+		transferSvc: mocks.NewMockTransferMethodService(t),
+		friendSvc:   mocks.NewMockFriendshipService(t),
+		transactor:  mocks.NewMockTransactor(t),
+		balanceSvc:  mocks.NewMockFriendshipBalanceService(t),
+		taskQueue:   mocks.NewMockTaskQueue(t),
+	}
+
+	ds := &debtServiceImpl{
+		debtTransactionRepository: deps.debtRepo,
+		transferMethodService:     deps.transferSvc,
+		friendshipService:         deps.friendSvc,
+		transactor:                deps.transactor,
+		friendshipBalanceService:  deps.balanceSvc,
+		taskQueue:                 deps.taskQueue,
+	}
+
+	return ds, deps
+}
+
+func expectRecordNewTransactionPreamble(deps recordNewTransactionTestDeps, req dto.NewDebtTransactionRequest, transferMethod debts.TransferMethod) {
+	deps.friendSvc.EXPECT().
+		IsFriends(mock.Anything, req.UserProfileID, req.FriendProfileID).
+		Return(true, false, nil)
+
+	deps.transferSvc.EXPECT().
+		GetByID(mock.Anything, req.TransferMethodID).
+		Return(transferMethod, nil)
+
+	deps.transactor.EXPECT().
+		WithinTransaction(mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(ctx)
+		})
+}
+
+func TestRecordNewTransaction_ExplicitTransactionDate_IsRespected(t *testing.T) {
+	ds, deps := newRecordNewTransactionTestService(t)
+
+	req := dto.NewDebtTransactionRequest{
+		UserProfileID:    uuid.New(),
+		FriendProfileID:  uuid.New(),
+		Direction:        dto.OutgoingDebt,
+		Currency:         "USD",
+		Amount:           decimal.NewFromInt(100),
+		TransferMethodID: uuid.New(),
+		Description:      "Coffee",
+		TransactionDate:  "2026-08-20",
+	}
+	transferMethod := debts.TransferMethod{
+		BaseEntity: crud.BaseEntity{ID: req.TransferMethodID},
+		Display:    "Cash",
+	}
+	expectRecordNewTransactionPreamble(deps, req, transferMethod)
+
+	expectedDate := time.Date(2026, time.August, 20, 0, 0, 0, 0, time.UTC)
+
+	deps.debtRepo.EXPECT().
+		Insert(mock.Anything, mock.MatchedBy(func(tx debts.DebtTransaction) bool {
+			return tx.TransactionDate.Equal(expectedDate)
+		})).
+		Return(debts.DebtTransaction{
+			BaseEntity:        crud.BaseEntity{ID: uuid.New()},
+			LenderProfileID:   req.UserProfileID,
+			BorrowerProfileID: req.FriendProfileID,
+			Amount:            req.Amount,
+			Currency:          req.Currency,
+			TransferMethodID:  req.TransferMethodID,
+			TransactionDate:   expectedDate,
+		}, nil)
+
+	deps.balanceSvc.EXPECT().
+		RecalculatePair(mock.Anything, req.UserProfileID, req.FriendProfileID).
+		Return(nil)
+
+	asyncDone := make(chan struct{})
+	deps.taskQueue.EXPECT().
+		AsyncEnqueue(mock.Anything, mock.Anything).
+		Run(func(context.Context, queue.TaskMessage) { close(asyncDone) })
+
+	res, err := ds.RecordNewTransaction(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "2026-08-20", res.TransactionDate)
+
+	select {
+	case <-asyncDone:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for AsyncEnqueue")
+	}
+}
+
+func TestRecordNewTransaction_OmittedTransactionDate_DefaultsToToday(t *testing.T) {
+	ds, deps := newRecordNewTransactionTestService(t)
+
+	req := dto.NewDebtTransactionRequest{
+		UserProfileID:    uuid.New(),
+		FriendProfileID:  uuid.New(),
+		Direction:        dto.OutgoingDebt,
+		Currency:         "USD",
+		Amount:           decimal.NewFromInt(100),
+		TransferMethodID: uuid.New(),
+		Description:      "Coffee",
+		// TransactionDate intentionally left empty.
+	}
+	transferMethod := debts.TransferMethod{
+		BaseEntity: crud.BaseEntity{ID: req.TransferMethodID},
+		Display:    "Cash",
+	}
+	expectRecordNewTransactionPreamble(deps, req, transferMethod)
+
+	expectedDate := truncateToDate(time.Now().UTC())
+
+	deps.debtRepo.EXPECT().
+		Insert(mock.Anything, mock.MatchedBy(func(tx debts.DebtTransaction) bool {
+			return !tx.TransactionDate.IsZero() && tx.TransactionDate.Equal(expectedDate)
+		})).
+		Return(debts.DebtTransaction{
+			BaseEntity:        crud.BaseEntity{ID: uuid.New()},
+			LenderProfileID:   req.UserProfileID,
+			BorrowerProfileID: req.FriendProfileID,
+			Amount:            req.Amount,
+			Currency:          req.Currency,
+			TransferMethodID:  req.TransferMethodID,
+			TransactionDate:   expectedDate,
+		}, nil)
+
+	deps.balanceSvc.EXPECT().
+		RecalculatePair(mock.Anything, req.UserProfileID, req.FriendProfileID).
+		Return(nil)
+
+	asyncDone := make(chan struct{})
+	deps.taskQueue.EXPECT().
+		AsyncEnqueue(mock.Anything, mock.Anything).
+		Run(func(context.Context, queue.TaskMessage) { close(asyncDone) })
+
+	res, err := ds.RecordNewTransaction(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedDate.Format(time.DateOnly), res.TransactionDate)
+	assert.NotEqual(t, "0001-01-01", res.TransactionDate)
+
+	select {
+	case <-asyncDone:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for AsyncEnqueue")
+	}
 }

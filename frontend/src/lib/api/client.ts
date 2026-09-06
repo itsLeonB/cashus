@@ -1,4 +1,5 @@
-import { ApiError } from "./types";
+import { ApiError, ValidationError } from "./types";
+import { DEFAULT_ERROR_MESSAGE } from "./errors";
 import config from "@/config/config";
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -17,20 +18,42 @@ const SESSION_EXPIRED_ERROR: ApiError = {
   isRefreshFailure: true,
 };
 
-async function parseErrorResponse(response: Response): Promise<ApiError> {
-  const error: ApiError = await response.json().catch(() => ({
-    message: "An unexpected error occurred",
+const SERVER_ERROR_MESSAGE =
+  "Something went wrong on our end. Please contact the developer if this keeps happening.";
+
+// Backend error responses (see ungerr's errorBody / Huma's ErrorModel) are
+// shaped as `{ title, status, detail, errors }`, not `{ message }` — so the
+// user-facing message has to be extracted from `detail` (a single business
+// error) or `errors[].message` (per-field request validation errors), never
+// read directly off a `message` property that the backend never sends.
+function extractBackendMessage(body: {
+  detail?: string;
+  errors?: ValidationError[];
+}): string | undefined {
+  const fieldMessages = body.errors
+    ?.map((e) => e.message)
+    .filter((m): m is string => !!m);
+  if (fieldMessages?.length) {
+    return fieldMessages.join("; ");
+  }
+
+  return body.detail || undefined;
+}
+
+export async function parseErrorResponse(response: Response): Promise<ApiError> {
+  const body: { title?: string; detail?: string; errors?: ValidationError[] } =
+    await response.json().catch(() => ({}));
+
+  const message =
+    response.status >= 500
+      ? SERVER_ERROR_MESSAGE
+      : extractBackendMessage(body) || DEFAULT_ERROR_MESSAGE;
+
+  return {
+    ...body,
+    message,
     statusCode: response.status,
-  }));
-
-  if (!error.message && error.errors?.[0]?.detail) {
-    error.message = error.errors[0].detail;
-  }
-  if (!error.statusCode) {
-    error.statusCode = response.status;
-  }
-
-  return error;
+  };
 }
 
 class ApiClient {

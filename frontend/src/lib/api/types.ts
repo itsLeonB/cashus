@@ -392,14 +392,16 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+// Shape of one entry in the backend's `errors` array (see Huma's
+// ErrorDetail), e.g. for per-field request validation failures.
 export interface ValidationError {
-  code: string;
-  detail: string;
+  message?: string;
+  location?: string;
+  value?: unknown;
 }
 
 export interface ApiError {
   message: string;
-  code?: string;
   statusCode: number;
   isRefreshFailure?: boolean;
   errors?: ValidationError[];

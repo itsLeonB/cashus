@@ -3,7 +3,8 @@ lint lint-backend lint-frontend \
 test test-backend test-frontend \
 vulncheck vulncheck-backend \
 build-all build-all-backend build-frontend \
-install-pre-push-hook uninstall-pre-push-hook
+install-pre-push-hook uninstall-pre-push-hook \
+install-language-servers
 
 help:
 	@echo "Makefile commands:"
@@ -13,6 +14,7 @@ help:
 	@echo "  make build-all               - Build backend binaries + frontend bundle"
 	@echo "  make install-pre-push-hook   - Install root git pre-push hook"
 	@echo "  make uninstall-pre-push-hook - Remove root git pre-push hook"
+	@echo "  make install-language-servers - Install Go + TypeScript language servers (for Serena MCP)"
 
 lint: lint-backend lint-frontend
 
@@ -52,3 +54,6 @@ install-pre-push-hook:
 uninstall-pre-push-hook:
 	@rm -f .git/hooks/pre-push
 	@echo "Pre-push hook uninstalled successfully!"
+
+install-language-servers:
+	@scripts/install-language-servers.sh

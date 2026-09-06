@@ -103,7 +103,14 @@ func ExpenseParticipantToData(participant expenses.ExpenseParticipant) (expenses
 	}, nil
 }
 
-func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transferMethodID uuid.UUID) []debts.DebtTransaction {
+// GroupExpenseToDebtTransactions builds the debt-transaction rows for a
+// confirmed group expense. transactionDate is the effective date to stamp on
+// every resulting row (CASH-8) - the group-expense confirmation flow has no
+// per-row date override in its request shape (unlike RecordNewTransaction /
+// RecordRepayment, see CASH-2/resolveTransactionDate), so callers pass the
+// single date that applies to the whole confirmation, already truncated to a
+// UTC calendar date.
+func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transferMethodID uuid.UUID, transactionDate time.Time) []debts.DebtTransaction {
 	groupExpenseID := uuid.NullUUID{UUID: groupExpense.ID, Valid: true}
 	debtTransactions := make([]debts.DebtTransaction, 0, 2*len(groupExpense.Participants))
 
@@ -120,6 +127,7 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 				TransferMethodID:  transferMethodID,
 				GroupExpenseID:    groupExpenseID,
 				Description:       fmt.Sprintf("Covered share for group expense: %s", groupExpense.Description),
+				TransactionDate:   transactionDate,
 			})
 			debtTransactions = append(debtTransactions, debts.DebtTransaction{
 				LenderProfileID:   groupExpense.PayerProfileID.UUID,
@@ -129,6 +137,7 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 				TransferMethodID:  transferMethodID,
 				GroupExpenseID:    groupExpenseID,
 				Description:       fmt.Sprintf("Covered %s's share for group expense: %s", participant.ParticipantProfile.Name, groupExpense.Description),
+				TransactionDate:   transactionDate,
 			})
 		} else {
 			debtTransactions = append(debtTransactions, debts.DebtTransaction{
@@ -139,6 +148,7 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 				TransferMethodID:  transferMethodID,
 				GroupExpenseID:    groupExpenseID,
 				Description:       fmt.Sprintf("Share for group expense: %s", groupExpense.Description),
+				TransactionDate:   transactionDate,
 			})
 		}
 	}

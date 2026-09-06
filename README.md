@@ -13,7 +13,7 @@ See each component's own README for its setup and development commands.
 
 ## Root-level tooling
 
-`make lint` / `make test` / `make vulncheck` / `make build-all` wrap both components' own tooling, running only against whichever component changed. `make install-pre-push-hook` installs a git pre-push hook that runs the same checks automatically before every push.
+`make lint` / `make test` / `make vulncheck` / `make build-all` wrap both components' own tooling, running only against whichever component changed. `make install-pre-push-hook` installs a git pre-push hook that runs the same checks automatically before every push. `make install-language-servers` installs the Go and TypeScript language servers used by Serena MCP — useful in environments (e.g. Claude Code cloud sessions) where they aren't installed by default.
 
 ## License
 

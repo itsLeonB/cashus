@@ -205,6 +205,7 @@ jobs:
           # PR head ref is attacker-controlled (fork PRs); keep it out of
           # the shell command line entirely and pass it as data instead.
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           npm install -g vercel@59.11.7
 
@@ -225,7 +226,12 @@ jobs:
           # https://github.com/vercel/vercel/issues/15204, same root
           # cause reported for pnpm). Building remotely also means the
           # branch-scoped env var above is honored automatically.
-          deployment_url=$(vercel deploy --token "$VERCEL_TOKEN" --yes)
+          deployment_url=$(vercel deploy \
+            --token "$VERCEL_TOKEN" \
+            --yes \
+            -m "githubDeployment=1" \
+            -m "githubCommitRef=$HEAD_REF" \
+            -m "githubCommitSha=$HEAD_SHA")
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
 
       - name: Comment preview links on the PR

@@ -20,6 +20,10 @@ concurrency:
   group: preview-environment-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Default to no GITHUB_TOKEN permissions; each job opts into only what it
+# needs.
+permissions: {}
+
 env:
   NEON_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}
   RAILWAY_PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -27,18 +31,34 @@ env:
 jobs:
   provision:
     name: Provision preview stack
-    if: github.event.action != 'closed'
+    # pull_request from a fork (or Dependabot) doesn't get repo secrets, so
+    # every credential below would be empty for them. Skip provisioning
+    # rather than failing noisily; forked PRs simply don't get a preview.
+    # Do NOT switch this to pull_request_target to "fix" that — it would
+    # run this workflow (and expose secrets to) unreviewed PR code.
+    if: >
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
     steps:
-      # NOTE: pin an exact release tag and confirm the output names below
-      # (host/username/password/database) against
-      # https://github.com/neondatabase/create-branch-action's current
-      # README before the first real run — this hasn't been exercised
-      # against a live Neon project yet.
-      - name: Create or reset Neon branch
+      # The action returns an existing branch's details as-is rather than
+      # resetting it, so a `synchronize` run would otherwise keep stale
+      # schema/data from the branch's first creation. Delete it first (ok
+      # if it doesn't exist yet) so every run starts from a fresh copy of
+      # `production`.
+      - name: Delete any stale Neon branch from a previous run
+        uses: neondatabase/delete-branch-action@v3
+        continue-on-error: true
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH_NAME }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Create Neon branch
         id: neon
         uses: neondatabase/create-branch-action@v5
         with:
@@ -46,9 +66,16 @@ jobs:
           parent: production
           branch_name: ${{ env.NEON_BRANCH_NAME }}
           api_key: ${{ secrets.NEON_API_KEY }}
+          # Must already exist as a role/database on the `production`
+          # branch (branching copies them); the action looks up their
+          # connection details rather than creating new ones.
+          username: ${{ secrets.NEON_ROLE_NAME }}
+          database: ${{ secrets.NEON_DATABASE_NAME }}
 
       - name: Install Railway CLI
-        run: curl -fsSL https://railway.com/install.sh | sh
+        # Pinned + installed through npm's integrity-checked registry
+        # rather than piping the mutable install script through sh.
+        run: npm install -g @railway/cli@5.49.3
 
       - name: Find this PR's Railway environment
         id: railway-env
@@ -83,9 +110,9 @@ jobs:
             railway variable set \
               "DB_HOST=${{ steps.neon.outputs.host }}" \
               "DB_PORT=5432" \
-              "DB_USER=${{ steps.neon.outputs.username }}" \
+              "DB_USER=${{ secrets.NEON_ROLE_NAME }}" \
               "DB_PASSWORD=${{ steps.neon.outputs.password }}" \
-              "DB_NAME=${{ steps.neon.outputs.database }}" \
+              "DB_NAME=${{ secrets.NEON_DATABASE_NAME }}" \
               --service "$service" \
               --environment "$RAILWAY_ENV"
           done
@@ -121,7 +148,7 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         working-directory: frontend
         run: |
-          npm install -g vercel@latest
+          npm install -g vercel@59.11.7
 
           # Scope VITE_API_BASE_URL to this PR's git branch so it doesn't
           # affect other previews or dev/staging (Vite bakes VITE_* vars in
@@ -175,8 +202,14 @@ jobs:
 
   cleanup:
     name: Delete preview stack
-    if: github.event.action == 'closed'
+    # Mirror provision's fork/Dependabot guard: those PRs were never
+    # provisioned (no secrets), so there's nothing here to clean up either.
+    if: >
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Delete Neon branch
         uses: neondatabase/delete-branch-action@v3
@@ -184,5 +217,38 @@ jobs:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch: ${{ env.NEON_BRANCH_NAME }}
           api_key: ${{ secrets.NEON_API_KEY }}
-        # Railway's PR environment and Vercel's preview deployment are
-        # cleaned up automatically by those platforms on PR close/merge.
+        # Railway's PR environment is deleted automatically by Railway on
+        # PR close/merge — nothing to do here for it.
+
+      - name: Delete this PR's Vercel preview deployments
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # Vercel doesn't delete a preview deployment just because its
+          # branch/PR is gone — it only loses "active" protection and then
+          # waits on the project's retention policy. Delete it here so
+          # cleanup actually happens on PR close, per CASH-10's AC.
+          deployment_ids=$(curl -fsS \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -G "https://api.vercel.com/v6/deployments" \
+            --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
+            --data-urlencode "teamId=$VERCEL_ORG_ID" \
+            --data-urlencode "branch=$HEAD_REF" \
+            --data-urlencode "target=preview" \
+            | jq -r '.deployments[].uid')
+
+          if [[ -z "$deployment_ids" ]]; then
+            echo "No Vercel preview deployments found for branch $HEAD_REF."
+            exit 0
+          fi
+
+          for id in $deployment_ids; do
+            echo "Deleting Vercel deployment $id"
+            curl -fsS -X DELETE \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              -G "https://api.vercel.com/v13/deployments/$id" \
+              --data-urlencode "teamId=$VERCEL_ORG_ID"
+          done

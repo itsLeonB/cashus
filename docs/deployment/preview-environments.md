@@ -4,10 +4,21 @@ CASH-10. When a PR is opened against any branch, `.github/workflows/preview-envi
 provisions a temporary preview stack and tears it down when the PR closes/merges. The
 dev/staging environment is never touched.
 
+Only same-repository PRs get a preview. A `pull_request` workflow run for a fork PR (or a
+Dependabot PR) doesn't have access to repo secrets, so the workflow deliberately skips
+provisioning for those rather than failing on empty credentials — it does not switch to
+`pull_request_target`, which would run this workflow (and hand out secrets) against
+unreviewed PR code.
+
 ## What gets provisioned per PR
 
 1. **Neon** — a database branch named `preview/pr-<number>`, forked from the `production`
-   branch. Owned entirely by the workflow (create on open/reopen, delete on close).
+   branch. Owned entirely by the workflow: deleted and recreated fresh from `production` on
+   every open/reopen/synchronize (the underlying action returns an existing branch as-is
+   rather than resetting it, so without this the branch would keep stale schema/data across
+   pushes), and deleted again on close. Reuses the role and database that already exist on
+   `production` (`NEON_ROLE_NAME` / `NEON_DATABASE_NAME` below) — branching copies them, so
+   the action just looks up their connection details rather than creating new ones.
 2. **Railway** — an ephemeral "PR environment" that Railway itself auto-creates once
    **PR Deploys** is enabled on the `cashus-backend` project (Project → Settings →
    Environments). The workflow's only job here is to push that PR's Neon credentials
@@ -19,8 +30,10 @@ dev/staging environment is never touched.
    default). The workflow scopes `VITE_API_BASE_URL` to the PR's git branch (Preview env
    var, branch-scoped) so the frontend preview talks to *that PR's* Railway API instead of
    whatever default is configured, then builds and deploys via the Vercel CLI so the new
-   value is baked into the build. Vercel expires the preview deployment on its own when
-   the branch is deleted.
+   value is baked into the build. On close, the workflow explicitly deletes that branch's
+   preview deployment(s) via the Vercel API — Vercel does *not* do this itself; closing a
+   PR only removes the deployment's "active" protection, after which it's still subject to
+   the project's ordinary retention policy rather than being deleted right away.
 
 The workflow comments the three resulting URLs on the PR (updating the same comment on
 each push) so reviewers don't have to hunt for them.
@@ -39,6 +52,8 @@ It walks through, and sets as GitHub Actions repo secrets:
 |---|---|
 | `NEON_API_KEY` | Neon console → Account Settings → API keys |
 | `NEON_PROJECT_ID` | Neon console → cashus project → Settings → General |
+| `NEON_ROLE_NAME` | Neon console → `production` branch → Roles & Databases (must already exist) |
+| `NEON_DATABASE_NAME` | same tab — matches `DB_NAME` in `backend/.env.example` |
 | `RAILWAY_TOKEN` | Railway → cashus-backend project → Settings → Tokens (project-scoped) |
 | `VERCEL_TOKEN` | Vercel → Account Settings → Tokens |
 | `VERCEL_ORG_ID` | `frontend/.vercel/project.json` after `vercel link`, or Vercel project settings |
@@ -71,3 +86,8 @@ is what gets commented on the PR.
 - **Frontend preview still hits the old API URL**: the branch-scoped `VITE_API_BASE_URL`
   only applies to Vercel deployments *of that branch*; check the deployment the workflow
   linked on the PR, not an older one from before the workflow ran.
+- **Neon branch creation fails with a role/database error**: `NEON_ROLE_NAME` or
+  `NEON_DATABASE_NAME` doesn't match an existing role/database on the `production` branch —
+  re-check them in the Neon console's Roles & Databases tab.
+- **No preview on a PR from a fork**: expected — see the fork/Dependabot note above. There's
+  no built-in workaround that doesn't involve exposing secrets to unreviewed code.

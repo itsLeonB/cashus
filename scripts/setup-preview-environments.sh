@@ -194,7 +194,7 @@ say "Actions workflow (.github/workflows/preview-environments.yml) needs:"
 say "a Neon API key, a Railway CI token, and a Vercel CI token — plus"
 say "enabling Railway's PR Deploys feature on the backend project."
 say ""
-say "It writes six GitHub Actions repo secrets on itsLeonB/cashus via the"
+say "It writes eight GitHub Actions repo secrets on itsLeonB/cashus via the"
 say "gh CLI. Nothing is written to a local .env file — these are CI-only."
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   say "${GREEN}✓ gh is installed and authenticated.${RESET}"
@@ -207,16 +207,25 @@ fi
 pause "Ready?"
 
 # ── Stage 2: Neon ───────────────────────────────────────────────────────────
-stage "Neon: API key + project ID"
+stage "Neon: API key + project ID + role/database"
 say "The workflow creates/deletes a database branch per PR via the Neon API."
 open_url "https://console.neon.tech"
 step "Open the cashus production project, then note its Project ID"
 step "(Project → Settings → General → Project ID, looks like a short slug)."
 ask NEON_PROJECT_ID "Paste the Neon project ID:"
+step "Now open the production branch's Roles & Databases tab and note the"
+step "existing role name and database name the backend actually connects"
+step "with (matches DB_USER/DB_NAME in backend/.env.example) — the workflow"
+step "reuses these on each PR's branch rather than creating new ones,"
+step "since Neon branching already copies them from production."
+ask NEON_ROLE_NAME "Paste the Neon role name:"
+ask NEON_DATABASE_NAME "Paste the Neon database name:"
 step "Now go to Account Settings → API keys → Create new API key."
 open_url "https://console.neon.tech/app/settings/api-keys"
 ask_secret NEON_API_KEY "Paste the Neon API key:"
 set_secret NEON_PROJECT_ID "$NEON_PROJECT_ID"
+set_secret NEON_ROLE_NAME "$NEON_ROLE_NAME"
+set_secret NEON_DATABASE_NAME "$NEON_DATABASE_NAME"
 set_secret NEON_API_KEY "$NEON_API_KEY"
 
 # ── Stage 3: Railway ────────────────────────────────────────────────────────
@@ -276,14 +285,15 @@ set_secret VERCEL_PROJECT_ID "$VERCEL_PROJECT_ID"
 
 # ── Stage 5: verify ──────────────────────────────────────────────────────────
 stage "Verify"
-say "Checking which of the six secrets are now set on the repo..."
+say "Checking which of the eight secrets are now set on the repo..."
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  gh secret list | grep -E '^(NEON_API_KEY|NEON_PROJECT_ID|RAILWAY_TOKEN|VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)\b' || true
+  gh secret list | grep -E '^(NEON_API_KEY|NEON_PROJECT_ID|NEON_ROLE_NAME|NEON_DATABASE_NAME|RAILWAY_TOKEN|VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)\b' || true
 else
   warn "gh not ready — run 'gh secret list' yourself once authenticated."
 fi
 say ""
-say "Once all six are set and Railway PR Deploys is on, open a PR and the"
+say "Once all eight are set and Railway PR Deploys is on, open a PR (from a"
+say "branch in this repo, not a fork) and the"
 say "'Preview Environments' workflow will provision Neon + Railway + Vercel"
 say "automatically. See docs/deployment/preview-environments.md for details."
 # ──────────────────────────────────────────────────────────────────────────

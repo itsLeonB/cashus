@@ -232,16 +232,27 @@ set_secret NEON_API_KEY "$NEON_API_KEY"
 stage "Railway: enable PR Deploys + CI token"
 say "Railway auto-provisions an ephemeral 'PR environment' per pull request"
 say "once PR Deploys is enabled on the cashus-backend project. The workflow"
-say "then pushes each PR's Neon credentials into that environment."
+say "then finds that environment and pushes each PR's Neon credentials into"
+say "it."
 say ""
-if confirm "Enable PR Deploys via the API now (needs an account-level Railway token)?"; then
-  step "Create an account token (not project-scoped) at:"
-  open_url "https://railway.com/account/tokens"
-  ask_secret RAILWAY_ACCOUNT_TOKEN "Paste the Railway account token (used once, not stored):"
+warn "The CI token below MUST be account-scoped, not a project token."
+say "Railway project tokens are pinned to the one environment they were"
+say "created for and can't see or act on a PR's dynamically-created"
+say "environment (confirmed against a live run — a project token could only"
+say "ever list the environment it was scoped to). An account token can see"
+say "everything on the account, which is broader than this workflow"
+say "strictly needs; if that's a concern, use a Railway account dedicated"
+say "to CI rather than a personal one."
+say ""
+step "Create an account token at:"
+open_url "https://railway.com/account/tokens"
+ask_secret RAILWAY_API_TOKEN "Paste the Railway account token:"
+say ""
+if confirm "Enable PR Deploys on the cashus-backend project now, using this token?"; then
   ask RAILWAY_BACKEND_PROJECT_ID "Paste the cashus-backend Railway project ID (Project Settings → General):"
   say "Calling projectUpdate to set prDeploys: true ..."
   if curl -fsS -X POST "https://backboard.railway.com/graphql/v2" \
-      -H "Authorization: Bearer ${RAILWAY_ACCOUNT_TOKEN}" \
+      -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
       -H "Content-Type: application/json" \
       -d "$(printf '{"query":"mutation updateProject($id: String!, $input: ProjectUpdateInput!) { projectUpdate(id: $id, input: $input) { id prDeploys } }","variables":{"id":"%s","input":{"prDeploys":true}}}' "$RAILWAY_BACKEND_PROJECT_ID")" \
       | grep -q '"prDeploys":true'; then
@@ -250,19 +261,13 @@ if confirm "Enable PR Deploys via the API now (needs an account-level Railway to
     warn "Could not confirm PR Deploys was enabled — check the dashboard instead:"
     say "Project → Settings → Environments → enable 'PR Environments'."
   fi
-  unset RAILWAY_ACCOUNT_TOKEN
 else
   say "Enable it by hand instead:"
   step "Project → Settings → Environments → enable 'PR Environments'."
   open_url "https://railway.com/dashboard"
   pause "Press Enter once PR Deploys is enabled."
 fi
-say ""
-say "Now create a separate, project-scoped token for CI (least privilege —"
-say "don't reuse the account token above):"
-step "Project → Settings → Tokens → Create Token, scoped to cashus-backend."
-ask_secret RAILWAY_TOKEN "Paste the Railway project token for CI:"
-set_secret RAILWAY_TOKEN "$RAILWAY_TOKEN"
+set_secret RAILWAY_API_TOKEN "$RAILWAY_API_TOKEN"
 
 # ── Stage 4: Vercel ──────────────────────────────────────────────────────────
 stage "Vercel: CI token + org/project IDs"
@@ -287,7 +292,7 @@ set_secret VERCEL_PROJECT_ID "$VERCEL_PROJECT_ID"
 stage "Verify"
 say "Checking which of the eight secrets are now set on the repo..."
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  gh secret list | grep -E '^(NEON_API_KEY|NEON_PROJECT_ID|NEON_ROLE_NAME|NEON_DATABASE_NAME|RAILWAY_TOKEN|VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)\b' || true
+  gh secret list | grep -E '^(NEON_API_KEY|NEON_PROJECT_ID|NEON_ROLE_NAME|NEON_DATABASE_NAME|RAILWAY_API_TOKEN|VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)\b' || true
 else
   warn "gh not ready — run 'gh secret list' yourself once authenticated."
 fi

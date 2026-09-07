@@ -80,7 +80,13 @@ jobs:
       - name: Find this PR's Railway environment
         id: railway-env
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          # Must be an account-scoped token (RAILWAY_API_TOKEN), not a
+          # project token — project tokens are pinned to the single
+          # environment they were created for and can't see or act on
+          # this PR's dynamically-created ephemeral environment (verified
+          # against a live run: RAILWAY_TOKEN could only ever list the
+          # "development" environment it was scoped to).
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           # Railway auto-creates a PR environment once "PR Deploys" is on
           # (see docs/deployment/preview-environments.md). Poll for it to
@@ -113,7 +119,7 @@ jobs:
 
       - name: Push Neon credentials into the Railway PR environment
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_ENV: ${{ steps.railway-env.outputs.name }}
         run: |
           # Variable changes trigger a redeploy by default (see
@@ -133,7 +139,7 @@ jobs:
       - name: Wait for the Railway API's public domain
         id: railway-domain
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_ENV: ${{ steps.railway-env.outputs.name }}
         run: |
           # `domain list --json` wraps the array as {"domains": [...]}

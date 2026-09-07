@@ -54,7 +54,7 @@ It walks through, and sets as GitHub Actions repo secrets:
 | `NEON_PROJECT_ID` | Neon console → cashus project → Settings → General |
 | `NEON_ROLE_NAME` | Neon console → `production` branch → Roles & Databases (must already exist) |
 | `NEON_DATABASE_NAME` | same tab — matches `DB_NAME` in `backend/.env.example` |
-| `RAILWAY_TOKEN` | Railway → cashus-backend project → Settings → Tokens (project-scoped) |
+| `RAILWAY_API_TOKEN` | Railway → Account Settings → Tokens — **must be account-scoped**, not a project token (see below) |
 | `VERCEL_TOKEN` | Vercel → Account Settings → Tokens |
 | `VERCEL_ORG_ID` | `frontend/.vercel/project.json` after `vercel link`, or Vercel project settings |
 | `VERCEL_PROJECT_ID` | same as above |
@@ -62,6 +62,15 @@ It walks through, and sets as GitHub Actions repo secrets:
 It also offers to flip Railway's **PR Deploys** setting on for you (there's no CLI flag for
 it — it's a `projectUpdate` GraphQL mutation, or a dashboard toggle if you'd rather do it
 by hand). This step doesn't get repeated per PR; it's a one-time project setting.
+
+**Why `RAILWAY_API_TOKEN` has to be account-scoped**: Railway project tokens are pinned to
+the single environment they were created for — confirmed against a live run, where a
+project token could only ever list the one environment it was scoped to, never the PR
+environments Railway creates on the fly. The workflow needs to find and act on whichever
+environment Railway just created for a given PR, which only an account-scoped token can
+see. That's broader access than this workflow strictly needs (it can see every project on
+the account, not just `cashus-backend`); if that's a concern, use a Railway account
+dedicated to CI rather than a personal one.
 
 ## Why the workflow deploys Vercel itself instead of relying purely on git integration
 
@@ -77,12 +86,14 @@ is what gets commented on the PR.
 
 ## Troubleshooting
 
-- **Workflow times out waiting for a Railway environment**: PR Deploys isn't enabled on
-  the Railway project, or Railway hasn't finished creating it yet — check
-  `railway environment list --ephemeral --json` for the project.
+- **Workflow times out waiting for a Railway environment**: either PR Deploys isn't enabled
+  on the Railway project, Railway hasn't finished creating it yet, or `RAILWAY_API_TOKEN` is
+  a project token rather than an account token (see above) and genuinely can't see it — the
+  timeout's error output includes the last `railway environment list --json` the workflow
+  saw, which is the fastest way to tell these apart.
 - **Workflow times out waiting for a Railway domain**: the `cashback` service failed to
-  build/deploy in the PR environment — check `railway logs --service cashback
-  --environment pr-<n>`.
+  build/deploy in the PR environment — check its logs from the Railway dashboard link Railway
+  posts as a PR comment.
 - **Frontend preview still hits the old API URL**: the branch-scoped `VITE_API_BASE_URL`
   only applies to Vercel deployments *of that branch*; check the deployment the workflow
   linked on the PR, not an older one from before the workflow ran.

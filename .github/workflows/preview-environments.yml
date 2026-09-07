@@ -47,12 +47,27 @@ jobs:
     steps:
       # The action returns an existing branch's details as-is rather than
       # resetting it, so a `synchronize` run would otherwise keep stale
-      # schema/data from the branch's first creation. Delete it first (ok
-      # if it doesn't exist yet) so every run starts from a fresh copy of
-      # `production`.
-      - name: Delete any stale Neon branch from a previous run
+      # schema/data from the branch's first creation. Delete it first so
+      # every run starts from a fresh copy of `production`.
+      #
+      # Check existence first rather than blanket continue-on-error: the
+      # delete action's neonctl call fails identically on "branch not
+      # found" and on real errors (auth, API, conflict), and swallowing
+      # all of those would hide a genuine failure and let the next step
+      # silently reuse an undeleted, stale branch.
+      - name: Check for a stale Neon branch from a previous run
+        id: neon-stale-check
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          exists=$(curl -fsS -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches" \
+            | jq -r --arg name "$NEON_BRANCH_NAME" '[.branches[] | select(.name == $name)] | length > 0')
+          echo "exists=$exists" >> "$GITHUB_OUTPUT"
+
+      - name: Delete stale Neon branch
+        if: steps.neon-stale-check.outputs.exists == 'true'
         uses: neondatabase/delete-branch-action@v3
-        continue-on-error: true
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch: ${{ env.NEON_BRANCH_NAME }}
@@ -76,6 +91,19 @@ jobs:
         # Pinned + installed through npm's integrity-checked registry
         # rather than piping the mutable install script through sh.
         run: npm install -g @railway/cli@5.49.3
+
+      - name: Link Railway CLI to the project
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          # Unlike a project token, an account token carries no implicit
+          # project/environment context, so `environment list` needs an
+          # explicit link first (it errors without one, non-interactively).
+          # Any valid environment works here — this only bootstraps project
+          # context; `environment list` returns every environment in the
+          # linked *project*, ephemeral ones included, and later steps pass
+          # --environment explicitly per call regardless.
+          railway link --project "${{ secrets.RAILWAY_PROJECT_ID }}" --environment "${{ secrets.RAILWAY_ENVIRONMENT_ID }}"
 
       - name: Find this PR's Railway environment
         id: railway-env
@@ -158,6 +186,11 @@ jobs:
 
       - name: Checkout frontend
         uses: actions/checkout@v7
+        with:
+          # No later step needs authenticated git commands; avoid
+          # persisting the GITHUB_TOKEN into the checkout while VERCEL_TOKEN
+          # is also in scope for the build that follows.
+          persist-credentials: false
 
       - name: Point this PR's Vercel preview at the Railway API
         id: vercel
@@ -252,24 +285,40 @@ jobs:
           # branch/PR is gone — it only loses "active" protection and then
           # waits on the project's retention policy. Delete it here so
           # cleanup actually happens on PR close, per CASH-10's AC.
-          deployment_ids=$(curl -fsS \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            -G "https://api.vercel.com/v6/deployments" \
-            --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
-            --data-urlencode "teamId=$VERCEL_ORG_ID" \
-            --data-urlencode "branch=$HEAD_REF" \
-            --data-urlencode "target=preview" \
-            | jq -r '.deployments[].uid')
-
-          if [[ -z "$deployment_ids" ]]; then
-            echo "No Vercel preview deployments found for branch $HEAD_REF."
-            exit 0
-          fi
-
-          for id in $deployment_ids; do
-            echo "Deleting Vercel deployment $id"
-            curl -fsS -X DELETE \
+          #
+          # /v6/deployments is paginated (~20/page by default); a branch
+          # with more deployments than that would otherwise leave older
+          # ones undeleted.
+          until_param=""
+          deleted_any=false
+          while true; do
+            extra_args=()
+            if [[ -n "$until_param" ]]; then
+              extra_args=(--data-urlencode "until=$until_param")
+            fi
+            page=$(curl -fsS \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
-              -G "https://api.vercel.com/v13/deployments/$id" \
-              --data-urlencode "teamId=$VERCEL_ORG_ID"
+              -G "https://api.vercel.com/v6/deployments" \
+              --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
+              --data-urlencode "teamId=$VERCEL_ORG_ID" \
+              --data-urlencode "branch=$HEAD_REF" \
+              --data-urlencode "target=preview" \
+              "${extra_args[@]}")
+
+            deployment_ids=$(echo "$page" | jq -r '.deployments[].uid')
+            for id in $deployment_ids; do
+              echo "Deleting Vercel deployment $id"
+              curl -fsS -X DELETE \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -G "https://api.vercel.com/v13/deployments/$id" \
+                --data-urlencode "teamId=$VERCEL_ORG_ID"
+              deleted_any=true
+            done
+
+            until_param=$(echo "$page" | jq -r '.pagination.next // empty')
+            [[ -n "$until_param" ]] || break
           done
+
+          if [[ "$deleted_any" == false ]]; then
+            echo "No Vercel preview deployments found for branch $HEAD_REF."
+          fi

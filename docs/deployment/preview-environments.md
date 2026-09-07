@@ -55,6 +55,8 @@ It walks through, and sets as GitHub Actions repo secrets:
 | `NEON_ROLE_NAME` | Neon console → `production` branch → Roles & Databases (must already exist) |
 | `NEON_DATABASE_NAME` | same tab — matches `DB_NAME` in `backend/.env.example` |
 | `RAILWAY_API_TOKEN` | Railway → Account Settings → Tokens — **must be account-scoped**, not a project token (see below) |
+| `RAILWAY_PROJECT_ID` | Railway → cashus-backend project → Settings → General |
+| `RAILWAY_ENVIRONMENT_ID` | Railway → cashus-backend project → any persistent environment's name/ID (e.g. `development`) |
 | `VERCEL_TOKEN` | Vercel → Account Settings → Tokens |
 | `VERCEL_ORG_ID` | `frontend/.vercel/project.json` after `vercel link`, or Vercel project settings |
 | `VERCEL_PROJECT_ID` | same as above |
@@ -71,6 +73,13 @@ environment Railway just created for a given PR, which only an account-scoped to
 see. That's broader access than this workflow strictly needs (it can see every project on
 the account, not just `cashus-backend`); if that's a concern, use a Railway account
 dedicated to CI rather than a personal one.
+
+**Why `RAILWAY_PROJECT_ID`/`RAILWAY_ENVIRONMENT_ID` are needed too**: unlike a project
+token, an account token carries no implicit project/environment context, so the workflow
+runs `railway link --project ... --environment ...` before its first Railway command.
+Any persistent environment works for this — it only bootstraps project context; from
+there, `railway environment list` already returns every environment in that *project*
+(the PR's included), and every later Railway CLI call passes `--environment` explicitly.
 
 ## Why the workflow deploys Vercel itself instead of relying purely on git integration
 

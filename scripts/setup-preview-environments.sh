@@ -140,8 +140,14 @@ write_env() {
 
 # set_secret NAME VALUE sets a GitHub Actions repo secret via gh. Falls back
 # to a warning (and records it) if gh is unavailable or unauthenticated.
+# Refuses an empty value rather than overwriting an existing secret with one.
 set_secret() {
   local name="$1" value="$2"
+  if [[ -z "$value" ]]; then
+    SKIPPED+=("GitHub secret $name (no value entered — left untouched)")
+    warn "skipped GitHub secret $name: empty value, not overwriting anything"
+    return
+  fi
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     if printf '%s' "$value" | gh secret set "$name" >/dev/null 2>&1; then
       WRITTEN_SECRET+=("$name")
@@ -194,7 +200,7 @@ say "Actions workflow (.github/workflows/preview-environments.yml) needs:"
 say "a Neon API key, a Railway CI token, and a Vercel CI token — plus"
 say "enabling Railway's PR Deploys feature on the backend project."
 say ""
-say "It writes eight GitHub Actions repo secrets on itsLeonB/cashus via the"
+say "It writes ten GitHub Actions repo secrets on itsLeonB/cashus via the"
 say "gh CLI. Nothing is written to a local .env file — these are CI-only."
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   say "${GREEN}✓ gh is installed and authenticated.${RESET}"
@@ -248,13 +254,27 @@ step "Create an account token at:"
 open_url "https://railway.com/account/tokens"
 ask_secret RAILWAY_API_TOKEN "Paste the Railway account token:"
 say ""
+say "The workflow also needs a project + environment to link the CLI to on"
+say "each run (an account token has no implicit context, unlike a project"
+say "token) — any persistent environment works, it's just a bootstrap; the"
+say "workflow finds the PR's own environment separately."
+ask RAILWAY_PROJECT_ID "Paste the cashus-backend Railway project ID (Project Settings → General):"
+step "Now open the project and note the name of an existing, persistent"
+step "environment (e.g. \"development\" or \"production\") — Environments tab."
+ask RAILWAY_ENVIRONMENT_ID "Paste that environment's name or ID:"
+say ""
 if confirm "Enable PR Deploys on the cashus-backend project now, using this token?"; then
-  ask RAILWAY_BACKEND_PROJECT_ID "Paste the cashus-backend Railway project ID (Project Settings → General):"
   say "Calling projectUpdate to set prDeploys: true ..."
+  # Keep the token out of argv (visible to other local users via `ps`) by
+  # passing it through a curl config file instead of a -H argument.
+  railway_curl_config=$(mktemp)
+  trap 'rm -f "$railway_curl_config"' EXIT
+  chmod 600 "$railway_curl_config"
+  printf 'header = "Authorization: Bearer %s"\n' "$RAILWAY_API_TOKEN" > "$railway_curl_config"
   if curl -fsS -X POST "https://backboard.railway.com/graphql/v2" \
-      -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+      -K "$railway_curl_config" \
       -H "Content-Type: application/json" \
-      -d "$(printf '{"query":"mutation updateProject($id: String!, $input: ProjectUpdateInput!) { projectUpdate(id: $id, input: $input) { id prDeploys } }","variables":{"id":"%s","input":{"prDeploys":true}}}' "$RAILWAY_BACKEND_PROJECT_ID")" \
+      -d "$(printf '{"query":"mutation updateProject($id: String!, $input: ProjectUpdateInput!) { projectUpdate(id: $id, input: $input) { id prDeploys } }","variables":{"id":"%s","input":{"prDeploys":true}}}' "$RAILWAY_PROJECT_ID")" \
       | grep -q '"prDeploys":true'; then
     say "${GREEN}✓ PR Deploys enabled on the Railway project.${RESET}"
   else
@@ -267,6 +287,8 @@ else
   open_url "https://railway.com/dashboard"
   pause "Press Enter once PR Deploys is enabled."
 fi
+set_secret RAILWAY_PROJECT_ID "$RAILWAY_PROJECT_ID"
+set_secret RAILWAY_ENVIRONMENT_ID "$RAILWAY_ENVIRONMENT_ID"
 set_secret RAILWAY_API_TOKEN "$RAILWAY_API_TOKEN"
 
 # ── Stage 4: Vercel ──────────────────────────────────────────────────────────
@@ -290,14 +312,14 @@ set_secret VERCEL_PROJECT_ID "$VERCEL_PROJECT_ID"
 
 # ── Stage 5: verify ──────────────────────────────────────────────────────────
 stage "Verify"
-say "Checking which of the eight secrets are now set on the repo..."
+say "Checking which of the ten secrets are now set on the repo..."
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  gh secret list | grep -E '^(NEON_API_KEY|NEON_PROJECT_ID|NEON_ROLE_NAME|NEON_DATABASE_NAME|RAILWAY_API_TOKEN|VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)\b' || true
+  gh secret list | grep -E '^(NEON_API_KEY|NEON_PROJECT_ID|NEON_ROLE_NAME|NEON_DATABASE_NAME|RAILWAY_API_TOKEN|RAILWAY_PROJECT_ID|RAILWAY_ENVIRONMENT_ID|VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)\b' || true
 else
   warn "gh not ready — run 'gh secret list' yourself once authenticated."
 fi
 say ""
-say "Once all eight are set and Railway PR Deploys is on, open a PR (from a"
+say "Once all ten are set and Railway PR Deploys is on, open a PR (from a"
 say "branch in this repo, not a fork) and the"
 say "'Preview Environments' workflow will provision Neon + Railway + Vercel"
 say "automatically. See docs/deployment/preview-environments.md for details."

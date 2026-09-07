@@ -192,6 +192,15 @@ jobs:
           # is also in scope for the build that follows.
           persist-credentials: false
 
+      - name: Setup Bun
+        # `vercel build` runs locally on this runner (not Vercel's own
+        # infrastructure) and shells out to the frontend's own install/build
+        # commands — bun install here, per frontend/bun.lock — so it needs
+        # the actual bun binary on PATH, same as frontend-ci.yml.
+        uses: ./.github/actions/setup-bun
+        with:
+          working-directory: frontend
+
       - name: Point this PR's Vercel preview at the Railway API
         id: vercel
         env:

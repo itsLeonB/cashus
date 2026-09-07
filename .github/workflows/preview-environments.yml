@@ -82,24 +82,33 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          # Railway auto-creates an ephemeral environment per PR once "PR
-          # Deploys" is on (see docs/deployment/preview-environments.md).
-          # Poll for it to show up — creation happens async after PR open.
-          # `environment list --json` wraps the array as {"environments": [...]},
-          # and each entry carries meta.pr_number when it's a PR environment
-          # (verified against railwayapp/cli's list.rs) — match on that
-          # rather than parsing the name.
+          # Railway auto-creates a PR environment once "PR Deploys" is on
+          # (see docs/deployment/preview-environments.md). Poll for it to
+          # show up — creation happens async after PR open.
+          #
+          # Match by name (observed live: "cashus-pr-<number>"), not the
+          # --ephemeral flag or meta.pr_number field — a prior run showed
+          # Railway had created and fully deployed the PR's environment
+          # while --ephemeral/meta.pr_number-based matching still found
+          # nothing for the full 5-minute window, so neither is reliably
+          # queryable this way for environments Railway creates natively
+          # via PR Deploys. `environment list --json` wraps the array as
+          # {"environments": [...]} (verified against railwayapp/cli's
+          # list.rs).
+          last_list=""
           for i in $(seq 1 30); do
-            match=$(railway environment list --ephemeral --json 2>/dev/null \
-              | jq -r --argjson pr "$RAILWAY_PR_NUMBER" \
-                '[.environments[] | select(.meta.pr_number == $pr)][0].name // empty')
+            last_list=$(railway environment list --json 2>/dev/null)
+            match=$(echo "$last_list" | jq -r --arg pr "$RAILWAY_PR_NUMBER" \
+              '[.environments[] | select(.name | test("(^|[^0-9])" + $pr + "([^0-9]|$)"))][0].name // empty')
             if [[ -n "$match" ]]; then
               echo "name=$match" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             sleep 10
           done
-          echo "::error::No Railway ephemeral (PR) environment found for PR #$RAILWAY_PR_NUMBER after 5 minutes. Is 'PR Deploys' enabled on the Railway project? See docs/deployment/preview-environments.md."
+          echo "::error::No Railway environment found for PR #$RAILWAY_PR_NUMBER after 5 minutes. Is 'PR Deploys' enabled on the Railway project? See docs/deployment/preview-environments.md."
+          echo "Last 'railway environment list --json' output:"
+          echo "$last_list"
           exit 1
 
       - name: Push Neon credentials into the Railway PR environment

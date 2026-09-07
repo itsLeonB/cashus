@@ -85,10 +85,14 @@ jobs:
           # Railway auto-creates an ephemeral environment per PR once "PR
           # Deploys" is on (see docs/deployment/preview-environments.md).
           # Poll for it to show up — creation happens async after PR open.
+          # `environment list --json` wraps the array as {"environments": [...]},
+          # and each entry carries meta.pr_number when it's a PR environment
+          # (verified against railwayapp/cli's list.rs) — match on that
+          # rather than parsing the name.
           for i in $(seq 1 30); do
             match=$(railway environment list --ephemeral --json 2>/dev/null \
-              | jq -r --arg pr "$RAILWAY_PR_NUMBER" \
-                '[.[] | select(.name | test("(^|[^0-9])" + $pr + "([^0-9]|$)"))][0].name // empty')
+              | jq -r --argjson pr "$RAILWAY_PR_NUMBER" \
+                '[.environments[] | select(.meta.pr_number == $pr)][0].name // empty')
             if [[ -n "$match" ]]; then
               echo "name=$match" >> "$GITHUB_OUTPUT"
               exit 0
@@ -123,9 +127,11 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_ENV: ${{ steps.railway-env.outputs.name }}
         run: |
+          # `domain list --json` wraps the array as {"domains": [...]}
+          # (verified against railwayapp/cli's domain.rs).
           for i in $(seq 1 30); do
             domain=$(railway domain list --service cashback --environment "$RAILWAY_ENV" --json 2>/dev/null \
-              | jq -r '[.[].domain][0] // empty')
+              | jq -r '[.domains[].domain][0] // empty')
             if [[ -n "$domain" ]]; then
               echo "url=https://$domain" >> "$GITHUB_OUTPUT"
               exit 0

@@ -35,6 +35,10 @@ func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger
 		AllowCredentials: true,
 	}
 
+	if len(corsCfg.AllowedOrigins) < 1 {
+		corsCfg.AllowedOrigins = []string{"*"}
+	}
+
 	metricsCfg := httpserver.DefaultMetricsConfig()
 	metricsCfg.SkipPaths = skipPaths
 

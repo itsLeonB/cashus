@@ -196,6 +196,11 @@ jobs:
         id: vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # Required for `vercel pull`/`build`/`deploy` to resolve which
+          # project to act on non-interactively — without these it expects
+          # a checked-in .vercel/project.json from `vercel link` instead.
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           RAILWAY_API_URL: ${{ steps.railway-domain.outputs.url }}
           # PR head ref is attacker-controlled (fork PRs); keep it out of
           # the shell command line entirely and pass it as data instead.

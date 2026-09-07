@@ -1,0 +1,188 @@
+name: Preview Environments
+
+# Provisions a temporary preview stack for every pull request:
+#   1. a Neon database branch, forked from the production branch
+#   2. Neon's credentials pushed into Railway's PR environment for this PR
+#      (Railway auto-creates that environment once "PR Deploys" is enabled
+#      on the project — see docs/deployment/preview-environments.md)
+#   3. a fresh Vercel preview deployment pointed at that Railway environment
+#
+# Railway's own PR environment and Vercel's own preview deployment are torn
+# down automatically by those platforms when the PR is merged/closed; this
+# workflow only owns the Neon branch lifecycle and the cross-wiring between
+# all three.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: preview-environment-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NEON_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}
+  RAILWAY_PR_NUMBER: ${{ github.event.pull_request.number }}
+
+jobs:
+  provision:
+    name: Provision preview stack
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # NOTE: pin an exact release tag and confirm the output names below
+      # (host/username/password/database) against
+      # https://github.com/neondatabase/create-branch-action's current
+      # README before the first real run — this hasn't been exercised
+      # against a live Neon project yet.
+      - name: Create or reset Neon branch
+        id: neon
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          parent: production
+          branch_name: ${{ env.NEON_BRANCH_NAME }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Install Railway CLI
+        run: curl -fsSL https://railway.com/install.sh | sh
+
+      - name: Find this PR's Railway environment
+        id: railway-env
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          # Railway auto-creates an ephemeral environment per PR once "PR
+          # Deploys" is on (see docs/deployment/preview-environments.md).
+          # Poll for it to show up — creation happens async after PR open.
+          for i in $(seq 1 30); do
+            match=$(railway environment list --ephemeral --json 2>/dev/null \
+              | jq -r --arg pr "$RAILWAY_PR_NUMBER" \
+                '[.[] | select(.name | test("(^|[^0-9])" + $pr + "([^0-9]|$)"))][0].name // empty')
+            if [[ -n "$match" ]]; then
+              echo "name=$match" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::No Railway ephemeral (PR) environment found for PR #$RAILWAY_PR_NUMBER after 5 minutes. Is 'PR Deploys' enabled on the Railway project? See docs/deployment/preview-environments.md."
+          exit 1
+
+      - name: Push Neon credentials into the Railway PR environment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_ENV: ${{ steps.railway-env.outputs.name }}
+        run: |
+          # Variable changes trigger a redeploy by default (see
+          # backend/.railway/README.md / use-railway skill), so no separate
+          # redeploy step is needed once these are set.
+          for service in cashback cashback-worker cashback-job; do
+            railway variable set \
+              "DB_HOST=${{ steps.neon.outputs.host }}" \
+              "DB_PORT=5432" \
+              "DB_USER=${{ steps.neon.outputs.username }}" \
+              "DB_PASSWORD=${{ steps.neon.outputs.password }}" \
+              "DB_NAME=${{ steps.neon.outputs.database }}" \
+              --service "$service" \
+              --environment "$RAILWAY_ENV"
+          done
+
+      - name: Wait for the Railway API's public domain
+        id: railway-domain
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_ENV: ${{ steps.railway-env.outputs.name }}
+        run: |
+          for i in $(seq 1 30); do
+            domain=$(railway domain list --service cashback --environment "$RAILWAY_ENV" --json 2>/dev/null \
+              | jq -r '[.[].domain][0] // empty')
+            if [[ -n "$domain" ]]; then
+              echo "url=https://$domain" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::cashback service in Railway environment $RAILWAY_ENV never got a public domain."
+          exit 1
+
+      - name: Checkout frontend
+        uses: actions/checkout@v7
+
+      - name: Point this PR's Vercel preview at the Railway API
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RAILWAY_API_URL: ${{ steps.railway-domain.outputs.url }}
+          # PR head ref is attacker-controlled (fork PRs); keep it out of
+          # the shell command line entirely and pass it as data instead.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        working-directory: frontend
+        run: |
+          npm install -g vercel@latest
+
+          # Scope VITE_API_BASE_URL to this PR's git branch so it doesn't
+          # affect other previews or dev/staging (Vite bakes VITE_* vars in
+          # at build time, so this must be set before `vercel build`).
+          printf '%s' "${RAILWAY_API_URL}/api" | \
+            vercel env add VITE_API_BASE_URL preview "$HEAD_REF" \
+              --token "$VERCEL_TOKEN" --force
+
+          vercel pull --yes --environment=preview --git-branch="$HEAD_REF" --token "$VERCEL_TOKEN"
+          vercel build --token "$VERCEL_TOKEN"
+          deployment_url=$(vercel deploy --prebuilt --token "$VERCEL_TOKEN")
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview links on the PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const body = [
+              "### Preview environment ready",
+              "",
+              `| | |`,
+              `|---|---|`,
+              `| Neon branch | \`${{ env.NEON_BRANCH_NAME }}\` |`,
+              `| Railway API | ${{ steps.railway-domain.outputs.url }} |`,
+              `| Vercel frontend | ${{ steps.vercel.outputs.url }} |`,
+              "",
+              "Torn down automatically when this PR is merged or closed.",
+            ].join("\n");
+            const marker = "### Preview environment ready";
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  cleanup:
+    name: Delete preview stack
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Neon branch
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH_NAME }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+        # Railway's PR environment and Vercel's preview deployment are
+        # cleaned up automatically by those platforms on PR close/merge.

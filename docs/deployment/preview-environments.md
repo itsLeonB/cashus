@@ -83,15 +83,24 @@ there, `railway environment list` already returns every environment in that *pro
 
 ## Why the workflow deploys Vercel itself instead of relying purely on git integration
 
-`VITE_*` variables are baked in at Vite build time, and Vite build happens on Vercel's
-side. To get the *correct* backend URL (this PR's Railway environment, not a static
-default) into that build, the value has to be set before the build runs — so the workflow
-sets the branch-scoped env var and then drives the build itself via the Vercel CLI
-(`vercel pull` → `vercel build` → `vercel deploy --prebuilt`), rather than trusting
-whichever build Vercel's git integration already kicked off (which fires before the
-Railway environment/URL exists). Vercel's own git-integration preview build still exists
+`VITE_*` variables are baked in at Vite build time. To get the *correct* backend URL
+(this PR's Railway environment, not a static default) into that build, the value has to
+be set before the build runs — so the workflow sets the branch-scoped env var and then
+triggers its own deployment via `vercel deploy`, rather than trusting whichever build
+Vercel's git integration already kicked off (which fires before the Railway
+environment/URL exists). Vercel's own git-integration preview build still exists
 alongside it; the workflow's deployment is the one with the correct API URL, and its link
 is what gets commented on the PR.
+
+The build itself runs on **Vercel's own infrastructure**, not locally on the runner —
+deliberately not `vercel build --prebuilt` locally, which is broken for this project's
+package manager (bun): Vercel's build-utils hardcodes infra-specific `PATH` overrides
+for the detected package manager's install step that don't resolve outside Vercel's own
+servers ("spawn sh ENOENT" — confirmed against a live run; see
+[vercel/vercel#15204](https://github.com/vercel/vercel/issues/15204), same root cause
+reported for pnpm). Deploying without `--prebuilt` sidesteps this entirely and is also
+simpler: no local build tooling needed on the runner at all, and the branch-scoped env
+var above is honored automatically by Vercel's remote build.
 
 ## Troubleshooting
 

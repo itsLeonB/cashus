@@ -192,22 +192,13 @@ jobs:
           # is also in scope for the build that follows.
           persist-credentials: false
 
-      - name: Setup Bun
-        # `vercel build` runs locally on this runner (not Vercel's own
-        # infrastructure) and shells out to the frontend's own install/build
-        # commands — bun install here, per frontend/bun.lock — so it needs
-        # the actual bun binary on PATH, same as frontend-ci.yml.
-        uses: ./.github/actions/setup-bun
-        with:
-          working-directory: frontend
-
       - name: Point this PR's Vercel preview at the Railway API
         id: vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          # Required for `vercel pull`/`build`/`deploy` to resolve which
-          # project to act on non-interactively — without these it expects
-          # a checked-in .vercel/project.json from `vercel link` instead.
+          # Required for `vercel deploy` to resolve which project to act on
+          # non-interactively — without these it expects a checked-in
+          # .vercel/project.json from `vercel link` instead.
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           RAILWAY_API_URL: ${{ steps.railway-domain.outputs.url }}
@@ -218,16 +209,24 @@ jobs:
         run: |
           npm install -g vercel@59.11.7
 
-          # Scope VITE_API_BASE_URL to this PR's git branch so it doesn't
-          # affect other previews or dev/staging (Vite bakes VITE_* vars in
-          # at build time, so this must be set before `vercel build`).
+          # Scope VITE_API_BASE_URL to this PR's git branch (Vite bakes
+          # VITE_* vars in at build time, so this must be set before the
+          # build runs).
           printf '%s' "${RAILWAY_API_URL}/api" | \
             vercel env add VITE_API_BASE_URL preview "$HEAD_REF" \
               --token "$VERCEL_TOKEN" --force
 
-          vercel pull --yes --environment=preview --git-branch="$HEAD_REF" --token "$VERCEL_TOKEN"
-          vercel build --token "$VERCEL_TOKEN"
-          deployment_url=$(vercel deploy --prebuilt --token "$VERCEL_TOKEN")
+          # Deploy without --prebuilt so the build runs on Vercel's own
+          # infrastructure instead of locally on this runner. A local
+          # `vercel build` is broken for this project: Vercel's
+          # build-utils hardcodes infra-specific PATH overrides for the
+          # detected package manager's install step (bun here), which
+          # don't resolve to a real shell outside Vercel's own servers
+          # ("spawn sh ENOENT" — confirmed against a live run; see
+          # https://github.com/vercel/vercel/issues/15204, same root
+          # cause reported for pnpm). Building remotely also means the
+          # branch-scoped env var above is honored automatically.
+          deployment_url=$(vercel deploy --token "$VERCEL_TOKEN" --yes)
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
 
       - name: Comment preview links on the PR

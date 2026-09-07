@@ -205,7 +205,6 @@ jobs:
           # PR head ref is attacker-controlled (fork PRs); keep it out of
           # the shell command line entirely and pass it as data instead.
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        working-directory: frontend
         run: |
           npm install -g vercel@59.11.7
 

@@ -12,6 +12,7 @@
     "dist",
     ".remember",
     "scripts",
+    "src/lib/api/schema.gen.ts",
     ".agent/**",
     ".agents/**",
     ".claude/**",

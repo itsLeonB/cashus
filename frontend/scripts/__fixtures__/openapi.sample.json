@@ -1,0 +1,241 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cashback API (codegen fixture)",
+    "version": "1.0",
+    "description": "Hand-written, deliberately small OpenAPI document mirroring a slice of the real backend contract (auth + profile). Used only to develop and test scripts/codegen-api.ts before backend/openapi.json exists in this worktree — see CASH-19. NOT a snapshot of the real backend."
+  },
+  "components": {
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string" },
+          "password": { "type": "string" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password", "passwordConfirmation"],
+        "properties": {
+          "email": { "type": "string" },
+          "password": { "type": "string" },
+          "passwordConfirmation": { "type": "string" },
+          "slug": { "type": "string" }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["token", "password", "passwordConfirmation"],
+        "properties": {
+          "token": { "type": "string" },
+          "password": { "type": "string" },
+          "passwordConfirmation": { "type": "string" }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "required": ["name", "homeCurrency"],
+        "properties": {
+          "name": { "type": "string" },
+          "homeCurrency": { "type": "string" }
+        }
+      },
+      "AuthResult": {
+        "type": "object",
+        "required": ["message", "csrfToken"],
+        "properties": {
+          "message": { "type": "string" },
+          "csrfToken": { "type": "string" }
+        }
+      },
+      "MessageResult": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string" }
+        }
+      },
+      "UploadLimit": {
+        "type": "object",
+        "required": ["used", "limit", "remaining", "resetAt", "canUpload"],
+        "properties": {
+          "used": { "type": "number" },
+          "limit": { "type": "number" },
+          "remaining": { "type": "number" },
+          "resetAt": { "type": "string" },
+          "canUpload": { "type": "boolean" }
+        }
+      },
+      "CurrentSubscription": {
+        "type": "object",
+        "required": ["plan", "limits"],
+        "properties": {
+          "plan": { "type": "string" },
+          "limits": {
+            "type": "object",
+            "required": ["uploads"],
+            "properties": {
+              "uploads": {
+                "type": "object",
+                "required": ["daily", "monthly", "canUpload"],
+                "properties": {
+                  "daily": { "$ref": "#/components/schemas/UploadLimit" },
+                  "monthly": { "$ref": "#/components/schemas/UploadLimit" },
+                  "canUpload": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "homeCurrency",
+          "isOnboarded",
+          "createdAt",
+          "currentSubscription"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "name": { "type": "string" },
+          "avatar": { "type": "string" },
+          "email": { "type": "string" },
+          "homeCurrency": { "type": "string" },
+          "isOnboarded": { "type": "boolean" },
+          "createdAt": { "type": "string" },
+          "currentSubscription": { "$ref": "#/components/schemas/CurrentSubscription" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/AuthResult" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/RegisterRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/MessageResult" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/reset-password": {
+      "patch": {
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResetPasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/AuthResult" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profile": {
+      "get": {
+        "operationId": "getProfile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/UserProfile" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProfile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/UserProfile" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

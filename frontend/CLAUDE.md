@@ -131,16 +131,29 @@ Types the schema doesn't cover, or that are frontend-only/client-composed
 (e.g. `ApiError`, assembled from a parsed error response plus
 frontend-added fields), stay hand-written in the same file.
 
-**Provenance note**: as of this writing, `schema.gen.ts` and the
-auth/profile types in `types.ts` re-exported from it were generated against
-`scripts/__fixtures__/openapi.sample.json` — a small, hand-written fixture
-mirroring that slice of the contract — because `backend/openapi.json` did
-not yet exist when this was built (see CASH-19/CASH-18 coordination
-contract). `schema.gen.ts` carries a `⚠️ Generated from ...` banner whenever
-it was produced from a non-default input for exactly this reason. Once
-`backend/openapi.json` exists, run `bun run codegen:api` with no `--input`
-to regenerate it for real, then extend the `types.ts` re-exports to any
-further schema-covered endpoints.
+**Provenance note**: `schema.gen.ts` is generated from the real
+`backend/openapi.json` — `bun run codegen:api:check` confirms it's
+byte-identical to fresh output from that document, and it carries no
+`⚠️ Generated from ...` banner (that banner only appears when generation
+runs against a non-default `--input`). The auth/profile re-exports in
+`types.ts` use the real schema component names
+(`LoginAuthInputBody`, `RegisterAuthInputBody`, `ResetPasswordInputBody`,
+`ProfileResponse`, `SubscriptionLimitsResponse`, `UploadLimit`).
+
+Historical note: CASH-19 was built and initially validated in an isolated
+worktree before `backend/openapi.json` existed (CASH-18 was landing in
+parallel), so `schema.gen.ts` and the `types.ts` re-exports were first
+generated against `scripts/__fixtures__/openapi.sample.json` — a small,
+hand-written fixture mirroring that slice of the contract — to prove the
+pipeline correct ahead of time. That fixture-derived output was replaced by
+a real regeneration once both sub-tasks merged; the fixture and its test
+(`scripts/codegen-api.test.ts`) remain as the pipeline's test coverage, not
+as the source of the checked-in `schema.gen.ts`.
+
+Friendships, debts, and expenses are not yet re-exported from
+`schema.gen.ts` — those interfaces in `types.ts` stay hand-written for now.
+That's a deliberate CASH-19 scope boundary (auth + profile only), not an
+oversight; extending the re-exports to those endpoints is follow-up work.
 
 Zod validators in `src/lib/validations/` are still fully hand-written.
 Hey API's Zod plugin (the suggested stretch goal) was not wired in: the
@@ -148,5 +161,5 @@ existing schemas there (`transaction.ts`, `profile.ts`) are form-level
 validators with business-rule refinements (future-date rejection,
 calendar-validity checks) that don't correspond 1:1 to any wire schema, so
 generating parallel schemas wouldn't have replaced anything without
-duplicating logic. Revisit once `backend/openapi.json` is real and covers
-shapes worth validating at the wire boundary.
+duplicating logic. Revisit if/when a shape worth validating at the wire
+boundary shows up that doesn't carry that kind of business-rule logic.

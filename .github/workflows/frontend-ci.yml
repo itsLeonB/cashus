@@ -63,8 +63,12 @@ jobs:
   openapi-drift:
     name: OpenAPI Codegen Drift Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Setup
         uses: ./.github/actions/setup-bun
         with:

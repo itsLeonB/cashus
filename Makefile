@@ -49,14 +49,16 @@ build-all-backend:
 build-frontend:
 	cd frontend && bun run build
 
-# openapi-frontend regenerates from backend/openapi.json, so it must run
-# after openapi-backend has (re)written that file.
 openapi: openapi-backend openapi-frontend
 
 openapi-backend:
 	$(MAKE) -C backend openapi
 
-openapi-frontend:
+# Depends on openapi-backend (not just listed as a sibling prerequisite of
+# `openapi`) since it reads the backend/openapi.json that target writes —
+# under `make -j` a plain sibling-prerequisite list gives no ordering
+# guarantee and the two could run concurrently, leaving this stale.
+openapi-frontend: openapi-backend
 	cd frontend && bun run codegen:api
 
 openapi-check: openapi-check-backend openapi-check-frontend

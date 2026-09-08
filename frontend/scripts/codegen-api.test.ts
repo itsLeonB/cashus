@@ -47,10 +47,10 @@ describe("generateSchemaSource", () => {
     expect(first).toBe(second);
   });
 
-  test("throws a clear error when the input file is missing", () => {
+  test("throws a clear error when the input file is missing", async () => {
     const missingPath = path.join(os.tmpdir(), "does-not-exist-openapi.json");
 
-    expect(generateSchemaSource(missingPath)).rejects.toThrow(/not found/);
+    await expect(generateSchemaSource(missingPath)).rejects.toThrow(/not found/);
   });
 });
 

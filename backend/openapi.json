@@ -1,0 +1,6428 @@
+{
+  "components": {
+    "schemas": {
+      "AddExpenseItemInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "not": {
+                  "const": 0
+                },
+                "type": "number"
+              },
+              {
+                "pattern": "^-?(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$",
+                "patternDescription": "a non-zero decimal number, e.g. \"10.50\" or \"-5\" (no zero)",
+                "type": "string"
+              }
+            ]
+          },
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          },
+          "quantity": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "amount",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "AddOtherFeeInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "not": {
+                  "const": 0
+                },
+                "type": "number"
+              },
+              {
+                "pattern": "^-?(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$",
+                "patternDescription": "a non-zero decimal number, e.g. \"10.50\" or \"-5\" (no zero)",
+                "type": "string"
+              }
+            ]
+          },
+          "calculationMethod": {
+            "enum": [
+              "EQUAL_SPLIT",
+              "ITEMIZED_SPLIT"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "amount",
+          "calculationMethod"
+        ],
+        "type": "object"
+      },
+      "AddProfileTransferMethodInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "accountName": {
+            "minLength": 3,
+            "type": "string"
+          },
+          "accountNumber": {
+            "minLength": 3,
+            "type": "string"
+          },
+          "transferMethodId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transferMethodId",
+          "accountName",
+          "accountNumber"
+        ],
+        "type": "object"
+      },
+      "AdminBearerTokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "token"
+        ],
+        "type": "object"
+      },
+      "AdminLoginInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "AdminMe": {
+        "additionalProperties": false,
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName"
+        ],
+        "type": "object"
+      },
+      "AdminRegisterInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "passwordConfirmation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "passwordConfirmation"
+        ],
+        "type": "object"
+      },
+      "AdminVerifiedBody": {
+        "additionalProperties": false,
+        "properties": {
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "verified"
+        ],
+        "type": "object"
+      },
+      "AssociateProfileInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "anonProfileId": {
+            "type": "string"
+          },
+          "realProfileId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "realProfileId",
+          "anonProfileId"
+        ],
+        "type": "object"
+      },
+      "AuthMessageBody": {
+        "additionalProperties": false,
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "ConfirmedExpenseParticipant": {
+        "additionalProperties": false,
+        "properties": {
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmedItemShare"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "feesTotal": {
+            "type": "string"
+          },
+          "hasProxy": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmedItemShare"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "itemsTotal": {
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "proxyProfile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "total": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "items",
+          "itemsTotal",
+          "fees",
+          "feesTotal",
+          "total",
+          "hasProxy"
+        ],
+        "type": "object"
+      },
+      "ConfirmedItemShare": {
+        "additionalProperties": false,
+        "properties": {
+          "baseAmount": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shareAmount": {
+            "type": "string"
+          },
+          "shareRate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "baseAmount",
+          "shareRate",
+          "shareAmount"
+        ],
+        "type": "object"
+      },
+      "CreateAnonymousFriendshipInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateDebtInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$",
+                "patternDescription": "a positive decimal number, e.g. \"10.50\" (no sign, not zero)",
+                "type": "string"
+              }
+            ]
+          },
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "INCOMING",
+              "OUTGOING"
+            ],
+            "type": "string"
+          },
+          "friendProfileId": {
+            "type": "string"
+          },
+          "transactionDate": {
+            "type": "string"
+          },
+          "transferMethodId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "friendProfileId",
+          "direction",
+          "currency",
+          "amount",
+          "transferMethodId"
+        ],
+        "type": "object"
+      },
+      "CreateGroupExpenseDraftInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency"
+        ],
+        "type": "object"
+      },
+      "CreatePlanInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          },
+          "priority": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "priority"
+        ],
+        "type": "object"
+      },
+      "CreatePlanVersionInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "billUploadsDaily": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "billUploadsMonthly": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "billingInterval": {
+            "enum": [
+              "monthly",
+              "yearly"
+            ],
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "priceCurrency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "planId",
+          "priceAmount",
+          "priceCurrency",
+          "billingInterval",
+          "effectiveFrom"
+        ],
+        "type": "object"
+      },
+      "CreateRepaymentInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "type": "string"
+          },
+          "friendProfileId": {
+            "type": "string"
+          },
+          "transactionDate": {
+            "type": "string"
+          },
+          "transferMethodId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "friendProfileId",
+          "currency",
+          "transferMethodId"
+        ],
+        "type": "object"
+      },
+      "CreateSubscriptionInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "canceledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "planVersionId": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "planVersionId"
+        ],
+        "type": "object"
+      },
+      "DebtTransactionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "groupExpenseId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isFromExpense": {
+            "type": "boolean"
+          },
+          "isRepayment": {
+            "type": "boolean"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "transactionDate": {
+            "type": "string"
+          },
+          "transferMethod": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "type",
+          "currency",
+          "amount",
+          "transferMethod",
+          "description",
+          "groupExpenseId",
+          "isFromExpense",
+          "transactionDate",
+          "isRepayment",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "EnvelopeAdminBearerTokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AdminBearerTokenBody"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeAdminMe": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AdminMe"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeAdminVerifiedBody": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AdminVerifiedBody"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeAuthMessageBody": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AuthMessageBody"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeDebtTransactionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DebtTransactionResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeExpenseBillResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ExpenseBillResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeExpenseConfirmationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ExpenseConfirmationResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeFriendDetailsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FriendDetailsResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeFriendshipRequestResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FriendshipRequestResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeFriendshipResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FriendshipResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeGroupExpenseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GroupExpenseResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListDebtTransactionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/DebtTransactionResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListFeeCalculationMethodInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCalculationMethodInfo"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListFriendshipRequestResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FriendshipRequestResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListFriendshipResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FriendshipResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListGroupExpenseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/GroupExpenseResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListNotificationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListPaymentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListPlanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PlanResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListPlanVersionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PlanVersionResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListProfileTransferMethodResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileTransferMethodResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListSearchProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SearchProfileResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListSubscriptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeListTransferMethodResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TransferMethodResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeMapStringFriendBalance": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FriendBalance"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeOtherFeeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OtherFeeResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopePaymentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PaymentResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopePlanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PlanResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopePlanVersionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PlanVersionResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopePresignedExpenseBillResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PresignedExpenseBillResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProfileResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeProfileTransferMethodResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProfileTransferMethodResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeSubscriptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SubscriptionResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message text",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value at the given location"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorModel": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "examples": [
+              "Property foo is required but is missing."
+            ],
+            "type": "string"
+          },
+          "errors": {
+            "description": "Optional list of individual error details",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.",
+            "examples": [
+              "https://example.com/error-log/abc123"
+            ],
+            "format": "uri",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code",
+            "examples": [
+              400
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type. This value should not change between occurrences of the error.",
+            "examples": [
+              "Bad Request"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference to human-readable documentation for the error.",
+            "examples": [
+              "https://example.com/errors/example"
+            ],
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ExpenseBillResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "imageUrl",
+          "status",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ExpenseConfirmationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmedExpenseParticipant"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "payer": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "totalAmount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "currency",
+          "totalAmount",
+          "payer",
+          "participants"
+        ],
+        "type": "object"
+      },
+      "ExpenseItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "groupExpenseId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ItemParticipantResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "quantity": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupExpenseId",
+          "name",
+          "amount",
+          "quantity",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ExpenseParticipantResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "hasProxy": {
+            "type": "boolean"
+          },
+          "participantProfile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "proxyProfile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "shareAmount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participantProfile",
+          "shareAmount",
+          "hasProxy"
+        ],
+        "type": "object"
+      },
+      "FeeCalculationMethodInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "display": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "display",
+          "description"
+        ],
+        "type": "object"
+      },
+      "FeeParticipantResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "shareAmount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "shareAmount"
+        ],
+        "type": "object"
+      },
+      "FriendBalance": {
+        "additionalProperties": false,
+        "properties": {
+          "netBalance": {
+            "type": "string"
+          },
+          "totalBorrowedFromFriend": {
+            "type": "string"
+          },
+          "totalLentToFriend": {
+            "type": "string"
+          },
+          "transactionHistory": {
+            "items": {
+              "$ref": "#/components/schemas/FriendTransactionItem"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netBalance",
+          "totalLentToFriend",
+          "totalBorrowedFromFriend",
+          "transactionHistory"
+        ],
+        "type": "object"
+      },
+      "FriendDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          },
+          "profileId1": {
+            "type": "string"
+          },
+          "profileId2": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "name",
+          "type",
+          "profileId1",
+          "profileId2",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "FriendDetailsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "balancesPerCurrency": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FriendBalance"
+            },
+            "type": "object"
+          },
+          "friend": {
+            "$ref": "#/components/schemas/FriendDetails"
+          }
+        },
+        "required": [
+          "friend",
+          "balancesPerCurrency"
+        ],
+        "type": "object"
+      },
+      "FriendTransactionItem": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isRepayment": {
+            "type": "boolean"
+          },
+          "transactionDate": {
+            "type": "string"
+          },
+          "transferMethod": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "amount",
+          "transferMethod",
+          "description",
+          "transactionDate",
+          "isRepayment",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "FriendshipRequestResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blockedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isBlocked": {
+            "type": "boolean"
+          },
+          "isReceivedByUser": {
+            "type": "boolean"
+          },
+          "isSentByUser": {
+            "type": "boolean"
+          },
+          "recipientAvatar": {
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "senderAvatar": {
+            "type": "string"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "senderAvatar",
+          "senderName",
+          "recipientAvatar",
+          "recipientName",
+          "blockedAt",
+          "isSentByUser",
+          "isReceivedByUser",
+          "isBlocked",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "FriendshipResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "balancesPerCurrency": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "profileAvatar": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          },
+          "profileName": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "profileId",
+          "profileName",
+          "profileAvatar",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "GroupExpenseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bill": {
+            "$ref": "#/components/schemas/ExpenseBillResponse"
+          },
+          "billExists": {
+            "type": "boolean"
+          },
+          "confirmationPreview": {
+            "$ref": "#/components/schemas/ExpenseConfirmationResponse"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "feesTotalAmount": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isPreviewable": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExpenseItemResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "itemsTotalAmount": {
+            "type": "string"
+          },
+          "otherFees": {
+            "items": {
+              "$ref": "#/components/schemas/OtherFeeResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/ExpenseParticipantResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "payer": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency",
+          "totalAmount",
+          "itemsTotalAmount",
+          "feesTotalAmount",
+          "description",
+          "status",
+          "isPreviewable",
+          "payer",
+          "creator",
+          "items",
+          "otherFees",
+          "participants",
+          "bill",
+          "billExists",
+          "confirmationPreview",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "HandleMidtransNotificationInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "gross_amount": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "signature_key": {
+            "type": "string"
+          },
+          "status_code": {
+            "type": "string"
+          },
+          "status_message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "status_code",
+          "gross_amount",
+          "signature_key"
+        ],
+        "type": "object"
+      },
+      "Item": {
+        "additionalProperties": false,
+        "properties": {
+          "profileId": {
+            "type": "string"
+          },
+          "weight": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profileId"
+        ],
+        "type": "object"
+      },
+      "ItemParticipantResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "allocatedAmount": {
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/SimpleProfile"
+          },
+          "weight": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile",
+          "weight",
+          "allocatedAmount"
+        ],
+        "type": "object"
+      },
+      "KeysStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "auth": {
+            "type": "string"
+          },
+          "p256dh": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "p256dh",
+          "auth"
+        ],
+        "type": "object"
+      },
+      "Limits": {
+        "additionalProperties": false,
+        "properties": {
+          "uploads": {
+            "$ref": "#/components/schemas/UploadLimits"
+          }
+        },
+        "required": [
+          "uploads"
+        ],
+        "type": "object"
+      },
+      "LoginAuthInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "NotificationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "contentEncoding": "base64",
+            "type": "string"
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "entityType",
+          "entityId",
+          "metadata",
+          "createdAt",
+          "title"
+        ],
+        "type": "object"
+      },
+      "OtherFeeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "calculationMethod": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/FeeParticipantResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "amount",
+          "calculationMethod",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PaymentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "gateway": {
+            "type": "string"
+          },
+          "gatewayEventId": {
+            "type": "string"
+          },
+          "gatewaySubscriptionId": {
+            "type": "string"
+          },
+          "gatewayTransactionId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "paidAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subscriptionId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscriptionId",
+          "amount",
+          "currency",
+          "gateway",
+          "status",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PlanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "isActive",
+          "priority",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PlanVersionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "billUploadsDaily": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "billUploadsMonthly": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "billingInterval": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "string"
+          },
+          "priceCurrency": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "planId",
+          "planName",
+          "priceAmount",
+          "priceCurrency",
+          "billingInterval",
+          "billUploadsDaily",
+          "billUploadsMonthly",
+          "effectiveFrom",
+          "isDefault",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PresignedExpenseBillResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "billId": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "billId",
+          "uploadUrl"
+        ],
+        "type": "object"
+      },
+      "PresignedSaveExpenseBillInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "fileName": {
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileName"
+        ],
+        "type": "object"
+      },
+      "ProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentSubscription": {
+            "$ref": "#/components/schemas/SubscriptionLimitsResponse"
+          },
+          "email": {
+            "type": "string"
+          },
+          "homeCurrency": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isAnonymous": {
+            "type": "boolean"
+          },
+          "isOnboarded": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "avatar",
+          "email",
+          "homeCurrency",
+          "isAnonymous",
+          "currentSubscription",
+          "isOnboarded",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ProfileTransferMethodResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "$ref": "#/components/schemas/TransferMethodResponse"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "accountName",
+          "accountNumber",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "RegisterAuthInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "passwordConfirmation": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "passwordConfirmation"
+        ],
+        "type": "object"
+      },
+      "ResetPasswordInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "type": "string"
+          },
+          "passwordConfirmation": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password",
+          "passwordConfirmation"
+        ],
+        "type": "object"
+      },
+      "SearchProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatar"
+        ],
+        "type": "object"
+      },
+      "SendPasswordResetInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "captchaToken": {
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "SimpleProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isUser": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatar",
+          "isUser"
+        ],
+        "type": "object"
+      },
+      "SubscribeToPushInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/KeysStruct"
+          },
+          "userAgent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "type": "object"
+      },
+      "SubscriptionLimitsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "limits": {
+            "$ref": "#/components/schemas/Limits"
+          },
+          "plan": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "limits"
+        ],
+        "type": "object"
+      },
+      "SubscriptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "billUploadsDaily": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "billUploadsMonthly": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "canceledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentPeriodEnd": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentPeriodStart": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "paymentDueDays": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "planVersionId": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          },
+          "profileName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "profileName",
+          "planVersionId",
+          "planName",
+          "autoRenew",
+          "billUploadsDaily",
+          "billUploadsMonthly",
+          "status",
+          "paymentDueDays",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "SyncExpenseItemParticipantsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "participants": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "participants"
+        ],
+        "type": "object"
+      },
+      "SyncGroupExpenseParticipantsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "participantProfileIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          },
+          "payerProfileId": {
+            "type": "string"
+          },
+          "proxyByProfileIds": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "participantProfileIds",
+          "payerProfileId"
+        ],
+        "type": "object"
+      },
+      "TransferMethodResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "display": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "display",
+          "iconUrl",
+          "parentId",
+          "id",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "UnsubscribeFromPushInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint"
+        ],
+        "type": "object"
+      },
+      "UpdateExpenseItemInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "not": {
+                  "const": 0
+                },
+                "type": "number"
+              },
+              {
+                "pattern": "^-?(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$",
+                "patternDescription": "a non-zero decimal number, e.g. \"10.50\" or \"-5\" (no zero)",
+                "type": "string"
+              }
+            ]
+          },
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          },
+          "quantity": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "amount",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "UpdateOtherFeeInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "not": {
+                  "const": 0
+                },
+                "type": "number"
+              },
+              {
+                "pattern": "^-?(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$",
+                "patternDescription": "a non-zero decimal number, e.g. \"10.50\" or \"-5\" (no zero)",
+                "type": "string"
+              }
+            ]
+          },
+          "calculationMethod": {
+            "enum": [
+              "EQUAL_SPLIT",
+              "ITEMIZED_SPLIT"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "amount",
+          "calculationMethod"
+        ],
+        "type": "object"
+      },
+      "UpdatePaymentInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "paidAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "processing",
+              "paid",
+              "canceled",
+              "error",
+              "expired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "amount",
+          "currency"
+        ],
+        "type": "object"
+      },
+      "UpdatePlanInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "minLength": 3,
+            "type": "string"
+          },
+          "priority": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "isActive",
+          "priority"
+        ],
+        "type": "object"
+      },
+      "UpdatePlanVersionInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "billUploadsDaily": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "billUploadsMonthly": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "billingInterval": {
+            "enum": [
+              "monthly",
+              "yearly"
+            ],
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "priceCurrency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "planId",
+          "priceAmount",
+          "priceCurrency",
+          "billingInterval",
+          "effectiveFrom"
+        ],
+        "type": "object"
+      },
+      "UpdateProfileInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "homeCurrency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "homeCurrency"
+        ],
+        "type": "object"
+      },
+      "UpdateSubscriptionInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "canceledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentPeriodEnd": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentPeriodStart": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "planVersionId": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "incomplete_payment",
+              "active",
+              "past_due_payment",
+              "canceled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "planVersionId",
+          "status"
+        ],
+        "type": "object"
+      },
+      "UploadLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "canUpload": {
+            "type": "boolean"
+          },
+          "limit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "remaining": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "resetAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "used": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "used",
+          "limit",
+          "remaining",
+          "resetAt",
+          "canUpload"
+        ],
+        "type": "object"
+      },
+      "UploadLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "canUpload": {
+            "type": "boolean"
+          },
+          "daily": {
+            "$ref": "#/components/schemas/UploadLimit"
+          },
+          "monthly": {
+            "$ref": "#/components/schemas/UploadLimit"
+          }
+        },
+        "required": [
+          "daily",
+          "monthly",
+          "canUpload"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Cashback API",
+    "version": "1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/admin/v1/auth/login": {
+      "post": {
+        "operationId": "admin-auth-login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAdminBearerTokenBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Login as an admin user",
+        "tags": [
+          "admin-auth"
+        ]
+      }
+    },
+    "/admin/v1/auth/me": {
+      "get": {
+        "operationId": "get-admin-me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAdminMe"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get the authenticated admin user",
+        "tags": [
+          "admin-auth"
+        ]
+      }
+    },
+    "/admin/v1/auth/register": {
+      "post": {
+        "operationId": "admin-auth-register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRegisterInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAdminVerifiedBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Register a new admin user",
+        "tags": [
+          "admin-auth"
+        ]
+      }
+    },
+    "/admin/v1/payments": {
+      "get": {
+        "operationId": "get-admin-payments",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListPaymentResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all payments",
+        "tags": [
+          "admin-payments"
+        ]
+      }
+    },
+    "/admin/v1/payments/{paymentID}": {
+      "delete": {
+        "operationId": "delete-admin-payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePaymentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a payment",
+        "tags": [
+          "admin-payments"
+        ]
+      },
+      "get": {
+        "operationId": "get-admin-payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePaymentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a payment by ID",
+        "tags": [
+          "admin-payments"
+        ]
+      },
+      "put": {
+        "operationId": "update-admin-payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePaymentInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePaymentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update a payment",
+        "tags": [
+          "admin-payments"
+        ]
+      }
+    },
+    "/admin/v1/plan-versions": {
+      "get": {
+        "operationId": "get-admin-plan-versions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListPlanVersionResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all plan versions",
+        "tags": [
+          "admin-plan-versions"
+        ]
+      },
+      "post": {
+        "operationId": "create-admin-plan-version",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlanVersionInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanVersionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a plan version",
+        "tags": [
+          "admin-plan-versions"
+        ]
+      }
+    },
+    "/admin/v1/plan-versions/{planVersionID}": {
+      "delete": {
+        "operationId": "delete-admin-plan-version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planVersionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanVersionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a plan version",
+        "tags": [
+          "admin-plan-versions"
+        ]
+      },
+      "get": {
+        "operationId": "get-admin-plan-version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planVersionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanVersionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a plan version by ID",
+        "tags": [
+          "admin-plan-versions"
+        ]
+      },
+      "put": {
+        "operationId": "update-admin-plan-version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planVersionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanVersionInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanVersionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update a plan version",
+        "tags": [
+          "admin-plan-versions"
+        ]
+      }
+    },
+    "/admin/v1/plans": {
+      "get": {
+        "operationId": "get-admin-plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListPlanResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all plans",
+        "tags": [
+          "admin-plans"
+        ]
+      },
+      "post": {
+        "operationId": "create-admin-plan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlanInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a plan",
+        "tags": [
+          "admin-plans"
+        ]
+      }
+    },
+    "/admin/v1/plans/{planID}": {
+      "delete": {
+        "operationId": "delete-admin-plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a plan",
+        "tags": [
+          "admin-plans"
+        ]
+      },
+      "get": {
+        "operationId": "get-admin-plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a plan by ID",
+        "tags": [
+          "admin-plans"
+        ]
+      },
+      "put": {
+        "operationId": "update-admin-plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePlanResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update a plan",
+        "tags": [
+          "admin-plans"
+        ]
+      }
+    },
+    "/admin/v1/profiles": {
+      "get": {
+        "operationId": "get-admin-profiles",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListProfileResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all real profiles",
+        "tags": [
+          "admin-profiles"
+        ]
+      }
+    },
+    "/admin/v1/profiles/{profileID}": {
+      "get": {
+        "operationId": "get-admin-profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profileID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a profile by ID",
+        "tags": [
+          "admin-profiles"
+        ]
+      }
+    },
+    "/admin/v1/subscriptions": {
+      "get": {
+        "operationId": "get-admin-subscriptions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListSubscriptionResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "format": "int64",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all subscriptions",
+        "tags": [
+          "admin-subscriptions"
+        ]
+      },
+      "post": {
+        "operationId": "create-admin-subscription",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSubscriptionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a subscription",
+        "tags": [
+          "admin-subscriptions"
+        ]
+      }
+    },
+    "/admin/v1/subscriptions/{subscriptionID}": {
+      "delete": {
+        "operationId": "delete-admin-subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscriptionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSubscriptionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a subscription",
+        "tags": [
+          "admin-subscriptions"
+        ]
+      },
+      "get": {
+        "operationId": "get-admin-subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscriptionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSubscriptionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a subscription by ID",
+        "tags": [
+          "admin-subscriptions"
+        ]
+      },
+      "put": {
+        "operationId": "update-admin-subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscriptionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSubscriptionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update a subscription",
+        "tags": [
+          "admin-subscriptions"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "auth-login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginAuthInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Login with email and password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "delete": {
+        "operationId": "auth-logout",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Logout the current session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password-reset": {
+      "post": {
+        "operationId": "auth-send-password-reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendPasswordResetInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Send a password reset email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "put": {
+        "operationId": "auth-refresh",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Refresh the access token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "auth-register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAuthInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Register a new user account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "patch": {
+        "operationId": "auth-reset-password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Reset a password using a reset token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/verify-registration": {
+      "get": {
+        "operationId": "auth-verify-registration",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Verify a registration email token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/{provider}": {
+      "get": {
+        "operationId": "auth-oauth-login",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Temporary Redirect",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Redirect to the OAuth provider's login page",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/{provider}/callback": {
+      "get": {
+        "operationId": "auth-oauth-callback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "code",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeAuthMessageBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Handle the OAuth provider's callback",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/debts": {
+      "get": {
+        "operationId": "get-debts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListDebtTransactionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all debt transactions",
+        "tags": [
+          "debts"
+        ]
+      },
+      "post": {
+        "operationId": "create-debt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDebtInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeDebtTransactionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Record a new debt transaction",
+        "tags": [
+          "debts"
+        ]
+      }
+    },
+    "/api/v1/debts/recent": {
+      "get": {
+        "operationId": "get-recent-debts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListDebtTransactionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get recent debt transactions",
+        "tags": [
+          "debts"
+        ]
+      }
+    },
+    "/api/v1/debts/repayment": {
+      "post": {
+        "operationId": "create-debt-repayment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRepaymentInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeDebtTransactionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Record a new debt repayment",
+        "tags": [
+          "debts"
+        ]
+      }
+    },
+    "/api/v1/debts/summary": {
+      "get": {
+        "operationId": "get-debts-summary",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeMapStringFriendBalance"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get debt transaction summary",
+        "tags": [
+          "debts"
+        ]
+      }
+    },
+    "/api/v1/friend-requests/received/{friendRequestID}": {
+      "delete": {
+        "operationId": "ignore-friend-request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendRequestID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Ignore a received friend request",
+        "tags": [
+          "friend-requests"
+        ]
+      },
+      "patch": {
+        "operationId": "block-friend-request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendRequestID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "command",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeFriendshipRequestResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Block or unblock a friend request sender",
+        "tags": [
+          "friend-requests"
+        ]
+      },
+      "post": {
+        "operationId": "accept-friend-request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendRequestID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeFriendshipResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Accept a received friend request",
+        "tags": [
+          "friend-requests"
+        ]
+      }
+    },
+    "/api/v1/friend-requests/sent/{friendRequestID}": {
+      "delete": {
+        "operationId": "cancel-friend-request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendRequestID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Cancel a sent friend request",
+        "tags": [
+          "friend-requests"
+        ]
+      }
+    },
+    "/api/v1/friend-requests/{friendRequestType}": {
+      "get": {
+        "operationId": "get-friend-requests",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendRequestType",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListFriendshipRequestResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all friend requests (sent or received)",
+        "tags": [
+          "friend-requests"
+        ]
+      }
+    },
+    "/api/v1/friendships": {
+      "get": {
+        "operationId": "get-friendships",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListFriendshipResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all friendships",
+        "tags": [
+          "friendships"
+        ]
+      },
+      "post": {
+        "operationId": "create-anonymous-friendship",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnonymousFriendshipInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeFriendshipResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create an anonymous friendship",
+        "tags": [
+          "friendships"
+        ]
+      }
+    },
+    "/api/v1/friendships/{friendshipID}": {
+      "get": {
+        "operationId": "get-friendship-details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendshipID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeFriendDetailsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get friendship details",
+        "tags": [
+          "friendships"
+        ]
+      }
+    },
+    "/api/v1/group-expenses": {
+      "get": {
+        "operationId": "get-group-expenses",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "ownership",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListGroupExpenseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all group expenses",
+        "tags": [
+          "group-expenses"
+        ]
+      },
+      "post": {
+        "operationId": "create-group-expense-draft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupExpenseDraftInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeGroupExpenseResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a draft group expense",
+        "tags": [
+          "group-expenses"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/fee-calculation-methods": {
+      "get": {
+        "operationId": "get-fee-calculation-methods",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListFeeCalculationMethodInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get available fee calculation methods",
+        "tags": [
+          "other-fees"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/recent": {
+      "get": {
+        "operationId": "get-recent-group-expenses",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListGroupExpenseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get recent group expenses",
+        "tags": [
+          "group-expenses"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}": {
+      "delete": {
+        "operationId": "delete-group-expense",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a group expense",
+        "tags": [
+          "group-expenses"
+        ]
+      },
+      "get": {
+        "operationId": "get-group-expense-details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeGroupExpenseResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get group expense details",
+        "tags": [
+          "group-expenses"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/bills": {
+      "post": {
+        "operationId": "presigned-save-expense-bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresignedSaveExpenseBillInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePresignedExpenseBillResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a presigned URL to upload an expense bill",
+        "tags": [
+          "expense-bills"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/bills/{expenseBillID}": {
+      "put": {
+        "operationId": "trigger-expense-bill-parsing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "expenseBillID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeExpenseBillResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Trigger parsing of an uploaded expense bill",
+        "tags": [
+          "expense-bills"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/confirmed": {
+      "patch": {
+        "operationId": "confirm-group-expense-draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dry-run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeExpenseConfirmationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Confirm a draft group expense",
+        "tags": [
+          "group-expenses"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/fees": {
+      "post": {
+        "operationId": "add-other-fee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddOtherFeeInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeOtherFeeResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Add a fee to a group expense",
+        "tags": [
+          "other-fees"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/fees/{otherFeeID}": {
+      "delete": {
+        "operationId": "remove-other-fee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "otherFeeID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Remove a fee from a group expense",
+        "tags": [
+          "other-fees"
+        ]
+      },
+      "put": {
+        "operationId": "update-other-fee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "otherFeeID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOtherFeeInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeOtherFeeResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update a fee on a group expense",
+        "tags": [
+          "other-fees"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/items": {
+      "post": {
+        "operationId": "add-expense-item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExpenseItemInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Add an item to a group expense",
+        "tags": [
+          "expense-items"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/items/{expenseItemID}": {
+      "delete": {
+        "operationId": "remove-expense-item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "expenseItemID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Remove an expense item",
+        "tags": [
+          "expense-items"
+        ]
+      },
+      "put": {
+        "operationId": "update-expense-item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "expenseItemID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseItemInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update an expense item",
+        "tags": [
+          "expense-items"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/items/{expenseItemID}/participants": {
+      "put": {
+        "operationId": "sync-expense-item-participants",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "expenseItemID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncExpenseItemParticipantsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Sync participants of an expense item",
+        "tags": [
+          "expense-items"
+        ]
+      }
+    },
+    "/api/v1/group-expenses/{groupExpenseID}/participants": {
+      "put": {
+        "operationId": "sync-group-expense-participants",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupExpenseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncGroupExpenseParticipantsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Sync participants of a group expense",
+        "tags": [
+          "group-expenses"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "get-unread-notifications",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListNotificationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get unread notifications",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "mark-all-notifications-as-read",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{notificationID}": {
+      "patch": {
+        "operationId": "mark-notification-as-read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificationID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Mark a notification as read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/payments/midtrans/notifications": {
+      "post": {
+        "operationId": "handle-midtrans-notification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandleMidtransNotificationInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Handle Midtrans payment notification",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/plans": {
+      "get": {
+        "operationId": "get-active-plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListPlanVersionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get active subscription plans",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/{planID}/versions/{planVersionID}/subscriptions": {
+      "post": {
+        "operationId": "create-subscription-purchase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "planID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "planVersionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePaymentResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a subscription purchase",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "operationId": "get-profile",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get current user's profile",
+        "tags": [
+          "profile"
+        ]
+      },
+      "patch": {
+        "operationId": "update-profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update current user's profile",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/api/v1/profile/associate": {
+      "post": {
+        "operationId": "associate-profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssociateProfileInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Associate anonymous profile with real profile",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/api/v1/profile/subscription": {
+      "get": {
+        "operationId": "get-subscribed-details",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSubscriptionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get current subscription details",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/v1/profile/transfer-methods": {
+      "get": {
+        "operationId": "get-all-owned-profile-transfer-methods",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListProfileTransferMethodResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all transfer methods owned by current profile",
+        "tags": [
+          "profile-transfer-methods"
+        ]
+      },
+      "post": {
+        "operationId": "add-profile-transfer-method",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProfileTransferMethodInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeProfileTransferMethodResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Add a transfer method to profile",
+        "tags": [
+          "profile-transfer-methods"
+        ]
+      }
+    },
+    "/api/v1/profiles": {
+      "get": {
+        "operationId": "search-profiles",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 3,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListSearchProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Search profiles",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/api/v1/profiles/{profileID}/friend-requests": {
+      "post": {
+        "operationId": "send-friend-request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profileID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeFriendshipRequestResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Send a friend request",
+        "tags": [
+          "friend-requests"
+        ]
+      }
+    },
+    "/api/v1/profiles/{profileID}/transfer-methods": {
+      "get": {
+        "operationId": "get-all-profile-transfer-methods-by-friend-profile-id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profileID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListProfileTransferMethodResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all transfer methods of a friend profile",
+        "tags": [
+          "profile-transfer-methods"
+        ]
+      }
+    },
+    "/api/v1/public/profiles/{slug}": {
+      "get": {
+        "operationId": "get-public-profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeFriendDetailsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get a public profile by slug",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/push/subscribe": {
+      "post": {
+        "operationId": "subscribe-to-push",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeToPushInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Subscribe to push notifications",
+        "tags": [
+          "push"
+        ]
+      }
+    },
+    "/api/v1/push/unsubscribe": {
+      "post": {
+        "operationId": "unsubscribe-from-push",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeFromPushInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Unsubscribe from push notifications",
+        "tags": [
+          "push"
+        ]
+      }
+    },
+    "/api/v1/subscriptions/{subscriptionID}": {
+      "post": {
+        "operationId": "make-payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscriptionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopePaymentResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Make a payment for a subscription",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/transfer-methods": {
+      "get": {
+        "operationId": "get-transfer-methods",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListTransferMethodResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get all transfer methods",
+        "tags": [
+          "transfer-methods"
+        ]
+      }
+    }
+  }
+}

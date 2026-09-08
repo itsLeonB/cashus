@@ -13,7 +13,9 @@ test-coverage \
 test-coverage-html \
 test-clean \
 build \
-build-all
+build-all \
+openapi \
+openapi-check
 
 help:
 	@echo "Makefile commands:"
@@ -32,6 +34,8 @@ help:
 	@echo "  make test-clean              - Clean test cache and run tests"
 	@echo "  make build                   - Build HTTP server for production"
 	@echo "  make build-all               - Build all programs for production"
+	@echo "  make openapi                 - Regenerate openapi.json from the Huma router wiring"
+	@echo "  make openapi-check           - Verify openapi.json matches the current router wiring"
 
 http:
 	go run ./cmd/http
@@ -93,3 +97,36 @@ build-all:
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags job -o bin/job ./cmd/job
 	@echo "Build success! Binaries are located in bin/"
 	@ls -lh bin/
+
+# openapi regenerates openapi.json by exercising the same no-op-provider
+# Huma router wiring as TestFullRegistrationSmoke (see
+# internal/adapters/http/routes.BuildNoopAPI) - no running server, no DB, no
+# network. This is the stable input the frontend's codegen step consumes
+# (CASH-18); commit the result whenever a route or DTO shape changes.
+openapi:
+	@echo "Generating openapi.json..."
+	go run ./cmd/openapi > openapi.json
+	@echo "openapi.json written"
+
+# openapi-check regenerates the document to a temp file and diffs it against
+# the checked-in openapi.json, so a route/DTO change that wasn't followed by
+# `make openapi` fails CI instead of silently going stale. Deliberately not
+# `git diff`-based: comparing generated output to the checked-in file works
+# identically in CI and in a dirty local working tree.
+openapi-check:
+	@echo "Checking openapi.json is up to date..."
+	@tmpfile=$$(mktemp) && \
+	go run ./cmd/openapi > "$$tmpfile" && \
+	diffout=$$(diff -u openapi.json "$$tmpfile"); \
+	status=$$?; \
+	rm -f "$$tmpfile"; \
+	if [ $$status -eq 0 ]; then \
+		echo "openapi.json is up to date."; \
+	else \
+		echo ""; \
+		echo "openapi.json is out of date (checked-in vs regenerated):"; \
+		echo "$$diffout"; \
+		echo ""; \
+		echo "Run 'make openapi' and commit the result."; \
+		exit 1; \
+	fi

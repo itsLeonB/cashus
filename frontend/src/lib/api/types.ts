@@ -1,53 +1,23 @@
+// Request/response types for the API.
+//
+// Some of these (currently: auth + profile) are re-exported from
+// schema.gen.ts, generated from the backend's OpenAPI document — see
+// frontend/CLAUDE.md's "API codegen" section. Everything else here is still
+// hand-written, either because the backend's OpenAPI document doesn't cover
+// it yet or because it's a frontend-only/client-composed shape (e.g.
+// ApiError). Re-exporting keeps `from "./types"` a stable import path for
+// every existing caller regardless of which side a given type comes from.
+import type { components } from "./schema.gen";
+
 // Authentication Types
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  passwordConfirmation: string;
-  slug?: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  password: string;
-  passwordConfirmation: string;
-}
+export type LoginRequest = components["schemas"]["LoginAuthInputBody"];
+export type RegisterRequest = components["schemas"]["RegisterAuthInputBody"];
+export type ResetPasswordRequest = components["schemas"]["ResetPasswordInputBody"];
 
 // User Profile
-export interface UserProfile {
-  id: string;
-  userId: string;
-  name: string;
-  avatar?: string;
-  email?: string;
-  homeCurrency: string;
-  isOnboarded: boolean;
-  createdAt: string;
-  currentSubscription: CurrentSubscription;
-}
-
-export interface CurrentSubscription {
-  plan: string;
-  limits: {
-    uploads: {
-      daily: UploadLimit;
-      monthly: UploadLimit;
-      canUpload: boolean;
-    };
-  };
-}
-
-export interface UploadLimit {
-  used: number;
-  limit: number;
-  remaining: number;
-  resetAt: string;
-  canUpload: boolean;
-}
+export type UserProfile = components["schemas"]["ProfileResponse"];
+export type CurrentSubscription = components["schemas"]["SubscriptionLimitsResponse"];
+export type UploadLimit = components["schemas"]["UploadLimit"];
 
 // Friendship Types
 export interface FriendshipResponse {

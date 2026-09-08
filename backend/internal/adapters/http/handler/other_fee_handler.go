@@ -50,8 +50,13 @@ type UpdateOtherFeeInput struct {
 	OtherFeeID     uuid.UUID `path:"otherFeeID"`
 	Body           struct {
 		Name string `json:"name" minLength:"3"`
-		// Amount: see AddOtherFeeInput.Body.Amount's comment.
-		Amount            httpapi.Decimal               `json:"amount" required:"true"`
+		// Amount uses NonZeroDecimal, not plain Decimal (CASH-18): this was
+		// a schema/service-layer mismatch found while auditing every
+		// httpapi.Decimal usage against its handler's service-layer rule.
+		// OtherFeeService.Update runs the same `req.Amount.IsZero()` check
+		// as Add (see other_fee_service.go) - see AddOtherFeeInput.Body.
+		// Amount's comment for why that rule is "!= 0", not "> 0".
+		Amount            httpapi.NonZeroDecimal        `json:"amount" required:"true"`
 		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
 	}
 }

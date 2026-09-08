@@ -10,13 +10,13 @@
 import type { components } from "./schema.gen";
 
 // Authentication Types
-export type LoginRequest = components["schemas"]["LoginRequest"];
-export type RegisterRequest = components["schemas"]["RegisterRequest"];
-export type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
+export type LoginRequest = components["schemas"]["LoginAuthInputBody"];
+export type RegisterRequest = components["schemas"]["RegisterAuthInputBody"];
+export type ResetPasswordRequest = components["schemas"]["ResetPasswordInputBody"];
 
 // User Profile
-export type UserProfile = components["schemas"]["UserProfile"];
-export type CurrentSubscription = components["schemas"]["CurrentSubscription"];
+export type UserProfile = components["schemas"]["ProfileResponse"];
+export type CurrentSubscription = components["schemas"]["SubscriptionLimitsResponse"];
 export type UploadLimit = components["schemas"]["UploadLimit"];
 
 // Friendship Types

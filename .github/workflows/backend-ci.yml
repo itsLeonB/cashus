@@ -107,6 +107,23 @@ jobs:
       - name: Run govulncheck
         run: make vulncheck
 
+  openapi-drift:
+    name: OpenAPI Document Drift Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Go with cache
+        uses: ./.github/actions/setup-go
+        with:
+          go-version-file: "backend/go.mod"
+          working-directory: backend
+
+      - name: Verify openapi.json is up to date
+        run: make openapi-check
+
   security:
     name: Security Scan
     runs-on: ubuntu-latest

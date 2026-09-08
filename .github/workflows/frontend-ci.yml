@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
-    paths: ["frontend/**"]
+    paths: ["frontend/**", "backend/openapi.json"]
   pull_request:
     branches: [main, dev]
-    paths: ["frontend/**"]
+    paths: ["frontend/**", "backend/openapi.json"]
 
 defaults:
   run:
@@ -59,3 +59,15 @@ jobs:
         run: bun run scripts/check-unused-components.ts
       - name: Check unused dependencies
         run: bunx depcheck
+
+  openapi-drift:
+    name: OpenAPI Codegen Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup
+        uses: ./.github/actions/setup-bun
+        with:
+          working-directory: frontend
+      - name: Verify generated API types are up to date with backend/openapi.json
+        run: bun run codegen:api:check

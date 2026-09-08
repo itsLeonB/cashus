@@ -32,18 +32,18 @@ type PaymentResponse struct {
 }
 
 type MidtransNotificationPayload struct {
-	OrderID       string `json:"order_id" binding:"required"`
-	StatusCode    string `json:"status_code" binding:"required"`
-	GrossAmount   string `json:"gross_amount" binding:"required"`
-	SignatureKey  string `json:"signature_key" binding:"required"`
+	OrderID       string `json:"order_id"`
+	StatusCode    string `json:"status_code"`
+	GrossAmount   string `json:"gross_amount"`
+	SignatureKey  string `json:"signature_key"`
 	StatusMessage string `json:"status_message"`
 }
 
 type UpdatePaymentRequest struct {
 	ID       uuid.UUID       `json:"-"`
-	Status   string          `json:"status" binding:"required,oneof=pending processing paid canceled error expired"`
-	Amount   decimal.Decimal `json:"amount" binding:"required"`
-	Currency string          `json:"currency" binding:"required"`
+	Status   string          `json:"status"`
+	Amount   decimal.Decimal `json:"amount"`
+	Currency string          `json:"currency"`
 	StartsAt time.Time       `json:"startsAt"`
 	EndsAt   time.Time       `json:"endsAt"`
 	PaidAt   time.Time       `json:"paidAt"`

@@ -61,6 +61,13 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordNewTransaction")
 	defer span.End()
 
+	// Also expressed as a schema constraint on CreateDebtInput.Body.Amount
+	// (httpapi.PositiveDecimal, CASH-16), which rejects this for the common
+	// (JSON-number) wire form before the request even reaches the service
+	// layer. Kept here too as a backstop: PositiveDecimal's string-form
+	// branch is a regex format check, not a numeric one, so a quoted zero
+	// amount (e.g. `"amount": "0"`) passes schema validation and only this
+	// check catches it. See PositiveDecimal's doc comment for why.
 	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}

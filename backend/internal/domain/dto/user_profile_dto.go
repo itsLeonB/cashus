@@ -18,17 +18,17 @@ type ProfileResponse struct {
 
 type UpdateProfileRequest struct {
 	ID           uuid.UUID `json:"-"`
-	Name         string    `json:"name" binding:"required,min=3,max=255"`
-	HomeCurrency string    `json:"homeCurrency" binding:"required,len=3"`
+	Name         string    `json:"name"`
+	HomeCurrency string    `json:"homeCurrency"`
 }
 
 type SearchRequest struct {
-	Query string `form:"query" binding:"required,min=3,max=255"`
+	Query string `form:"query"`
 }
 
 type AssociateProfileRequest struct {
-	RealProfileID uuid.UUID `json:"realProfileId" binding:"required"`
-	AnonProfileID uuid.UUID `json:"anonProfileId" binding:"required"`
+	RealProfileID uuid.UUID `json:"realProfileId"`
+	AnonProfileID uuid.UUID `json:"anonProfileId"`
 }
 
 // SearchProfileResponse is the minimal DTO returned by profile search.

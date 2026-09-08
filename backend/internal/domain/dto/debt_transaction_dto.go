@@ -14,11 +14,11 @@ const (
 
 type NewDebtTransactionRequest struct {
 	UserProfileID    uuid.UUID                `json:"-"`
-	FriendProfileID  uuid.UUID                `json:"friendProfileId" binding:"required"`
-	Direction        DebtTransactionDirection `json:"direction" binding:"oneof=INCOMING OUTGOING"`
-	Currency         string                   `json:"currency" binding:"len=3"`
-	Amount           decimal.Decimal          `json:"amount" binding:"required"`
-	TransferMethodID uuid.UUID                `json:"transferMethodId" binding:"required"`
+	FriendProfileID  uuid.UUID                `json:"friendProfileId"`
+	Direction        DebtTransactionDirection `json:"direction"`
+	Currency         string                   `json:"currency"`
+	Amount           decimal.Decimal          `json:"amount"`
+	TransferMethodID uuid.UUID                `json:"transferMethodId"`
 	Description      string                   `json:"description"`
 	// TransactionDate is the raw "YYYY-MM-DD" value from the request, or empty
 	// if omitted. DebtService.RecordNewTransaction defaults and validates it.
@@ -32,9 +32,9 @@ type NewDebtTransactionRequest struct {
 // none of those fields.
 type NewRepaymentRequest struct {
 	UserProfileID    uuid.UUID `json:"-"`
-	FriendProfileID  uuid.UUID `json:"friendProfileId" binding:"required"`
-	Currency         string    `json:"currency" binding:"len=3"`
-	TransferMethodID uuid.UUID `json:"transferMethodId" binding:"required"`
+	FriendProfileID  uuid.UUID `json:"friendProfileId"`
+	Currency         string    `json:"currency"`
+	TransferMethodID uuid.UUID `json:"transferMethodId"`
 	// TransactionDate is the raw "YYYY-MM-DD" value from the request, or empty
 	// if omitted. DebtService.RecordRepayment defaults and validates it.
 	TransactionDate string `json:"transactionDate"`

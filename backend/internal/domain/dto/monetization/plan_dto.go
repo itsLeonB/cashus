@@ -9,8 +9,8 @@ import (
 )
 
 type NewPlanRequest struct {
-	Name     string `json:"name" binding:"required,min=3"`
-	Priority int    `json:"priority" binding:"required"`
+	Name     string `json:"name"`
+	Priority int    `json:"priority"`
 }
 
 type PlanResponse struct {
@@ -22,19 +22,19 @@ type PlanResponse struct {
 
 type UpdatePlanRequest struct {
 	ID       uuid.UUID `json:"-"`
-	Name     string    `json:"name" binding:"required,min=3"`
+	Name     string    `json:"name"`
 	IsActive bool      `json:"isActive"`
-	Priority int       `json:"priority" binding:"required"`
+	Priority int       `json:"priority"`
 }
 
 type NewPlanVersionRequest struct {
-	PlanID             uuid.UUID       `json:"planId" binding:"required"`
-	PriceAmount        decimal.Decimal `json:"priceAmount" binding:"required"`
-	PriceCurrency      string          `json:"priceCurrency" binding:"required,len=3"`
-	BillingInterval    string          `json:"billingInterval" binding:"required,oneof=monthly yearly"`
+	PlanID             uuid.UUID       `json:"planId"`
+	PriceAmount        decimal.Decimal `json:"priceAmount"`
+	PriceCurrency      string          `json:"priceCurrency"`
+	BillingInterval    string          `json:"billingInterval"`
 	BillUploadsDaily   uint            `json:"billUploadsDaily"`
 	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
-	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
+	EffectiveFrom      time.Time       `json:"effectiveFrom"`
 	EffectiveTo        time.Time       `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
 }
@@ -55,13 +55,13 @@ type PlanVersionResponse struct {
 
 type UpdatePlanVersionRequest struct {
 	ID                 uuid.UUID       `json:"-"`
-	PlanID             uuid.UUID       `json:"planId" binding:"required"`
-	PriceAmount        decimal.Decimal `json:"priceAmount" binding:"required"`
-	PriceCurrency      string          `json:"priceCurrency" binding:"required,len=3"`
-	BillingInterval    string          `json:"billingInterval" binding:"required,oneof=monthly yearly"`
+	PlanID             uuid.UUID       `json:"planId"`
+	PriceAmount        decimal.Decimal `json:"priceAmount"`
+	PriceCurrency      string          `json:"priceCurrency"`
+	BillingInterval    string          `json:"billingInterval"`
 	BillUploadsDaily   uint            `json:"billUploadsDaily"`
 	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
-	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
+	EffectiveFrom      time.Time       `json:"effectiveFrom"`
 	EffectiveTo        time.Time       `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
 }

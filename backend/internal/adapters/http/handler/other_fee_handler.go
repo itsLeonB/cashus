@@ -28,8 +28,18 @@ type AddOtherFeeInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	Body           struct {
-		Name              string                        `json:"name" minLength:"3"`
-		Amount            httpapi.Decimal               `json:"amount" required:"true"`
+		Name string `json:"name" minLength:"3"`
+		// Amount uses NonZeroDecimal, not PositiveDecimal (CASH-16):
+		// OtherFeeService's rule is "!= 0" (appconstant.ErrAmountZero), not
+		// "> 0" - a negative fee amount is a legitimate discount that
+		// reduces a group expense's total (see
+		// expense/calculation_service.go's RecalculateExpense, which only
+		// rejects a *negative total*, not a negative individual fee).
+		// NonZeroDecimal (httpapi package) expresses "!= 0" via a `not`/
+		// `const` schema constraint - see its doc comment for how that
+		// works and its residual gap. OtherFeeService's imperative check
+		// stays in place as a backstop for that gap.
+		Amount            httpapi.NonZeroDecimal        `json:"amount" required:"true"`
 		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
 	}
 }
@@ -39,7 +49,8 @@ type UpdateOtherFeeInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	OtherFeeID     uuid.UUID `path:"otherFeeID"`
 	Body           struct {
-		Name              string                        `json:"name" minLength:"3"`
+		Name string `json:"name" minLength:"3"`
+		// Amount: see AddOtherFeeInput.Body.Amount's comment.
 		Amount            httpapi.Decimal               `json:"amount" required:"true"`
 		CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
 	}

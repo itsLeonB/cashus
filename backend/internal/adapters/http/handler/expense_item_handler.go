@@ -27,9 +27,13 @@ type AddExpenseItemInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	Body           struct {
-		Name     string          `json:"name" minLength:"3"`
-		Amount   httpapi.Decimal `json:"amount" required:"true"`
-		Quantity int             `json:"quantity" minimum:"1"`
+		Name string `json:"name" minLength:"3"`
+		// Amount uses NonZeroDecimal, not PositiveDecimal (CASH-16): see
+		// AddOtherFeeInput.Body.Amount's comment (other_fee_handler.go) -
+		// the same "!= 0, negative allowed" rule and reasoning apply to
+		// expense items.
+		Amount   httpapi.NonZeroDecimal `json:"amount" required:"true"`
+		Quantity int                    `json:"quantity" minimum:"1"`
 	}
 }
 
@@ -38,9 +42,10 @@ type UpdateExpenseItemInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
 	Body           struct {
-		Name     string          `json:"name" minLength:"3"`
-		Amount   httpapi.Decimal `json:"amount" required:"true"`
-		Quantity int             `json:"quantity" minimum:"1"`
+		Name string `json:"name" minLength:"3"`
+		// Amount: see AddExpenseItemInput.Body.Amount's comment.
+		Amount   httpapi.NonZeroDecimal `json:"amount" required:"true"`
+		Quantity int                    `json:"quantity" minimum:"1"`
 	}
 }
 
@@ -55,9 +60,18 @@ type SyncExpenseItemParticipantsInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
 	Body           struct {
+		// Participants' Weight minimum mirrors
+		// AllocationService.AllocateAmounts's "weight cannot be negative"
+		// rule (backend/internal/domain/service/expense/allocation_service.go,
+		// CASH-16). No minItems here: syncing to an empty participant list
+		// is a legitimate, intentional state (e.g. clearing participants
+		// before confirming an expense), not an error. AllocateAmounts
+		// still rejects an empty slice, but only as an internal
+		// division-by-zero guard, not as a rule mirrored from this schema -
+		// see that method's comment.
 		Participants []struct {
 			ProfileID uuid.UUID `json:"profileId"`
-			Weight    int       `json:"weight,omitempty"`
+			Weight    int       `json:"weight,omitempty" minimum:"0"`
 		} `json:"participants"`
 	}
 }

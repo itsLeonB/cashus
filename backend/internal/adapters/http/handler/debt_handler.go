@@ -22,12 +22,16 @@ func NewDebtHandler(debtService service.DebtService) *DebtHandler {
 type CreateDebtInput struct {
 	httpapi.AuthInput
 	Body struct {
-		FriendProfileID  uuid.UUID                    `json:"friendProfileId"`
-		Direction        dto.DebtTransactionDirection `json:"direction" enum:"INCOMING,OUTGOING"`
-		Currency         string                       `json:"currency" minLength:"3" maxLength:"3"`
-		Amount           httpapi.Decimal              `json:"amount"`
-		TransferMethodID uuid.UUID                    `json:"transferMethodId"`
-		Description      string                       `json:"description,omitempty"`
+		FriendProfileID uuid.UUID                    `json:"friendProfileId"`
+		Direction       dto.DebtTransactionDirection `json:"direction" enum:"INCOMING,OUTGOING"`
+		Currency        string                       `json:"currency" minLength:"3" maxLength:"3"`
+		// Amount uses httpapi.PositiveDecimal (not plain Decimal): the service
+		// rule this mirrors is DebtService.RecordNewTransaction's "amount must
+		// be greater than 0" (CASH-16) - see PositiveDecimal's doc comment for
+		// why that needs its own type rather than an `exclusiveMinimum` tag.
+		Amount           httpapi.PositiveDecimal `json:"amount"`
+		TransferMethodID uuid.UUID               `json:"transferMethodId"`
+		Description      string                  `json:"description,omitempty"`
 		// TransactionDate is an optional "YYYY-MM-DD" date. Omitted or empty ->
 		// defaults to today's date (server date). Deliberately untagged with
 		// format:"date": huma's format validator runs time.Parse unconditionally,

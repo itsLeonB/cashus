@@ -62,7 +62,11 @@ type SyncGroupExpenseParticipantsInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	Body           struct {
-		ParticipantProfileIDs []uuid.UUID             `json:"participantProfileIds" minItems:"1"`
+		// ParticipantProfileIDs' uniqueItems (CASH-16) covers
+		// GroupExpenseService.validateAndGetParticipants's "duplicate
+		// participant profile IDs given" check, which this Input's field is
+		// this service method's only caller for - see that method's comment.
+		ParticipantProfileIDs []uuid.UUID             `json:"participantProfileIds" minItems:"1" uniqueItems:"true"`
 		ProxyByProfileIDs     map[uuid.UUID]uuid.UUID `json:"proxyByProfileIds,omitempty"`
 		PayerProfileID        uuid.UUID               `json:"payerProfileId"`
 	}

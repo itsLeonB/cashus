@@ -18,6 +18,16 @@ func NewAllocationService() AllocationService {
 }
 
 func (a *allocationServiceImpl) AllocateAmounts(totalAmount decimal.Decimal, participants []expenses.ItemParticipant) ([]expenses.ItemParticipant, error) {
+	// Not mirrored by any HTTP-layer schema constraint (CASH-16): the API
+	// intentionally allows syncing to an empty participant list (see
+	// SyncExpenseItemParticipantsInput.Body.Participants), and its one
+	// caller here, allocateAndSyncParticipants, already skips this call
+	// entirely when Participants is empty. This check stays regardless, as
+	// a guard against a division-by-zero panic below - weightTotal would be
+	// 0 for an empty slice, and decimal.Decimal.Div panics on a zero
+	// divisor. AllocateAmounts is part of the exported AllocationService
+	// interface and is also directly unit-tested, so it must not rely on
+	// its only current caller's guard to stay safe.
 	if len(participants) == 0 {
 		return nil, ungerr.UnprocessableEntityError("no participants provided")
 	}
@@ -150,6 +160,12 @@ func validateFinalSum(result []expenses.ItemParticipant, totalAmount decimal.Dec
 	return nil
 }
 
+// calculateAndValidateWeights's negative-weight check is also expressed as
+// `minimum:"0"` on SyncExpenseItemParticipantsInput.Body.Participants[].Weight
+// (CASH-16) - see AllocateAmounts's comment on why the service-layer check
+// stays regardless. "mixed weighted and unweighted participants" below has
+// no schema equivalent: it compares weights across the whole participants
+// list, which isn't a single-field constraint.
 func calculateAndValidateWeights(participants []expenses.ItemParticipant) (int, error) {
 	// Calculate sum of weights
 	weightSum := 0

@@ -354,12 +354,13 @@ func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dt
 	})
 }
 
+// validateAndGetParticipants is only reached via SyncParticipants, which is
+// only called from the HTTP handler for req - so req.ParticipantProfileIDs
+// always came through SyncGroupExpenseParticipantsInput.Body, whose
+// `uniqueItems:"true"` tag (CASH-16) now fully covers the duplicate-IDs
+// check this used to do here itself.
 func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) ([]expenses.ExpenseParticipant, []uuid.UUID, error) {
-	// --- Dedup check ---
 	participantSet := mapset.NewSet(req.ParticipantProfileIDs...)
-	if participantSet.Cardinality() != len(req.ParticipantProfileIDs) {
-		return nil, nil, ungerr.UnprocessableEntityError("duplicate participant profile IDs given")
-	}
 	if !participantSet.Contains(req.PayerProfileID) {
 		return nil, nil, ungerr.UnprocessableEntityError("payer profile ID must be one of the participant profile IDs")
 	}

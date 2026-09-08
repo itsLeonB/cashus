@@ -22,7 +22,7 @@ type ExpenseBillResponse struct {
 type PresignedExpenseBillRequest struct {
 	ProfileID      uuid.UUID `json:"-"`
 	GroupExpenseID uuid.UUID `json:"-"`
-	Filename       string    `json:"fileName" binding:"required,min=3"`
+	Filename       string    `json:"fileName"`
 }
 
 type PresignedExpenseBillResponse struct {

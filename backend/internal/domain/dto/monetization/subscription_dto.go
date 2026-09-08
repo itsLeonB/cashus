@@ -8,8 +8,8 @@ import (
 )
 
 type NewSubscriptionRequest struct {
-	ProfileID     uuid.UUID `json:"profileId" binding:"required"`
-	PlanVersionID uuid.UUID `json:"planVersionId" binding:"required"`
+	ProfileID     uuid.UUID `json:"profileId"`
+	PlanVersionID uuid.UUID `json:"planVersionId"`
 	EndsAt        time.Time `json:"endsAt"`
 	CanceledAt    time.Time `json:"canceledAt"`
 	AutoRenew     bool      `json:"autoRenew"`
@@ -40,12 +40,12 @@ type SubscriptionResponse struct {
 
 type UpdateSubscriptionRequest struct {
 	ID                 uuid.UUID `json:"-"`
-	ProfileID          uuid.UUID `json:"profileId" binding:"required"`
-	PlanVersionID      uuid.UUID `json:"planVersionId" binding:"required"`
+	ProfileID          uuid.UUID `json:"profileId"`
+	PlanVersionID      uuid.UUID `json:"planVersionId"`
 	EndsAt             time.Time `json:"endsAt"`
 	CanceledAt         time.Time `json:"canceledAt"`
 	AutoRenew          bool      `json:"autoRenew"`
-	Status             string    `json:"status" binding:"required,oneof=incomplete_payment active past_due_payment canceled"`
+	Status             string    `json:"status"`
 	CurrentPeriodStart time.Time `json:"currentPeriodStart"`
 	CurrentPeriodEnd   time.Time `json:"currentPeriodEnd"`
 }

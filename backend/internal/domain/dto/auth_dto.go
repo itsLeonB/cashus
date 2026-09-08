@@ -3,19 +3,19 @@ package dto
 import "github.com/google/uuid"
 
 type RegisterRequest struct {
-	Email                string `json:"email" binding:"required,email,min=3"`
-	Password             string `json:"password" binding:"required,eqfield=PasswordConfirmation"`
-	PasswordConfirmation string `json:"passwordConfirmation" binding:"required"`
+	Email                string `json:"email"`
+	Password             string `json:"password"`
+	PasswordConfirmation string `json:"passwordConfirmation"`
 	Slug                 string `json:"slug"`
 }
 
 type InternalLoginRequest struct {
-	Email    string `json:"email" binding:"required,email,min=3"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refreshToken" binding:"required"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type TokenResponse struct {
@@ -30,14 +30,14 @@ type RegisterResponse struct {
 }
 
 type SendPasswordResetRequest struct {
-	Email        string `json:"email" binding:"required,email,min=3"`
-	CaptchaToken string `json:"captchaToken" binding:"required"`
+	Email        string `json:"email"`
+	CaptchaToken string `json:"captchaToken"`
 }
 
 type ResetPasswordRequest struct {
-	Token                string `json:"token" binding:"required,min=3"`
-	Password             string `json:"password" binding:"required,eqfield=PasswordConfirmation"`
-	PasswordConfirmation string `json:"passwordConfirmation" binding:"required"`
+	Token                string `json:"token"`
+	Password             string `json:"password"`
+	PasswordConfirmation string `json:"passwordConfirmation"`
 }
 
 type OAuthCallbackData struct {

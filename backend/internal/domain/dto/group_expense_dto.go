@@ -8,11 +8,11 @@ import (
 type NewGroupExpenseRequest struct {
 	CreatorProfileID uuid.UUID               `json:"-"`
 	PayerProfileID   uuid.UUID               `json:"payerProfileId"`
-	TotalAmount      decimal.Decimal         `json:"totalAmount" binding:"required"`
-	Subtotal         decimal.Decimal         `json:"subtotal" binding:"required"`
+	TotalAmount      decimal.Decimal         `json:"totalAmount"`
+	Subtotal         decimal.Decimal         `json:"subtotal"`
 	Description      string                  `json:"description"`
-	Items            []NewExpenseItemRequest `json:"items" binding:"required,min=1,dive"`
-	OtherFees        []NewOtherFeeRequest    `json:"otherFees" binding:"dive"`
+	Items            []NewExpenseItemRequest `json:"items"`
+	OtherFees        []NewOtherFeeRequest    `json:"otherFees"`
 }
 
 type GroupExpenseResponse struct {
@@ -47,13 +47,13 @@ type ExpenseParticipantResponse struct {
 type NewDraftRequest struct {
 	UserProfileID uuid.UUID `json:"-"`
 	Description   string    `json:"description"`
-	Currency      string    `json:"currency" binding:"len=3"`
+	Currency      string    `json:"currency"`
 }
 
 type ExpenseParticipantsRequest struct {
-	ParticipantProfileIDs []uuid.UUID             `json:"participantProfileIds" binding:"required,min=1"`
+	ParticipantProfileIDs []uuid.UUID             `json:"participantProfileIds"`
 	ProxyByProfileIDs     map[uuid.UUID]uuid.UUID `json:"proxyByProfileIds"`
-	PayerProfileID        uuid.UUID               `json:"payerProfileId" binding:"required"`
+	PayerProfileID        uuid.UUID               `json:"payerProfileId"`
 	UserProfileID         uuid.UUID               `json:"-"`
 	GroupExpenseID        uuid.UUID               `json:"-"`
 }

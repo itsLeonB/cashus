@@ -27,7 +27,11 @@ type AddExpenseItemInput struct {
 	httpapi.AuthInput
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	Body           struct {
-		Name     string          `json:"name" minLength:"3"`
+		Name string `json:"name" minLength:"3"`
+		// Amount deliberately stays httpapi.Decimal, not PositiveDecimal
+		// (CASH-16): see AddOtherFeeInput.Body.Amount's comment
+		// (other_fee_handler.go) - the same "!= 0, negative allowed" rule
+		// and reasoning apply to expense items.
 		Amount   httpapi.Decimal `json:"amount" required:"true"`
 		Quantity int             `json:"quantity" minimum:"1"`
 	}
@@ -38,7 +42,8 @@ type UpdateExpenseItemInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
 	Body           struct {
-		Name     string          `json:"name" minLength:"3"`
+		Name string `json:"name" minLength:"3"`
+		// Amount: see AddExpenseItemInput.Body.Amount's comment.
 		Amount   httpapi.Decimal `json:"amount" required:"true"`
 		Quantity int             `json:"quantity" minimum:"1"`
 	}
@@ -55,10 +60,17 @@ type SyncExpenseItemParticipantsInput struct {
 	GroupExpenseID uuid.UUID `path:"groupExpenseID"`
 	ExpenseItemID  uuid.UUID `path:"expenseItemID"`
 	Body           struct {
+		// Participants mirrors AllocationService.AllocateAmounts's rules
+		// (backend/internal/domain/service/expense/allocation_service.go,
+		// CASH-16): minItems for "no participants provided", and Weight's
+		// minimum for "weight cannot be negative". The service-layer checks
+		// stay in place too - AllocateAmounts is also called from
+		// ExpenseItemService.Update, which reaches it with already-persisted
+		// Participants that never went through this Input.
 		Participants []struct {
 			ProfileID uuid.UUID `json:"profileId"`
-			Weight    int       `json:"weight,omitempty"`
-		} `json:"participants"`
+			Weight    int       `json:"weight,omitempty" minimum:"0"`
+		} `json:"participants" minItems:"1"`
 	}
 }
 

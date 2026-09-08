@@ -18,6 +18,12 @@ func NewAllocationService() AllocationService {
 }
 
 func (a *allocationServiceImpl) AllocateAmounts(totalAmount decimal.Decimal, participants []expenses.ItemParticipant) ([]expenses.ItemParticipant, error) {
+	// Also expressed as `minItems:"1"` on
+	// SyncExpenseItemParticipantsInput.Body.Participants (CASH-16). Kept here
+	// too: this is a shared, directly-tested domain function, and its other
+	// caller (ExpenseItemService.Update, via allocateAndSyncParticipants)
+	// reaches it with already-persisted Participants that never passed
+	// through that Input.
 	if len(participants) == 0 {
 		return nil, ungerr.UnprocessableEntityError("no participants provided")
 	}
@@ -150,6 +156,12 @@ func validateFinalSum(result []expenses.ItemParticipant, totalAmount decimal.Dec
 	return nil
 }
 
+// calculateAndValidateWeights's negative-weight check is also expressed as
+// `minimum:"0"` on SyncExpenseItemParticipantsInput.Body.Participants[].Weight
+// (CASH-16) - see AllocateAmounts's comment on why the service-layer check
+// stays regardless. "mixed weighted and unweighted participants" below has
+// no schema equivalent: it compares weights across the whole participants
+// list, which isn't a single-field constraint.
 func calculateAndValidateWeights(participants []expenses.ItemParticipant) (int, error) {
 	// Calculate sum of weights
 	weightSum := 0

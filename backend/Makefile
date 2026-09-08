@@ -117,14 +117,15 @@ openapi-check:
 	@echo "Checking openapi.json is up to date..."
 	@tmpfile=$$(mktemp) && \
 	go run ./cmd/openapi > "$$tmpfile" && \
-	if diff -u openapi.json "$$tmpfile" > /dev/null; then \
-		rm -f "$$tmpfile"; \
+	diffout=$$(diff -u openapi.json "$$tmpfile"); \
+	status=$$?; \
+	rm -f "$$tmpfile"; \
+	if [ $$status -eq 0 ]; then \
 		echo "openapi.json is up to date."; \
 	else \
 		echo ""; \
 		echo "openapi.json is out of date (checked-in vs regenerated):"; \
-		diff -u openapi.json "$$tmpfile" || true; \
-		rm -f "$$tmpfile"; \
+		echo "$$diffout"; \
 		echo ""; \
 		echo "Run 'make openapi' and commit the result."; \
 		exit 1; \

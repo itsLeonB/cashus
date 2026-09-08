@@ -44,6 +44,7 @@ cmd/
   http/       → HTTP server entrypoint
   worker/     → Background worker entrypoint
   job/        → One-off jobs (migrations, asset sync)
+  openapi/    → Generates openapi.json from the Huma router wiring (make openapi/openapi-check), no server/DB/network
 internal/
   appconstant/   → Application-wide constants and enums
   core/          → Framework/infra layer (config, logger, otel, services like cache/mail/queue)

@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/itsLeonB/cashback/internal/adapters/http/routes"
@@ -28,7 +29,10 @@ func main() {
 	}
 }
 
-func run(w *os.File) error {
+// run generates the OpenAPI document and writes it to w. It takes an
+// io.Writer, not *os.File, so it can be exercised in tests against a
+// bytes.Buffer without touching the filesystem.
+func run(w io.Writer) error {
 	_, api := routes.BuildNoopAPI()
 
 	raw, err := api.OpenAPI().MarshalJSON()

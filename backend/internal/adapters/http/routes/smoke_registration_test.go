@@ -4,13 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/danielgtaylor/huma/v2/adapters/humagin"
-	"github.com/gin-gonic/gin"
-	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
-	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
-	httpapi "github.com/itsLeonB/cashback/internal/adapters/http/huma"
-	"github.com/itsLeonB/cashback/internal/provider"
-	adminProvider "github.com/itsLeonB/cashback/internal/provider/admin"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,18 +14,9 @@ import (
 // operation IDs, duplicate method+path, or path params without a matching
 // input field all panic at huma.Register time, not at go build time).
 func TestFullRegistrationSmoke(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	api := humagin.New(router, httpapi.NewConfig())
-
-	handlers := handler.ProvideHandlers(&provider.Services{}, nil)
-	adminHandlers := adminHandler.ProvideHandlers(&adminProvider.Services{}, &adminProvider.Repositories{}, &provider.Services{})
-
-	noopAuth := func(c *gin.Context) {}
-
+	var api huma.API
 	assert.NotPanics(t, func() {
-		RegisterAPIRoutes(router, handlers, noopAuth, api)
-		RegisterAdminRoutes(router, adminHandlers, noopAuth, api)
+		_, api = BuildNoopAPI()
 	})
 
 	spec := api.OpenAPI()

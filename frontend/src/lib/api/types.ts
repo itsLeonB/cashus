@@ -35,7 +35,25 @@ export type CurrentSubscription = components["schemas"]["SubscriptionLimitsRespo
 export type UploadLimit = components["schemas"]["UploadLimit"];
 
 // Friendship Types
-export type FriendshipResponse = components["schemas"]["FriendshipResponse"];
+//
+// Re-exported, but `type` is narrowed back to a literal union on top of the
+// generated shape: backend/openapi.json declares `type` as a bare `string`
+// (no enum) here — the same situation as GroupExpenseResponse.status /
+// ExpenseBillResponse.status below, which stay fully hand-written for that
+// reason. Here an Omit+intersect gets the same literal-union protection
+// without giving up drift protection on every other field (id, profileId,
+// profileAvatar, balancesPerCurrency, timestamps, ...), since those all do
+// match the schema exactly. Same pattern used below for FriendDetails,
+// DebtTransactionResponse, and FriendTransaction — all four have a `.type`
+// field compared with `===` at call sites (FriendsPage.tsx,
+// FriendDetailPage.tsx, TransactionHistory.tsx, RecentTransactions.tsx,
+// utils/share.ts), so nothing breaks at runtime either way, but this keeps
+// typo/rename protection on those comparisons instead of silently widening
+// to `string`.
+export type FriendshipResponse = Omit<
+  components["schemas"]["FriendshipResponse"],
+  "type"
+> & { type: "ANON" | "REAL" };
 
 // Frontend-only/composed — no matching schema in backend/openapi.json.
 // Currently only referenced from the (also frontend-only/unused, see
@@ -69,9 +87,18 @@ export interface FriendDetailsResponse {
   redirectToRealFriendship?: string;
 }
 
-export type FriendDetails = components["schemas"]["FriendDetails"];
+// `type` narrowed to a literal union — see the FriendshipResponse comment
+// above.
+export type FriendDetails = Omit<components["schemas"]["FriendDetails"], "type"> & {
+  type: "ANON" | "REAL";
+};
 export type FriendBalance = components["schemas"]["FriendBalance"];
-export type FriendTransaction = components["schemas"]["FriendTransactionItem"];
+// `type` narrowed to a literal union — see the FriendshipResponse comment
+// above.
+export type FriendTransaction = Omit<
+  components["schemas"]["FriendTransactionItem"],
+  "type"
+> & { type: "LENT" | "BORROWED" };
 
 export type NewAnonymousFriendshipRequest =
   components["schemas"]["CreateAnonymousFriendshipInputBody"];
@@ -81,7 +108,12 @@ export type NewAnonymousFriendshipRequest =
 // CreateDebtInputBody.direction rather than a standalone schema component.
 export type DebtDirection = "INCOMING" | "OUTGOING";
 
-export type DebtTransactionResponse = components["schemas"]["DebtTransactionResponse"];
+// `type` narrowed to a literal union — see the FriendshipResponse comment
+// above.
+export type DebtTransactionResponse = Omit<
+  components["schemas"]["DebtTransactionResponse"],
+  "type"
+> & { type: "LENT" | "BORROWED" };
 export type NewDebtTransactionRequest = components["schemas"]["CreateDebtInputBody"];
 export type NewRepaymentRequest = components["schemas"]["CreateRepaymentInputBody"];
 
@@ -233,11 +265,6 @@ export type ExpenseParticipantsRequest =
 
 export type SyncItemParticipantsRequest =
   components["schemas"]["SyncExpenseItemParticipantsInputBody"];
-
-// The generated schema names this element type `Item` (a generic name
-// that's Huma's, not ours) — re-exported here under the app's existing,
-// more specific name so call sites don't change.
-export type ItemParticipantRequest = components["schemas"]["Item"];
 
 export type ExpenseConfirmationResponse =
   components["schemas"]["ExpenseConfirmationResponse"];

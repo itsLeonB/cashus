@@ -12,6 +12,31 @@ make test
 
 Do not use `go build` or `go test` directly.
 
+## OpenAPI document
+
+`backend/openapi.json` is a checked-in, generated artifact: the Huma-produced
+OpenAPI document for the whole `/api/v1` + `/admin/v1` surface, serialized
+without starting an HTTP server, a database, or any network connection. It's
+the stable input the frontend's codegen step reads from.
+
+```bash
+make openapi        # regenerate openapi.json from the current router wiring
+make openapi-check  # verify openapi.json matches the current router wiring (exits non-zero on drift; run in CI)
+```
+
+Both drive `cmd/openapi`, which wires up the same zero-value-provider gin
+router + Huma API that `internal/adapters/http/routes.BuildNoopAPI` builds
+for `TestFullRegistrationSmoke` (see `internal/adapters/http/routes/noop.go`
+and `smoke_registration_test.go`), then marshals `api.OpenAPI()` as indented
+JSON. Since `huma.Register` only inspects each Input/Output struct's shape
+to build the spec, zero-value services are enough to produce the real,
+complete document.
+
+Whenever a route, handler Input/Output struct, or DTO shape changes, run
+`make openapi` and commit the result. `make openapi-check` catches a missed
+regeneration by diffing a fresh run against the checked-in file (not
+`git diff`, so it behaves the same in CI and in a dirty local tree).
+
 ## Project Structure
 
 ```text

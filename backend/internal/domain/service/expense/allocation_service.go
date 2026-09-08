@@ -18,12 +18,16 @@ func NewAllocationService() AllocationService {
 }
 
 func (a *allocationServiceImpl) AllocateAmounts(totalAmount decimal.Decimal, participants []expenses.ItemParticipant) ([]expenses.ItemParticipant, error) {
-	// Also expressed as `minItems:"1"` on
-	// SyncExpenseItemParticipantsInput.Body.Participants (CASH-16). Kept here
-	// too: this is a shared, directly-tested domain function, and its other
-	// caller (ExpenseItemService.Update, via allocateAndSyncParticipants)
-	// reaches it with already-persisted Participants that never passed
-	// through that Input.
+	// Not mirrored by any HTTP-layer schema constraint (CASH-16): the API
+	// intentionally allows syncing to an empty participant list (see
+	// SyncExpenseItemParticipantsInput.Body.Participants), and its one
+	// caller here, allocateAndSyncParticipants, already skips this call
+	// entirely when Participants is empty. This check stays regardless, as
+	// a guard against a division-by-zero panic below - weightTotal would be
+	// 0 for an empty slice, and decimal.Decimal.Div panics on a zero
+	// divisor. AllocateAmounts is part of the exported AllocationService
+	// interface and is also directly unit-tested, so it must not rely on
+	// its only current caller's guard to stay safe.
 	if len(participants) == 0 {
 		return nil, ungerr.UnprocessableEntityError("no participants provided")
 	}

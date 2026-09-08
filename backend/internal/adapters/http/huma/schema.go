@@ -57,12 +57,14 @@ func (Decimal) Schema(huma.Registry) *huma.Schema {
 // branches, where huma.Validate does check it: `exclusiveMinimum` on the
 // number branch (hit by the TypeNumber case above), and a `pattern` on the
 // string branch rejecting anything but an unsigned decimal (no leading
-// `-`). The pattern is a format-level check only - Go's RE2 regexp engine
-// has no negative lookahead, so it can't also reject an all-zero string
-// like "0" or "0.00" the way ExclusiveMinimum rejects 0 for the number
-// branch. That narrow gap (a *quoted* zero amount) is why the service-layer
-// positivity check stays in place as a backstop even where this type is
-// used - see the callers' comments.
+// `-`). The pattern requires at least one non-zero digit somewhere in the
+// value (either before or after the decimal point), so quoted all-zero
+// strings like "0", "0.0" and "000.000" are rejected the same way
+// ExclusiveMinimum rejects 0 for the number branch. Any remaining gap
+// between what this pattern accepts and true positivity (e.g. exotic
+// numeric-string forms decimal.Decimal itself would reject at parse time)
+// is why the service-layer positivity check stays in place as a backstop
+// even where this type is used - see the callers' comments.
 type PositiveDecimal struct {
 	decimal.Decimal
 }
@@ -77,8 +79,53 @@ func (PositiveDecimal) Schema(huma.Registry) *huma.Schema {
 			{Type: huma.TypeNumber, ExclusiveMinimum: &zero},
 			{
 				Type:               huma.TypeString,
-				Pattern:            `^[0-9]+(\.[0-9]+)?$`,
+				Pattern:            `^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$`,
 				PatternDescription: "a positive decimal number, e.g. \"10.50\" (no sign, not zero)",
+			},
+		},
+	}
+}
+
+// NonZeroDecimal is Decimal plus a "must not be zero" constraint, for amount
+// fields whose service-layer rule is a strict non-zero check (e.g.
+// OtherFeeService's "amount != 0" - see AddOtherFeeInput.Body.Amount's
+// comment in other_fee_handler.go, CASH-16), where a negative value is a
+// legitimate case (e.g. a discount) and only zero is disallowed.
+//
+// JSON Schema has no direct "not equal to N" numeric keyword, but combining
+// `not` with `const` expresses it: `not: {const: 0}` matches only when the
+// value does NOT equal 0. Unlike the `exclusiveMinimum`/`pattern` tags
+// PositiveDecimal relies on, huma v2.39.1's Validate does not gate `Not` or
+// `Const` inside `switch s.Type { ... }` - both checks run unconditionally
+// (near the top and bottom of Validate respectively), so they apply even to
+// an anyOf-only schema with no top-level `type`. That means `not`+`const`
+// IS enforced here, unlike the exclusiveMinimum-on-a-bare-Decimal-field gap
+// TestDecimalFieldExclusiveMinimumTagIsNotEnforced documents - verified
+// empirically in TestNonZeroDecimalSchema (CASH-16 follow-up spike).
+//
+// The number branch therefore puts `not: {const: 0}` alongside `type:
+// number`. The string branch instead uses a `pattern` requiring at least
+// one non-zero digit, with an optional leading `-` (negative is allowed
+// here, unlike PositiveDecimal) - the same format-level approach
+// PositiveDecimal uses, with the same residual gap (exotic numeric-string
+// forms decimal.Decimal itself would still reject at parse time), which is
+// why the service-layer "!= 0" check stays in place as a backstop even
+// where this type is used - see the callers' comments.
+type NonZeroDecimal struct {
+	decimal.Decimal
+}
+
+// Schema implements huma.SchemaProvider. See the NonZeroDecimal doc comment
+// for why the constraint lives on each anyOf branch instead of as a
+// struct-tag-applied top-level property.
+func (NonZeroDecimal) Schema(huma.Registry) *huma.Schema {
+	return &huma.Schema{
+		AnyOf: []*huma.Schema{
+			{Type: huma.TypeNumber, Not: &huma.Schema{Const: 0.0}},
+			{
+				Type:               huma.TypeString,
+				Pattern:            `^-?(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$`,
+				PatternDescription: "a non-zero decimal number, e.g. \"10.50\" or \"-5\" (no zero)",
 			},
 		},
 	}

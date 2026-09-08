@@ -109,3 +109,89 @@ func TestPositiveDecimalSchema(t *testing.T) {
 		})
 	}
 }
+
+// TestPositiveDecimalSchemaRejectsAllZeroStrings proves the string-branch
+// pattern rejects a quoted amount that is numerically zero regardless of
+// how many digits or leading/trailing zeros it's written with, not just the
+// literal "0" - this is the CASH-16 CodeRabbit-flagged gap in the previous
+// `^[0-9]+(\.[0-9]+)?$` pattern, which wrongly matched "0", "0.0" and
+// "000.000". These all-zero-string cases are intentionally unit-level only
+// (schema_test.go), not duplicated into the HTTP integration tests, which
+// stay limited to one representative rejected input each.
+func TestPositiveDecimalSchemaRejectsAllZeroStrings(t *testing.T) {
+	registry := huma.NewMapRegistry("#/prefix", huma.DefaultSchemaNamer)
+	schema := PositiveDecimal{}.Schema(registry)
+	schema.PrecomputeMessages()
+
+	tests := []struct {
+		name    string
+		value   any
+		wantErr bool
+	}{
+		{"zero string", "0", true},
+		{"zero string with decimals", "0.0", true},
+		{"all-zero string with leading and trailing zeros", "000.000", true},
+		{"small positive decimal string", "0.5", false},
+		{"integer string", "10", false},
+		{"small positive fraction with leading zero digit", "0.01", false},
+		{"positive with redundant leading zero", "00.5", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := &huma.ValidateResult{}
+			huma.Validate(registry, schema, huma.NewPathBuffer([]byte(""), 0), huma.ModeWriteToServer, tt.value, res)
+			if tt.wantErr {
+				assert.NotEmpty(t, res.Errors)
+			} else {
+				assert.Empty(t, res.Errors)
+			}
+		})
+	}
+}
+
+// TestNonZeroDecimalSchema proves NonZeroDecimal both documents and enforces
+// "not zero" (CASH-16), for both wire forms Decimal accepts, and that
+// negative values - a legitimate discount for the fields this type is wired
+// onto - are still accepted. It also serves as the empirical check for
+// NonZeroDecimal's doc comment: that huma v2.39.1's Validate actually
+// enforces a `not`/`const` sub-schema even on an anyOf-only schema with no
+// top-level `type`, unlike the exclusiveMinimum-on-a-bare-Decimal-field gap
+// TestDecimalFieldExclusiveMinimumTagIsNotEnforced documents.
+func TestNonZeroDecimalSchema(t *testing.T) {
+	registry := huma.NewMapRegistry("#/prefix", huma.DefaultSchemaNamer)
+	schema := NonZeroDecimal{}.Schema(registry)
+	schema.PrecomputeMessages()
+
+	raw, err := schema.MarshalJSON()
+	assert.NoError(t, err)
+	assert.Contains(t, string(raw), `"not"`, "the constraint must show up in /openapi.json")
+
+	tests := []struct {
+		name    string
+		value   any
+		wantErr bool
+	}{
+		{"positive number", 10.5, false},
+		{"negative number is allowed (discount)", -5.0, false},
+		{"positive numeric string", "10.50", false},
+		{"negative numeric string is allowed (discount)", "-5", false},
+		{"zero number", float64(0), true},
+		{"zero string", "0", true},
+		{"zero string with decimals", "0.0", true},
+		{"all-zero string with leading and trailing zeros", "000.000", true},
+		{"boolean is invalid", true, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := &huma.ValidateResult{}
+			huma.Validate(registry, schema, huma.NewPathBuffer([]byte(""), 0), huma.ModeWriteToServer, tt.value, res)
+			if tt.wantErr {
+				assert.NotEmpty(t, res.Errors)
+			} else {
+				assert.Empty(t, res.Errors)
+			}
+		})
+	}
+}

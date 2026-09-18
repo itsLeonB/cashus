@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearServiceWorkerCache } from "@/lib/sw-utils";
 import { apiClient } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function OAuthCallbackPage() {
   const { provider } = useParams<{ provider: string }>();
@@ -53,7 +54,9 @@ export default function OAuthCallbackPage() {
           await new Promise(() => {});
         },
         onError: (error) => {
-          setError(error.message || "Failed to complete authentication");
+          setError(
+            getApiErrorMessage(error, "Failed to complete authentication"),
+          );
         },
       },
     );

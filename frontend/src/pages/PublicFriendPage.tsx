@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserPlus } from "lucide-react";
 import { FriendBalanceSection } from "@/components/FriendBalanceSection";
 import { Seo } from "@/components/Seo";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function PublicFriendPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -42,7 +43,7 @@ export default function PublicFriendPage() {
       <div className="max-w-3xl mx-auto p-4 text-center py-16">
         <Seo title="Shared Profile" noindex />
         <p className="text-muted-foreground mb-4">
-          {error?.message || "Profile not found"}
+          {getApiErrorMessage(error, "Profile not found")}
         </p>
         <Link to="/">
           <Button variant="link">Go to Home</Button>

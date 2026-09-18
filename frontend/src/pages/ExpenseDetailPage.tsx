@@ -295,7 +295,7 @@ export default function ExpenseDetailPage() {
           toast({
             variant: "destructive",
             title: "Failed to remove item",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
         onSettled: () => {
@@ -322,7 +322,7 @@ export default function ExpenseDetailPage() {
           toast({
             variant: "destructive",
             title: "Failed to remove fee",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
         onSettled: () => {

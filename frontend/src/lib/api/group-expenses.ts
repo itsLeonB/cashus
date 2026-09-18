@@ -72,8 +72,12 @@ export const groupExpensesApi = {
       quantity: data.quantity,
     }),
 
-  updateItem: (itemId: string, data: UpdateExpenseItemRequest) =>
-    apiClient.put(`/group-expenses/${data.groupExpenseId}/items/${itemId}`, {
+  updateItem: (
+    groupExpenseId: string,
+    itemId: string,
+    data: UpdateExpenseItemRequest,
+  ) =>
+    apiClient.put(`/group-expenses/${groupExpenseId}/items/${itemId}`, {
       name: data.name,
       amount: data.amount,
       quantity: data.quantity,

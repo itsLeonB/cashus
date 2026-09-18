@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { FriendBalance, ApiError } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 type DebtSummaryProps = {
   data: FriendBalance | undefined;
@@ -54,8 +55,10 @@ const DebtSummary = ({
           <h3 className="font-semibold">Failed to load summary</h3>
         </div>
         <p className="text-sm opacity-90">
-          {error?.message ||
-            "Something went wrong while fetching your balances."}
+          {getApiErrorMessage(
+            error,
+            "Something went wrong while fetching your balances.",
+          )}
         </p>
       </div>
     );

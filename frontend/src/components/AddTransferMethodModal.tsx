@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useFilteredTransferMethods } from "@/hooks/useMasterData";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { useAddTransferMethod } from "@/hooks/useApi";
 import TransferMethodSelect from "@/components/TransferMethodSelect";
 import { TransferMethod } from "@/lib/api";
@@ -72,7 +73,7 @@ export function AddTransferMethodModal({
           toast({
             variant: "destructive",
             title: "Failed to add transfer method",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
       },

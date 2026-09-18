@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { AvatarCircle } from "@/components/AvatarCircle";
 import { useSearchProfiles, useAssociateProfile } from "@/hooks/useApi";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { Loader2, Search, Link2, UserCheck } from "lucide-react";
 
 interface AssociateProfileModalProps {
@@ -58,7 +59,7 @@ export function AssociateProfileModal({
           toast({
             variant: "destructive",
             title: "Failed to link profile",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
         onSettled: () => {

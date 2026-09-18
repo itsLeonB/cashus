@@ -16,8 +16,9 @@ type NewExpenseBillRequest struct {
 
 type ExpenseBillResponse struct {
 	BaseDTO
-	ImageURL string              `json:"imageUrl"`
-	Status   expenses.BillStatus `json:"status" enum:"NOT_UPLOADED,PENDING,EXTRACTED,FAILED_EXTRACTING,PARSED,FAILED_PARSING,NOT_DETECTED"`
+	ImageURL string `json:"imageUrl"`
+	// enum values must be kept in sync with the expenses.BillStatus consts
+	Status expenses.BillStatus `json:"status" enum:"NOT_UPLOADED,PENDING,EXTRACTED,FAILED_EXTRACTING,PARSED,FAILED_PARSING,NOT_DETECTED"`
 }
 
 type PresignedExpenseBillRequest struct {

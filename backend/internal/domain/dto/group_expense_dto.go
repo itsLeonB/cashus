@@ -18,13 +18,14 @@ type NewGroupExpenseRequest struct {
 
 type GroupExpenseResponse struct {
 	BaseDTO
-	Currency         string                 `json:"currency"`
-	TotalAmount      decimal.Decimal        `json:"totalAmount"`
-	ItemsTotalAmount decimal.Decimal        `json:"itemsTotalAmount"`
-	FeesTotalAmount  decimal.Decimal        `json:"feesTotalAmount"`
-	Description      string                 `json:"description"`
-	Status           expenses.ExpenseStatus `json:"status" enum:"DRAFT,READY,CONFIRMED"`
-	IsPreviewable    bool                   `json:"isPreviewable"`
+	Currency         string          `json:"currency"`
+	TotalAmount      decimal.Decimal `json:"totalAmount"`
+	ItemsTotalAmount decimal.Decimal `json:"itemsTotalAmount"`
+	FeesTotalAmount  decimal.Decimal `json:"feesTotalAmount"`
+	Description      string          `json:"description"`
+	// enum values must be kept in sync with the expenses.ExpenseStatus consts
+	Status        expenses.ExpenseStatus `json:"status" enum:"DRAFT,READY,CONFIRMED"`
+	IsPreviewable bool                   `json:"isPreviewable"`
 
 	// Relationships
 	Payer        SimpleProfile                `json:"payer"`

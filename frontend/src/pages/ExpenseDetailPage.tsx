@@ -490,7 +490,7 @@ export default function ExpenseDetailPage() {
   };
 
   const otherFeeSection = () => {
-    if (isConfirmed && (expense.otherFees?.length || 0) === 0) return null;
+    if (isConfirmed && (expense.otherFees?.length ?? 0) === 0) return null;
     return (
       <Card className="border-border/50">
         <CardHeader className="flex flex-row items-center justify-between">

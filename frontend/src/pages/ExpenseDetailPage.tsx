@@ -58,7 +58,7 @@ import {
   Download,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { NewExpenseItemRequest, statusDisplay } from "@/lib/api";
+import { statusDisplay } from "@/lib/api";
 import { shareExpensePdf } from "@/utils/exportExpensePdf";
 import type {
   ExpenseItemResponse,
@@ -76,7 +76,14 @@ const formatDate = (date: string) => {
   });
 };
 
-const calculateItemAmount = (item: NewExpenseItemRequest): number => {
+// CASH-20: this was previously (incorrectly) typed as NewExpenseItemRequest
+// — the actual runtime value passed in (see calculateItemsTotal below) is
+// always an ExpenseItemResponse from expense.items, never a request body.
+// That mistyping only stayed silent because both hand-written types
+// happened to declare `amount: string`; NewExpenseItemRequest now
+// re-exports the generated AddExpenseItemInputBody, whose `amount` is
+// `number | string`, which surfaced the drift as a real type error.
+const calculateItemAmount = (item: ExpenseItemResponse): number => {
   const amount = Number.parseFloat(item.amount) || 0;
   return amount * item.quantity;
 };

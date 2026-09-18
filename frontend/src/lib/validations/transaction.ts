@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+// CASH-20 validations audit: transactionDateSchema backs the
+// `transactionDate` field of CreateDebtInputBody/CreateRepaymentInputBody
+// (backend/openapi.json), evaluated for OpenAPI-driven generation and
+// rejected. The backend schema types `transactionDate` as a bare
+// `{"type": "string"}` with no `format`/`pattern` at all — it encodes none
+// of the "YYYY-MM-DD" shape, calendar-validity, or future-date-rejection
+// rules this schema exists to enforce (those are pure business rules,
+// checked server-side but not expressed as JSON Schema keywords). A
+// generated base schema here would be an unconstrained `z.string()`, so
+// composing `.refine()`s on top of it would still require writing every
+// rule below by hand — no different from, and no safer than, the current
+// fully hand-written version. Left as-is.
+//
 // "YYYY-MM-DD" — zero-padded ISO date strings sort/compare lexicographically,
 // so string comparison against today's date is sufficient to reject future dates.
 // Derived from UTC date parts (not local getFullYear()/etc.) to match the

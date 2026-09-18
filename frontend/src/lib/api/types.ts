@@ -190,18 +190,26 @@ export type OtherFeeResponse = components["schemas"]["OtherFeeResponse"];
 export type ExpenseParticipantResponse =
   components["schemas"]["ExpenseParticipantResponse"];
 
-// `ExpenseItem`/`ItemParticipant`/`OtherFee` (and the `FriendProfile` type
+// `ExpenseItem`/`ItemParticipant` (and the `FriendProfile` type
 // `ItemParticipant.profile` used) were removed here in CASH-21: CASH-20 had
 // already flagged these as dead — used only as the (unused) response-type
-// parameter on groupExpensesApi.addItem/updateItem/addFee/updateFee, which
-// actually hit endpoints that return 204 No Content per
-// backend/openapi.json (no response body at all; the mutation result is
-// never read, onSuccess only invalidates queries) — and CASH-21 confirmed
-// via a full-repo grep that nothing else referenced them, so they're
-// deleted rather than migrated. group-expenses.ts's addItem/updateItem/
-// addFee/updateFee calls no longer pass a response-type generic, matching
-// every other 204-No-Content call in that file (removeItem, removeFee,
-// etc.).
+// parameter on groupExpensesApi.addItem/updateItem, which actually hit
+// endpoints that return 204 No Content per backend/openapi.json (no
+// response body at all; the mutation result is never read, onSuccess only
+// invalidates queries) — and CASH-21 confirmed via a full-repo grep that
+// nothing else referenced them, so they're deleted rather than migrated.
+// group-expenses.ts's addItem/updateItem calls no longer pass a
+// response-type generic, matching every other 204-No-Content call in that
+// file (removeItem, removeFee, etc.).
+//
+// `OtherFee` was initially deleted alongside these on the same (incorrect)
+// assumption that addFee/updateFee were also 204-No-Content — a CodeRabbit
+// review on this PR caught the error: per backend/openapi.json, POST
+// .../fees is 201 and PUT .../fees/{id} is 200, both with a real
+// `EnvelopeOtherFeeResponse` JSON body, unlike the item endpoints. Fixed by
+// typing `groupExpensesApi.addFee`/`updateFee` with the already-migrated
+// `OtherFeeResponse` (below) as their response generic instead of
+// reintroducing a hand-written `OtherFee` type.
 
 // groupExpenseId is accepted here but never actually sent — addItem's HTTP
 // call builds its body as {name, amount, quantity} explicitly, dropping it.

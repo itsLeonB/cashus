@@ -12,6 +12,7 @@ import {
   SyncItemParticipantsRequest,
   ExpenseConfirmationResponse,
   PresignedExpenseBillResponse,
+  OtherFeeResponse,
 } from "./types";
 
 export const groupExpensesApi = {
@@ -97,7 +98,7 @@ export const groupExpensesApi = {
     ),
 
   addFee: (groupExpenseId: string, data: NewOtherFeeRequest) =>
-    apiClient.post(`/group-expenses/${groupExpenseId}/fees`, {
+    apiClient.post<OtherFeeResponse>(`/group-expenses/${groupExpenseId}/fees`, {
       name: data.name,
       amount: data.amount,
       calculationMethod: data.calculationMethod,
@@ -108,11 +109,14 @@ export const groupExpensesApi = {
     feeId: string,
     data: UpdateOtherFeeRequest,
   ) =>
-    apiClient.put(`/group-expenses/${groupExpenseId}/fees/${feeId}`, {
-      name: data.name,
-      amount: data.amount,
-      calculationMethod: data.calculationMethod,
-    }),
+    apiClient.put<OtherFeeResponse>(
+      `/group-expenses/${groupExpenseId}/fees/${feeId}`,
+      {
+        name: data.name,
+        amount: data.amount,
+        calculationMethod: data.calculationMethod,
+      },
+    ),
 
   removeFee: (groupExpenseId: string, feeId: string) =>
     apiClient.delete(`/group-expenses/${groupExpenseId}/fees/${feeId}`),

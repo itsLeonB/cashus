@@ -8,20 +8,31 @@
 // from. See frontend/CLAUDE.md's "API codegen" section.
 //
 // CASH-19 re-exported auth + profile only, as a deliberate first-slice
-// scope boundary. CASH-20 (this migration) audited every remaining
-// hand-written interface here field-by-field against
-// backend/openapi.json's components.schemas and re-exported everything
-// that's a genuine match. What's still hand-written below falls into one
-// of three buckets, each commented at its definition:
-//   1. Frontend-only/client-composed shapes with no wire counterpart at all
-//      (ApiError, ApiResponse<T>, DebtDirection, ...).
-//   2. Types that partially match a schema but compose extra
-//      frontend-only/routing fields on top (UpdateExpenseItemRequest, ...).
-//   3. Types where re-exporting would erode a literal-union type the UI
-//      depends on for exhaustive lookups, because the backend schema
-//      declares the matching field as a plain `string` rather than an enum
-//      (GroupExpenseResponse, ExpenseBillResponse) — see the CASH-20 final
-//      report for the backend-follow-up suggestion.
+// scope boundary. CASH-20 audited every remaining hand-written interface
+// here field-by-field against backend/openapi.json's components.schemas and
+// re-exported everything that was a genuine match, leaving the rest
+// hand-written with a rationale comment at each. CASH-21 (two rounds) went
+// through that leftover list item by item:
+//   - Migrated after a minor backend Huma fix (a response DTO field typed
+//     as a bare Go `string` instead of the enum type the entity layer
+//     already had, with no `enum:"..."` struct tag): GroupExpenseResponse,
+//     ExpenseBillResponse.
+//   - Migrated after fixing a real frontend bug the mismatch was masking
+//     (ExpenseFeeModal.tsx's fallback calculation-method options didn't
+//     match the backend's real enum): NewOtherFeeRequest,
+//     UpdateOtherFeeRequest.
+//   - Migrated after a refactor moved a load-bearing field out of the
+//     request body and into its own function parameter:
+//     UpdateExpenseItemRequest.
+//   - Migrated as a straight derivation/composition with no backend change
+//     needed: DebtDirection (indexes into an already-enum-tagged generated
+//     field), FriendDetailsResponse (Omit+intersect to keep its `friend`
+//     field's literal-union narrowing), ApiError (composed on the generated
+//     ErrorModel schema).
+//   - Confirmed dead and deleted entirely: ExpenseItem, ItemParticipant,
+//     FriendProfile, OtherFee, ExpenseOwnership, ApiResponse<T>.
+// What's still hand-written below is genuinely frontend-only/client-composed
+// with no wire counterpart at all — each has its own comment explaining why.
 import type { components } from "./schema.gen";
 
 // Authentication Types
@@ -38,9 +49,12 @@ export type UploadLimit = components["schemas"]["UploadLimit"];
 //
 // Re-exported, but `type` is narrowed back to a literal union on top of the
 // generated shape: backend/openapi.json declares `type` as a bare `string`
-// (no enum) here — the same situation as GroupExpenseResponse.status /
-// ExpenseBillResponse.status below, which stay fully hand-written for that
-// reason. Here an Omit+intersect gets the same literal-union protection
+// (no enum) here — the same situation GroupExpenseResponse.status /
+// ExpenseBillResponse.status used to be in, before CASH-21 added an explicit
+// `enum:"..."` struct tag on those backend DTO fields (see their comments
+// below). `FriendshipResponse.type` is a request/query-parameter-less plain
+// response field with no equivalent fix available yet, so it keeps this
+// Omit+intersect approach: it gets the same literal-union protection
 // without giving up drift protection on every other field (id, profileId,
 // profileAvatar, balancesPerCurrency, timestamps, ...), since those all do
 // match the schema exactly. Same pattern used below for FriendDetails,
@@ -55,37 +69,27 @@ export type FriendshipResponse = Omit<
   "type"
 > & { type: "ANON" | "REAL" };
 
-// Frontend-only/composed — no matching schema in backend/openapi.json.
-// Currently only referenced from the (also frontend-only/unused, see
-// ItemParticipant below) ItemParticipant.profile field.
-export interface FriendProfile {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  isAnonymous: boolean;
-  email?: string;
-}
-
 export type SearchProfileResult = components["schemas"]["SearchProfileResponse"];
 
-// FriendDetailsResponse stays hand-written: backend/openapi.json's
-// FriendDetailsResponse only has `friend` + `balancesPerCurrency` (both
-// required) — there is no top-level `balance` or `redirectToRealFriendship`
-// field on the wire type at all. `redirectToRealFriendship` is unused
-// anywhere in the app (dead). `balance` IS read, as a fallback, in
+// Migrated in CASH-21 (round 2): backend/openapi.json's FriendDetailsResponse
+// only ever had `friend` + `balancesPerCurrency` (both required) — there was
+// no top-level `balance` or `redirectToRealFriendship` field on the wire
+// type at all. `redirectToRealFriendship` was confirmed dead (unused
+// anywhere in the app). `balance` was read only as a fallback in
 // FriendDetailPage.tsx (`balancesPerCurrency[activeCurrency] ||
-// friendship?.balance`) — but the backend never sends a top-level `balance`
-// field, so that fallback can never actually fire; this looks like a
-// pre-existing bug (dead/wrong field read) rather than something safe to
-// silently "fix" by dropping it here. Flagged in the CASH-20 report;
-// left as-is pending a product/behavior decision. The nested types are
-// re-exported below and used here to avoid duplicating them.
-export interface FriendDetailsResponse {
-  friend: FriendDetails;
-  balance: FriendBalance;
-  balancesPerCurrency?: Record<string, FriendBalance>;
-  redirectToRealFriendship?: string;
-}
+// friendship?.balance`) — since the backend never sent a top-level `balance`
+// field, that fallback could never actually fire, so it's now removed there
+// too (`activeBalance = balancesPerCurrency[activeCurrency]`), fixing the
+// dead-code bug CASH-20/21 originally flagged and deferred.
+// `friend` is typed via this file's own narrowed `FriendDetails` (see
+// below), not the raw generated component, to keep the same
+// `.type === "ANON"` literal-union protection FriendDetailPage.tsx's three
+// call sites already rely on — a plain 1:1 alias would silently widen
+// `friend.type` back to `string`.
+export type FriendDetailsResponse = Omit<
+  components["schemas"]["FriendDetailsResponse"],
+  "friend"
+> & { friend: FriendDetails };
 
 // `type` narrowed to a literal union — see the FriendshipResponse comment
 // above.
@@ -104,9 +108,14 @@ export type NewAnonymousFriendshipRequest =
   components["schemas"]["CreateAnonymousFriendshipInputBody"];
 
 // Debt Transaction Types
-// Frontend-only alias: the backend inlines this as an enum on
-// CreateDebtInputBody.direction rather than a standalone schema component.
-export type DebtDirection = "INCOMING" | "OUTGOING";
+// Derived (CASH-21 round 2) rather than hand-written: the backend inlines
+// this as an `enum:"INCOMING,OUTGOING"`-tagged field on
+// CreateDebtInputBody.direction rather than a standalone schema component,
+// but Huma still carries that enum into the generated literal union, so
+// indexing into it keeps drift protection instead of hand-duplicating the
+// two literal values.
+export type DebtDirection =
+  components["schemas"]["CreateDebtInputBody"]["direction"];
 
 // `type` narrowed to a literal union — see the FriendshipResponse comment
 // above.
@@ -125,46 +134,40 @@ export type NewProfileTransferMethod =
 
 export type SimpleProfile = components["schemas"]["SimpleProfile"];
 
-// Expense Ownership Types
-// Frontend-only: a query-param filter value, not a wire schema.
-export type ExpenseOwnership = "OWNED" | "PARTICIPATING";
+// `ExpenseOwnership` (a frontend-only "OWNED" | "PARTICIPATING" query-param
+// filter value candidate) was removed here in CASH-21: confirmed dead via a
+// full-repo grep (unused anywhere outside its own declaration).
+// ExpensesPage.tsx, the one place that actually needs this union, declares
+// its own local `OwnershipType` instead — this hand-written export was never
+// wired up to it. Note for anyone tempted to re-add it as a schema
+// re-export: even though the backend has a real `expenses.ExpenseOwnership`
+// Go enum type behind the `ownership` query param, Huma's query-parameter
+// schema generation doesn't pick up the same `enum:"..."` struct-tag
+// mechanism that made GroupExpenseResponse.status/ExpenseBillResponse.status/
+// OtherFeeResponse.calculationMethod work below — backend/openapi.json still
+// emits `{"type": "string"}` with no enum for `ownership`. Fixing that is a
+// separate, slightly bigger Huma investigation (query-param schema
+// generation, not just adding a struct tag) than the minor DTO-field fixes
+// made in this ticket, so it's left as a follow-up rather than expanded into
+// here.
 
 // Group Expense Types
 //
-// Stays hand-written rather than re-exporting
-// components["schemas"]["GroupExpenseResponse"] wholesale: its `status`
-// field is a plain `string` in backend/openapi.json (no enum declared), so
-// re-exporting would widen `status` away from the literal union that
-// `statusDisplay`/`RecentExpenses.tsx`/etc. index into. Every nested type
-// below (SimpleProfile, ExpenseItemResponse, OtherFeeResponse,
-// ExpenseParticipantResponse, ExpenseConfirmationResponse) IS re-exported
-// from the schema, so this composed interface only still hand-declares the
-// fields the schema can't currently express precisely (`status`) plus
-// `bill`, which is hand-written for the same reason (see ExpenseBillResponse
-// below).
-export interface GroupExpenseResponse {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  totalAmount: string;
-  itemsTotalAmount: string;
-  feesTotalAmount: string;
-  description?: string;
-  status: "DRAFT" | "READY" | "CONFIRMED";
-  isPreviewable: boolean;
-  currency: string;
-
-  // Relationships
-  payer: SimpleProfile;
-  creator: SimpleProfile;
-  items: ExpenseItemResponse[];
-  otherFees?: OtherFeeResponse[];
-  participants?: ExpenseParticipantResponse[];
-  bill: ExpenseBillResponse;
-  billExists: boolean;
-
-  confirmationPreview: ExpenseConfirmationResponse;
-}
+// Re-exported as of CASH-21. CASH-20 kept this fully hand-written because
+// backend/openapi.json's GroupExpenseResponse.status was a plain `string`
+// (no enum), which would have widened the literal union that
+// `statusDisplay`/`RecentExpenses.tsx`/ExpensesPage.tsx compare against.
+// CASH-21 traced that to a real (and minor) Huma gap: the DTO field was
+// typed as a bare Go `string` with no `enum:"..."` struct tag, even though
+// the entity layer already has a proper `expenses.ExpenseStatus` Go enum
+// type. Fixed on the backend (dto.GroupExpenseResponse.Status is now typed
+// `expenses.ExpenseStatus` with `enum:"DRAFT,READY,CONFIRMED"`), so the
+// generated type now carries the same literal union this used to hand-roll.
+// `items`/`otherFees`/`participants` are typed `T[] | null` here (nullable,
+// not optional) per the generated schema — narrower than this interface's
+// old `T[]`/`T[]?`, so call sites needed a couple of null-safety tweaks (see
+// the CASH-21 report).
+export type GroupExpenseResponse = components["schemas"]["GroupExpenseResponse"];
 
 export const statusDisplay = {
   DRAFT: "Draft",
@@ -187,35 +190,26 @@ export type OtherFeeResponse = components["schemas"]["OtherFeeResponse"];
 export type ExpenseParticipantResponse =
   components["schemas"]["ExpenseParticipantResponse"];
 
-// Frontend-only/dead: used only as the (unused) response-type parameter on
-// groupExpensesApi.addItem/updateItem, which actually hit endpoints that
-// return 204 No Content per backend/openapi.json (no response body at all)
-// — the mutation result is never read (onSuccess only invalidates
-// queries). No plausible backend schema, and nothing depends on this shape
-// being accurate. Flagged in the CASH-20 report as a cleanup candidate.
-export interface ExpenseItem {
-  id: string;
-  name: string;
-  amount: string;
-  quantity: number;
-  participants: ItemParticipant[];
-}
-
-// Frontend-only/dead — see ExpenseItem above.
-export interface ItemParticipant {
-  profileId: string;
-  profile: FriendProfile;
-  share: string;
-}
-
-// Frontend-only/dead — same situation as ExpenseItem above (addFee/updateFee
-// also hit 204-No-Content endpoints).
-export interface OtherFee {
-  id: string;
-  name: string;
-  amount: string;
-  calculationMethod: string;
-}
+// `ExpenseItem`/`ItemParticipant` (and the `FriendProfile` type
+// `ItemParticipant.profile` used) were removed here in CASH-21: CASH-20 had
+// already flagged these as dead — used only as the (unused) response-type
+// parameter on groupExpensesApi.addItem/updateItem, which actually hit
+// endpoints that return 204 No Content per backend/openapi.json (no
+// response body at all; the mutation result is never read, onSuccess only
+// invalidates queries) — and CASH-21 confirmed via a full-repo grep that
+// nothing else referenced them, so they're deleted rather than migrated.
+// group-expenses.ts's addItem/updateItem calls no longer pass a
+// response-type generic, matching every other 204-No-Content call in that
+// file (removeItem, removeFee, etc.).
+//
+// `OtherFee` was initially deleted alongside these on the same (incorrect)
+// assumption that addFee/updateFee were also 204-No-Content — a CodeRabbit
+// review on this PR caught the error: per backend/openapi.json, POST
+// .../fees is 201 and PUT .../fees/{id} is 200, both with a real
+// `EnvelopeOtherFeeResponse` JSON body, unlike the item endpoints. Fixed by
+// typing `groupExpensesApi.addFee`/`updateFee` with the already-migrated
+// `OtherFeeResponse` (below) as their response generic instead of
+// reintroducing a hand-written `OtherFee` type.
 
 // groupExpenseId is accepted here but never actually sent — addItem's HTTP
 // call builds its body as {name, amount, quantity} explicitly, dropping it.
@@ -224,39 +218,35 @@ export interface OtherFee {
 // caller reads NewExpenseItemRequest.groupExpenseId.
 export type NewExpenseItemRequest = components["schemas"]["AddExpenseItemInputBody"];
 
-// Stays hand-written, composed on top of the generated body: `id` and
-// `groupExpenseId` are real, load-bearing frontend-only fields here —
-// unlike NewExpenseItemRequest's groupExpenseId, updateItem's URL is built
-// from `data.groupExpenseId` (see group-expenses.ts), so this one can't be
-// dropped.
+// Plain re-export as of CASH-21 round 2: `id`/`groupExpenseId` used to be
+// composed on top of the generated body here because
+// groupExpensesApi.updateItem's URL was built from `data.groupExpenseId`.
+// Refactored instead: updateItem now takes `groupExpenseId`/`itemId` as
+// their own function parameters (matching removeItem's calling convention
+// in the same file) rather than embedding them in the request body type, so
+// this can be a straight re-export of the generated body schema.
 export type UpdateExpenseItemRequest =
-  components["schemas"]["UpdateExpenseItemInputBody"] & {
-    id: string;
-    groupExpenseId: string;
-  };
+  components["schemas"]["UpdateExpenseItemInputBody"];
 
-// NewOtherFeeRequest/UpdateOtherFeeRequest stay fully hand-written rather
-// than re-exporting AddOtherFeeInputBody/UpdateOtherFeeInputBody: the
-// backend schema types `calculationMethod` as the literal union
+// Plain re-exports as of CASH-21 round 2. Previously stayed hand-written
+// because the backend schema types `calculationMethod` as the literal union
 // "EQUAL_SPLIT" | "ITEMIZED_SPLIT", but ExpenseFeeModal.tsx's fallback
 // <SelectItem> options (shown before useCalculationMethods() resolves)
-// offer "FLAT"/"PERCENTAGE" instead, and calculationMethod there is plain
-// react `useState<string>`. Re-exporting the narrower generated type would
-// surface that mismatch as a real type error at that call site, but fixing
-// it is a product/business-logic call (which values are actually valid to
-// submit before the calculation-methods list has loaded), not something
-// this type-migration ticket should silently paper over. Flagged in the
-// CASH-20 report as a separate, pre-existing-bug candidate.
-export interface NewOtherFeeRequest {
-  groupExpenseId?: string;
-  name: string;
-  amount: string;
-  calculationMethod: string;
-}
-
-export interface UpdateOtherFeeRequest extends NewOtherFeeRequest {
-  id: string;
-}
+// offered "FLAT"/"PERCENTAGE" instead — a real, pre-existing bug (those
+// values were never valid backend input), not a false mismatch to work
+// around. Fixed at the source instead of papering over it here:
+// ExpenseFeeModal.tsx's default state and fallback options now use the real
+// enum values ("EQUAL_SPLIT"/"ITEMIZED_SPLIT"), with labels matching the
+// backend's own fee-calculator display strings ("Equal split"/"Itemized
+// split" — see other_fee_service.go's calculator registry). The hand-written
+// `groupExpenseId?: string` field also dropped: like
+// NewExpenseItemRequest's groupExpenseId before it, it was accepted here but
+// never actually sent (addFee/updateFee build their HTTP body from
+// name/amount/calculationMethod only and take groupExpenseId as their own
+// function parameter instead — see group-expenses.ts).
+export type NewOtherFeeRequest = components["schemas"]["AddOtherFeeInputBody"];
+export type UpdateOtherFeeRequest =
+  components["schemas"]["UpdateOtherFeeInputBody"];
 
 export type FeeCalculationMethodInfo = components["schemas"]["FeeCalculationMethodInfo"];
 
@@ -277,58 +267,52 @@ export type FriendRequest = components["schemas"]["FriendshipRequestResponse"];
 
 // Bill Types
 //
-// Stays hand-written: backend/openapi.json's ExpenseBillResponse only has
-// `id`, `imageUrl`, `status`, `createdAt`, `updatedAt` — it does not have
-// `creatorProfileId`, `payerProfileId`, `deletedAt`, `isCreatedByUser`,
-// `isPaidByUser`, `creatorProfileName`, or `payerProfileName` at all.
-// Confirmed via a full-repo grep that none of those seven fields are read
-// anywhere outside this declaration — they're dead, not a backend gap.
-// `status` is kept as a hand-written literal union (rather than the
-// generated plain `string`) because ExpenseDetailPage.tsx's
-// `billStatusDisplay` is declared `satisfies Record<ExpenseBillResponse["status"], ...>`
-// for exhaustive status-to-label mapping; the backend schema doesn't
-// declare `status` as an enum (see the CASH-20 report's backend-follow-up
-// note).
-export interface ExpenseBillResponse {
-  id: string;
-  creatorProfileId: string;
-  payerProfileId: string;
-  imageUrl?: string;
-  status:
-    | "PENDING"
-    | "EXTRACTED"
-    | "FAILED_EXTRACTING"
-    | "PARSED"
-    | "FAILED_PARSING"
-    | "NOT_DETECTED"
-    | "NOT_UPLOADED";
-  createdAt: string;
-  updatedAt: string;
-  deletedAt?: string;
-  isCreatedByUser: boolean;
-  isPaidByUser: boolean;
-  creatorProfileName: string;
-  payerProfileName: string;
-}
+// Re-exported as of CASH-21. CASH-20 kept this fully hand-written for two
+// separate reasons, both resolved/confirmed this ticket:
+//   1. backend/openapi.json's ExpenseBillResponse only had `id`, `imageUrl`,
+//      `status`, `createdAt`, `updatedAt` — not the seven extra fields this
+//      interface used to declare (`creatorProfileId`, `payerProfileId`,
+//      `deletedAt`, `isCreatedByUser`, `isPaidByUser`,
+//      `creatorProfileName`, `payerProfileName`). CASH-21 re-confirmed via a
+//      full-repo grep that none of those seven fields are read anywhere —
+//      genuinely dead, not a backend gap — so they're dropped rather than
+//      migrated.
+//   2. `status` was a plain `string` in backend/openapi.json (no enum),
+//      which would have widened the literal union
+//      ExpenseDetailPage.tsx's `billStatusDisplay` (declared
+//      `satisfies Record<ExpenseBillResponse["status"], ...>`) depends on.
+//      Same root cause and fix as GroupExpenseResponse.status above:
+//      dto.ExpenseBillResponse.Status is now typed `expenses.BillStatus`
+//      with an explicit `enum:"..."` struct tag, so the generated type
+//      carries the exact 7-value literal union already.
+export type ExpenseBillResponse = components["schemas"]["ExpenseBillResponse"];
 
 export type PresignedExpenseBillResponse =
   components["schemas"]["PresignedExpenseBillResponse"];
 
-// API Response wrapper
-// Frontend-only: a generic wrapper type, not itself a wire shape.
-export interface ApiResponse<T> {
-  data: T;
-}
+// `ApiResponse<T>` (a generic `{data: T}` envelope wrapper) was removed here
+// in CASH-21 round 2: confirmed dead via a full-repo grep — nothing outside
+// its own declaration referenced it. `apiClient.request()` in client.ts
+// already unwraps the backend's `{data: T}` envelope internally
+// (`"data" in data ? data.data : data`) and returns bare `T` to every
+// caller, so there was no shape left for this type to describe.
 
 // Shape of one entry in the backend's `errors` array (see Huma's
 // ErrorDetail), e.g. for per-field request validation failures.
 export type ValidationError = components["schemas"]["ErrorDetail"];
 
-// Frontend-only/composed: assembled from a parsed error response plus
-// frontend-added fields (isRefreshFailure), not itself a wire shape.
-export interface ApiError {
-  message: string;
-  statusCode: number;
+// Derived directly on top of the generated Huma error model (CASH-21 round
+// 2): `title`, `status` (HTTP status code), `detail` (human-readable
+// explanation — RFC7807's own analog of what an earlier hand-written
+// version of this type called `message`), `type`, `instance`, and
+// `errors?: ErrorDetail[] | null` all come straight from
+// components["schemas"]["ErrorModel"], with no synthetic `message`/
+// `statusCode` fields duplicating `detail`/`status` on top — that synthetic
+// layer was a leftover from before the frontend had access to the real
+// backend error contract at all. `isRefreshFailure` is the one genuinely
+// frontend-only addition, with no backend counterpart. Callers that need a
+// display string compute one explicitly via `getApiErrorMessage` (see
+// errors.ts) rather than reading a baked-in `.message` field.
+export type ApiError = components["schemas"]["ErrorModel"] & {
   isRefreshFailure?: boolean;
-  errors?: ValidationError[];
-}
+};

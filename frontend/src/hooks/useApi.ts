@@ -444,10 +444,7 @@ export function useUpdateExpenseItem(expenseId: string) {
 
   return useMutation({
     mutationFn: (data: NewExpenseItemRequest & { id: string }) =>
-      groupExpensesApi.updateItem(data.id, {
-        ...data,
-        groupExpenseId: expenseId,
-      }),
+      groupExpensesApi.updateItem(expenseId, data.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.groupExpenses.detail(expenseId),

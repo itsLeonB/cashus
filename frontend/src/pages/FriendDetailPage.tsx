@@ -42,8 +42,7 @@ export default function FriendDetailPage() {
   const currencies = Object.keys(balancesPerCurrency);
   const hasMultipleCurrencies = currencies.length > 1;
   const activeCurrency = currencies[0] || user?.homeCurrency || "IDR";
-  const activeBalance =
-    balancesPerCurrency[activeCurrency] || friendship?.balance;
+  const activeBalance = balancesPerCurrency[activeCurrency];
   const balance = Number.parseFloat(activeBalance?.netBalance || "0");
 
   if (isLoading) {

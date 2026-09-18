@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useVerifyRegistration } from "@/hooks/useApi";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
@@ -36,7 +37,10 @@ export default function VerifyRegistrationPage() {
       onError: (error) => {
         setStatus("error");
         setMessage(
-          error.message || "Verification failed. The token may have expired.",
+          getApiErrorMessage(
+            error,
+            "Verification failed. The token may have expired.",
+          ),
         );
       },
     });

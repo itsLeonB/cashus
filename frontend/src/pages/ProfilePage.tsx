@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import {
   useMyTransferMethods,
   useUpdateProfile,
@@ -92,7 +93,7 @@ export default function ProfilePage() {
           toast({
             variant: "destructive",
             title: "Failed to send reset email",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
       });
@@ -115,7 +116,7 @@ export default function ProfilePage() {
         toast({
           variant: "destructive",
           title: "Failed to send reset email",
-          description: error.message || "Something went wrong",
+          description: getApiErrorMessage(error),
         });
         turnstileRef.current?.reset();
         setCaptchaToken(null);
@@ -166,7 +167,7 @@ export default function ProfilePage() {
         toast({
           variant: "destructive",
           title: "Update failed",
-          description: error.message || "Something went wrong",
+          description: getApiErrorMessage(error),
         });
       },
     });

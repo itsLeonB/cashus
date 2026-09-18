@@ -1,5 +1,4 @@
-import { ApiError, ValidationError } from "./types";
-import { DEFAULT_ERROR_MESSAGE } from "./errors";
+import { ApiError } from "./types";
 import config from "@/config/config";
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -13,46 +12,27 @@ if (globalThis.localStorage) {
 const CSRF_STORAGE_KEY = "csrfToken";
 
 const SESSION_EXPIRED_ERROR: ApiError = {
-  message: "Session expired",
-  statusCode: 401,
+  type: "about:blank",
+  title: "Session Expired",
+  detail: "Session expired",
+  status: 401,
   isRefreshFailure: true,
 };
 
-const SERVER_ERROR_MESSAGE =
-  "Something went wrong on our end. Please contact the developer if this keeps happening.";
-
 // Backend error responses (see ungerr's errorBody / Huma's ErrorModel) are
-// shaped as `{ title, status, detail, errors }`, not `{ message }` — so the
-// user-facing message has to be extracted from `detail` (a single business
-// error) or `errors[].message` (per-field request validation errors), never
-// read directly off a `message` property that the backend never sends.
-function extractBackendMessage(body: {
-  detail?: string;
-  errors?: ValidationError[];
-}): string | undefined {
-  const fieldMessages = body.errors
-    ?.map((e) => e.message)
-    .filter((m): m is string => !!m);
-  if (fieldMessages?.length) {
-    return fieldMessages.join("; ");
-  }
-
-  return body.detail || undefined;
-}
-
+// shaped as `{ title, status, detail, errors }` — parsed here as close to
+// verbatim as possible and handed back as an ApiError. Turning this into a
+// user-facing display string (per-field `errors[].message` vs. the single
+// `detail` string vs. a generic 5xx message) is display logic, not parsing
+// logic, so it lives in errors.ts's `getApiErrorMessage`, called by callers
+// that actually need a string to show rather than baked in here.
 export async function parseErrorResponse(response: Response): Promise<ApiError> {
-  const body: { title?: string; detail?: string; errors?: ValidationError[] } =
-    await response.json().catch(() => ({}));
-
-  const message =
-    response.status >= 500
-      ? SERVER_ERROR_MESSAGE
-      : extractBackendMessage(body) || DEFAULT_ERROR_MESSAGE;
+  const body: Partial<ApiError> = await response.json().catch(() => ({}));
 
   return {
+    type: "about:blank",
     ...body,
-    message,
-    statusCode: response.status,
+    status: response.status,
   };
 }
 

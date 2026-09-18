@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { Mail, Loader2, ArrowLeft, Check } from "lucide-react";
 import { useForgotPassword } from "@/hooks/useApi";
 
@@ -40,7 +41,7 @@ export default function ForgotPasswordPage() {
         toast({
           variant: "destructive",
           title: "Request failed",
-          description: error.message || "Something went wrong",
+          description: getApiErrorMessage(error),
         });
         turnstileRef.current?.reset();
         setCaptchaToken(null);
@@ -61,7 +62,7 @@ export default function ForgotPasswordPage() {
           toast({
             variant: "destructive",
             title: "Request failed",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
       });

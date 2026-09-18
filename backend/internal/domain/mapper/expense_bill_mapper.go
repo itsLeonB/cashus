@@ -12,6 +12,6 @@ func ExpenseBillToResponse(
 	return dto.ExpenseBillResponse{
 		BaseDTO:  BaseToDTO(bill.BaseEntity),
 		ImageURL: url,
-		Status:   string(bill.Status),
+		Status:   bill.Status,
 	}
 }

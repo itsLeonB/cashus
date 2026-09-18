@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { useAddExpenseItem, useUpdateExpenseItem } from "@/hooks/useApi";
 import { Loader2, Package } from "lucide-react";
 import type { ExpenseItemResponse } from "@/lib/api/types";
@@ -85,7 +86,7 @@ export function ExpenseItemModal({
             toast({
               variant: "destructive",
               title: "Failed to update item",
-              description: error.message || "Something went wrong",
+              description: getApiErrorMessage(error),
             });
           },
         },
@@ -103,7 +104,7 @@ export function ExpenseItemModal({
           toast({
             variant: "destructive",
             title: "Failed to add item",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
       });

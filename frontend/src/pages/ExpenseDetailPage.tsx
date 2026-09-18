@@ -503,7 +503,7 @@ export default function ExpenseDetailPage() {
           )}
         </CardHeader>
         <CardContent>
-          {expense.otherFees?.length > 0 ? (
+          {(expense.otherFees?.length ?? 0) > 0 ? (
             <div className="space-y-2">
               {expense.otherFees?.map((fee) => (
                 <div
@@ -732,7 +732,7 @@ export default function ExpenseDetailPage() {
             </div>
           ))}
 
-          {expense.items?.length < 1 ? (
+          {(expense.items?.length ?? 0) < 1 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No items yet.</p>
               {canEdit && (
@@ -762,7 +762,7 @@ export default function ExpenseDetailPage() {
                 {formatCurrency(calculateItemsTotal(), expense.currency)}
               </span>
             </div>
-            {expense.otherFees?.length > 0 && (
+            {(expense.otherFees?.length ?? 0) > 0 && (
               <div className="flex justify-between text-muted-foreground">
                 <span>Fees</span>
                 <span className="tabular-nums">

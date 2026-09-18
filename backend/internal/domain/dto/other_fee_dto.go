@@ -19,10 +19,10 @@ type FeeCalculationMethodInfo struct {
 
 type OtherFeeResponse struct {
 	BaseDTO
-	Name              string                   `json:"name"`
-	Amount            decimal.Decimal          `json:"amount"`
-	CalculationMethod string                   `json:"calculationMethod"`
-	Participants      []FeeParticipantResponse `json:"participants,omitempty"`
+	Name              string                        `json:"name"`
+	Amount            decimal.Decimal               `json:"amount"`
+	CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod" enum:"EQUAL_SPLIT,ITEMIZED_SPLIT"`
+	Participants      []FeeParticipantResponse      `json:"participants,omitempty"`
 }
 
 type NewOtherFeeRequest struct {

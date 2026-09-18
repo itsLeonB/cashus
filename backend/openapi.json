@@ -1139,6 +1139,15 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "NOT_UPLOADED",
+              "PENDING",
+              "EXTRACTED",
+              "FAILED_EXTRACTING",
+              "PARSED",
+              "FAILED_PARSING",
+              "NOT_DETECTED"
+            ],
             "type": "string"
           },
           "updatedAt": {
@@ -1616,6 +1625,11 @@
             "$ref": "#/components/schemas/SimpleProfile"
           },
           "status": {
+            "enum": [
+              "DRAFT",
+              "READY",
+              "CONFIRMED"
+            ],
             "type": "string"
           },
           "totalAmount": {
@@ -1807,6 +1821,10 @@
             "type": "string"
           },
           "calculationMethod": {
+            "enum": [
+              "EQUAL_SPLIT",
+              "ITEMIZED_SPLIT"
+            ],
             "type": "string"
           },
           "createdAt": {

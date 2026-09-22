@@ -7,7 +7,7 @@ toolchain go1.26.7
 require (
 	cloud.google.com/go/storage v1.66.0
 	cloud.google.com/go/vision v1.2.0
-	cloud.google.com/go/vision/v2 v2.14.0
+	cloud.google.com/go/vision/v2 v2.15.0
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/deckarep/golang-set/v2 v2.8.0

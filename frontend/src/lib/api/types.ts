@@ -26,11 +26,20 @@
 //     UpdateExpenseItemRequest.
 //   - Migrated as a straight derivation/composition with no backend change
 //     needed: DebtDirection (indexes into an already-enum-tagged generated
-//     field), FriendDetailsResponse (Omit+intersect to keep its `friend`
-//     field's literal-union narrowing), ApiError (composed on the generated
-//     ErrorModel schema).
+//     field), ApiError (composed on the generated ErrorModel schema).
 //   - Confirmed dead and deleted entirely: ExpenseItem, ItemParticipant,
 //     FriendProfile, OtherFee, ExpenseOwnership, ApiResponse<T>.
+// A later follow-up eliminated the last `Omit<...> & {...}` narrowing hacks
+// (FriendshipResponse, FriendDetails, FriendDetailsResponse,
+// FriendTransaction, DebtTransactionResponse all used to widen a `.type`
+// field to `string` on the wire, requiring a manual re-narrow here): fixed
+// by adding `enum:"..."` struct tags to the underlying backend DTO fields
+// (introducing `dto.DebtTransactionType` where no named enum type existed
+// yet), so the generated schema now carries the literal union directly.
+// `ApiError`'s `& { isRefreshFailure?: boolean }` is the one remaining
+// intersection and isn't a hack to fix: `isRefreshFailure` is a genuinely
+// client-only bookkeeping flag with no wire representation at all, so there
+// is nothing for the backend to emit here.
 // What's still hand-written below is genuinely frontend-only/client-composed
 // with no wire counterpart at all — each has its own comment explaining why.
 import type { components } from "./schema.gen";
@@ -47,62 +56,40 @@ export type UploadLimit = components["schemas"]["UploadLimit"];
 
 // Friendship Types
 //
-// Re-exported, but `type` is narrowed back to a literal union on top of the
-// generated shape: backend/openapi.json declares `type` as a bare `string`
-// (no enum) here — the same situation GroupExpenseResponse.status /
-// ExpenseBillResponse.status used to be in, before CASH-21 added an explicit
-// `enum:"..."` struct tag on those backend DTO fields (see their comments
-// below). `FriendshipResponse.type` is a request/query-parameter-less plain
-// response field with no equivalent fix available yet, so it keeps this
-// Omit+intersect approach: it gets the same literal-union protection
-// without giving up drift protection on every other field (id, profileId,
-// profileAvatar, balancesPerCurrency, timestamps, ...), since those all do
-// match the schema exactly. Same pattern used below for FriendDetails,
-// DebtTransactionResponse, and FriendTransaction — all four have a `.type`
-// field compared with `===` at call sites (FriendsPage.tsx,
-// FriendDetailPage.tsx, TransactionHistory.tsx, RecentTransactions.tsx,
-// utils/share.ts), so nothing breaks at runtime either way, but this keeps
-// typo/rename protection on those comparisons instead of silently widening
-// to `string`.
-export type FriendshipResponse = Omit<
-  components["schemas"]["FriendshipResponse"],
-  "type"
-> & { type: "ANON" | "REAL" };
+// Plain re-export as of this follow-up: `type` used to come back as a bare
+// `string` in backend/openapi.json (no enum), so this and the three types
+// below it (FriendDetails, FriendTransaction, DebtTransactionResponse) each
+// kept an Omit+intersect to narrow `.type` back to a literal union without
+// giving up drift protection on every other field. Fixed at the source
+// instead: the backend DTO fields (dto.FriendshipResponse.Type,
+// dto.FriendDetails.Type, dto.FriendTransactionItem.Type,
+// dto.DebtTransactionResponse.Type) were plain Go `string` with no
+// `enum:"..."` struct tag, even though `users.FriendshipType` and the new
+// `dto.DebtTransactionType` already existed (or were introduced) as proper
+// named enum types. Added the struct tags, so the generated schema now
+// carries the literal union directly — no hack needed.
+export type FriendshipResponse = components["schemas"]["FriendshipResponse"];
 
 export type SearchProfileResult = components["schemas"]["SearchProfileResponse"];
 
-// Migrated in CASH-21 (round 2): backend/openapi.json's FriendDetailsResponse
-// only ever had `friend` + `balancesPerCurrency` (both required) — there was
-// no top-level `balance` or `redirectToRealFriendship` field on the wire
-// type at all. `redirectToRealFriendship` was confirmed dead (unused
-// anywhere in the app). `balance` was read only as a fallback in
-// FriendDetailPage.tsx (`balancesPerCurrency[activeCurrency] ||
-// friendship?.balance`) — since the backend never sent a top-level `balance`
-// field, that fallback could never actually fire, so it's now removed there
-// too (`activeBalance = balancesPerCurrency[activeCurrency]`), fixing the
-// dead-code bug CASH-20/21 originally flagged and deferred.
-// `friend` is typed via this file's own narrowed `FriendDetails` (see
-// below), not the raw generated component, to keep the same
-// `.type === "ANON"` literal-union protection FriendDetailPage.tsx's three
-// call sites already rely on — a plain 1:1 alias would silently widen
-// `friend.type` back to `string`.
-export type FriendDetailsResponse = Omit<
-  components["schemas"]["FriendDetailsResponse"],
-  "friend"
-> & { friend: FriendDetails };
+// Plain re-export: backend/openapi.json's FriendDetailsResponse only ever had
+// `friend` + `balancesPerCurrency` (both required) — there was no top-level
+// `balance` or `redirectToRealFriendship` field on the wire type at all.
+// `redirectToRealFriendship` was confirmed dead (unused anywhere in the
+// app). `balance` was read only as a fallback in FriendDetailPage.tsx
+// (`balancesPerCurrency[activeCurrency] || friendship?.balance`) — since the
+// backend never sent a top-level `balance` field, that fallback could never
+// actually fire, so it's now removed there too
+// (`activeBalance = balancesPerCurrency[activeCurrency]`), fixing the
+// dead-code bug CASH-20/21 originally flagged and deferred. Used to need an
+// Omit+intersect to keep `friend.type` narrowed to a literal union; no
+// longer necessary now that FriendDetails.type carries its own enum (see
+// the FriendshipResponse comment above).
+export type FriendDetailsResponse = components["schemas"]["FriendDetailsResponse"];
 
-// `type` narrowed to a literal union — see the FriendshipResponse comment
-// above.
-export type FriendDetails = Omit<components["schemas"]["FriendDetails"], "type"> & {
-  type: "ANON" | "REAL";
-};
+export type FriendDetails = components["schemas"]["FriendDetails"];
 export type FriendBalance = components["schemas"]["FriendBalance"];
-// `type` narrowed to a literal union — see the FriendshipResponse comment
-// above.
-export type FriendTransaction = Omit<
-  components["schemas"]["FriendTransactionItem"],
-  "type"
-> & { type: "LENT" | "BORROWED" };
+export type FriendTransaction = components["schemas"]["FriendTransactionItem"];
 
 export type NewAnonymousFriendshipRequest =
   components["schemas"]["CreateAnonymousFriendshipInputBody"];
@@ -117,12 +104,7 @@ export type NewAnonymousFriendshipRequest =
 export type DebtDirection =
   components["schemas"]["CreateDebtInputBody"]["direction"];
 
-// `type` narrowed to a literal union — see the FriendshipResponse comment
-// above.
-export type DebtTransactionResponse = Omit<
-  components["schemas"]["DebtTransactionResponse"],
-  "type"
-> & { type: "LENT" | "BORROWED" };
+export type DebtTransactionResponse = components["schemas"]["DebtTransactionResponse"];
 export type NewDebtTransactionRequest = components["schemas"]["CreateDebtInputBody"];
 export type NewRepaymentRequest = components["schemas"]["CreateRepaymentInputBody"];
 

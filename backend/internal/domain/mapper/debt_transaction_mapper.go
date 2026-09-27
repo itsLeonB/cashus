@@ -52,14 +52,14 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 			continue
 		}
 
-		var transactionType string
+		var transactionType dto.DebtTransactionType
 		var amount decimal.Decimal
 		if dir > 0 {
-			transactionType = "LENT"
+			transactionType = dto.Lent
 			amount = tx.Amount
 			totalLent = totalLent.Add(tx.Amount)
 		} else {
-			transactionType = "BORROWED"
+			transactionType = dto.Borrowed
 			amount = tx.Amount
 			totalBorrowed = totalBorrowed.Add(tx.Amount)
 		}
@@ -103,14 +103,14 @@ func classifyTransaction(tx debts.DebtTransaction, userIDSet map[uuid.UUID]struc
 
 func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction, profilesByID map[uuid.UUID]dto.ProfileResponse) dto.DebtTransactionResponse {
 	var profileID uuid.UUID
-	var txType string
+	var txType dto.DebtTransactionType
 
 	if userProfileID == transaction.BorrowerProfileID {
 		profileID = transaction.LenderProfileID
-		txType = "BORROWED"
+		txType = dto.Borrowed
 	} else {
 		profileID = transaction.BorrowerProfileID
-		txType = "LENT"
+		txType = dto.Lent
 	}
 
 	return dto.DebtTransactionResponse{

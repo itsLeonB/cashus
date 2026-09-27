@@ -1197,7 +1197,8 @@ export interface components {
             profile: components["schemas"]["SimpleProfile"];
             transactionDate: string;
             transferMethod: string;
-            type: string;
+            /** @enum {string} */
+            type: "LENT" | "BORROWED";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1410,7 +1411,8 @@ export interface components {
             profileId1: string;
             profileId2: string;
             slug?: string;
-            type: string;
+            /** @enum {string} */
+            type: "REAL" | "ANON";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1429,7 +1431,8 @@ export interface components {
             isRepayment: boolean;
             transactionDate: string;
             transferMethod: string;
-            type: string;
+            /** @enum {string} */
+            type: "LENT" | "BORROWED";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1459,7 +1462,8 @@ export interface components {
             profileAvatar: string;
             profileId: string;
             profileName: string;
-            type: string;
+            /** @enum {string} */
+            type: "REAL" | "ANON";
             /** Format: date-time */
             updatedAt: string;
         };

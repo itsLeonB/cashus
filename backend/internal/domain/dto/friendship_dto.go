@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/shopspring/decimal"
 )
 
@@ -12,7 +13,7 @@ type NewAnonymousFriendshipRequest struct {
 
 type FriendshipResponse struct {
 	BaseDTO
-	Type                string                     `json:"type"`
+	Type                users.FriendshipType       `json:"type" enum:"REAL,ANON"`
 	ProfileID           uuid.UUID                  `json:"profileId"`
 	ProfileName         string                     `json:"profileName"`
 	ProfileAvatar       string                     `json:"profileAvatar"`
@@ -27,15 +28,15 @@ type FriendshipWithProfile struct {
 
 type FriendDetails struct {
 	BaseDTO
-	ProfileID  uuid.UUID `json:"profileId"`
-	Name       string    `json:"name"`
-	Type       string    `json:"type"`
-	Email      string    `json:"email,omitempty"`
-	Phone      string    `json:"phone,omitempty"`
-	Avatar     string    `json:"avatar,omitempty"`
-	Slug       string    `json:"slug,omitempty"`
-	ProfileID1 uuid.UUID `json:"profileId1"`
-	ProfileID2 uuid.UUID `json:"profileId2"`
+	ProfileID  uuid.UUID            `json:"profileId"`
+	Name       string               `json:"name"`
+	Type       users.FriendshipType `json:"type" enum:"REAL,ANON"`
+	Email      string               `json:"email,omitempty"`
+	Phone      string               `json:"phone,omitempty"`
+	Avatar     string               `json:"avatar,omitempty"`
+	Slug       string               `json:"slug,omitempty"`
+	ProfileID1 uuid.UUID            `json:"profileId1"`
+	ProfileID2 uuid.UUID            `json:"profileId2"`
 }
 
 type FriendBalance struct {
@@ -47,10 +48,10 @@ type FriendBalance struct {
 
 type FriendTransactionItem struct {
 	BaseDTO
-	Type           string          `json:"type"`
-	Amount         decimal.Decimal `json:"amount"`
-	TransferMethod string          `json:"transferMethod"`
-	Description    string          `json:"description"`
+	Type           DebtTransactionType `json:"type" enum:"LENT,BORROWED"`
+	Amount         decimal.Decimal     `json:"amount"`
+	TransferMethod string              `json:"transferMethod"`
+	Description    string              `json:"description"`
 	// TransactionDate is the effective (possibly backdated) transaction date,
 	// formatted "YYYY-MM-DD". Independent of BaseDTO.CreatedAt.
 	TransactionDate string `json:"transactionDate"`

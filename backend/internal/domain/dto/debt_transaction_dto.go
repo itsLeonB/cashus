@@ -12,6 +12,16 @@ const (
 	OutgoingDebt DebtTransactionDirection = "OUTGOING"
 )
 
+// DebtTransactionType describes a debt transaction from the querying user's
+// perspective (did they lend or borrow), computed in mapper functions rather
+// than stored on the entity - see debt_transaction_mapper.go.
+type DebtTransactionType string
+
+const (
+	Lent     DebtTransactionType = "LENT"
+	Borrowed DebtTransactionType = "BORROWED"
+)
+
 type NewDebtTransactionRequest struct {
 	UserProfileID    uuid.UUID                `json:"-"`
 	FriendProfileID  uuid.UUID                `json:"friendProfileId"`
@@ -42,14 +52,14 @@ type NewRepaymentRequest struct {
 
 type DebtTransactionResponse struct {
 	BaseDTO
-	Profile        SimpleProfile   `json:"profile"`
-	Type           string          `json:"type"` // "LENT" or "BORROWED"
-	Currency       string          `json:"currency"`
-	Amount         decimal.Decimal `json:"amount"`
-	TransferMethod string          `json:"transferMethod"`
-	Description    string          `json:"description"`
-	GroupExpenseID uuid.UUID       `json:"groupExpenseId"`
-	IsFromExpense  bool            `json:"isFromExpense"`
+	Profile        SimpleProfile       `json:"profile"`
+	Type           DebtTransactionType `json:"type" enum:"LENT,BORROWED"`
+	Currency       string              `json:"currency"`
+	Amount         decimal.Decimal     `json:"amount"`
+	TransferMethod string              `json:"transferMethod"`
+	Description    string              `json:"description"`
+	GroupExpenseID uuid.UUID           `json:"groupExpenseId"`
+	IsFromExpense  bool                `json:"isFromExpense"`
 	// TransactionDate is the effective (possibly backdated) transaction date,
 	// formatted "YYYY-MM-DD". Independent of BaseDTO.CreatedAt.
 	TransactionDate string `json:"transactionDate"`

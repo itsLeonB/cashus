@@ -17,6 +17,7 @@ import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { useUpdateProfile } from "@/hooks/useApi";
 import { profileSchema } from "@/lib/validations/profile";
 
@@ -79,7 +80,7 @@ export default function OnboardingPage() {
         toast({
           variant: "destructive",
           title: "Could not finish setup",
-          description: error.message || "Please try again.",
+          description: getApiErrorMessage(error, "Please try again."),
         });
       },
     });

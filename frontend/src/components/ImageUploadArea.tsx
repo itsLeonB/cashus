@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useGetUploadUrl, useTriggerBillParsing } from "@/hooks/useApi";
 import { ApiError } from "@/lib/api/types";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { useUploadPermission } from "@/hooks/useUploadPermission";
 import { UploadLimitInfo } from "@/components/UploadLimitInfo";
 import { compressImageForOCR } from "@/utils/compressImageForOCR";
@@ -73,10 +74,12 @@ export function ImageUploadArea({
 
     if (expenseId && uploadPermission.canUpload) {
       const handleUploadError = (error: ApiError) => {
-        if (error.statusCode === 422) {
+        if (error.status === 422) {
           setUploadError(
-            error.message ||
+            getApiErrorMessage(
+              error,
               "This image couldn't be processed. Please try another photo.",
+            ),
           );
           if (error.errors) {
             console.error("Backend validation failed:", error.errors);
@@ -85,7 +88,7 @@ export function ImageUploadArea({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
           clearInputs();
         }

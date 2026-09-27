@@ -16,10 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { useCalculationMethods } from "@/hooks/useMasterData";
 import { useAddExpenseFee, useUpdateExpenseFee } from "@/hooks/useApi";
 import { Loader2, Receipt } from "lucide-react";
-import type { OtherFeeResponse } from "@/lib/api/types";
+import type { NewOtherFeeRequest, OtherFeeResponse } from "@/lib/api/types";
 
 interface ExpenseFeeModalProps {
   open: boolean;
@@ -45,7 +46,7 @@ export function ExpenseFeeModal({
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [calculationMethod, setCalculationMethod] = useState("FLAT");
+  const [calculationMethod, setCalculationMethod] = useState("EQUAL_SPLIT");
 
   const isEditing = !!fee;
 
@@ -57,7 +58,7 @@ export function ExpenseFeeModal({
     } else {
       setName("");
       setAmount("");
-      setCalculationMethod("FLAT");
+      setCalculationMethod("EQUAL_SPLIT");
     }
   }, [fee, open]);
 
@@ -74,10 +75,19 @@ export function ExpenseFeeModal({
     }
 
     const feeData = {
-      groupExpenseId: expenseId,
       name: name.trim(),
       amount,
-      calculationMethod,
+      // SAFETY: `calculationMethod` is plain `useState<string>` because its
+      // valid values come from a live-loaded, backend-driven list
+      // (useCalculationMethods()) rather than a fixed frontend enum, so the
+      // <Select> can't statically be typed to the narrower
+      // "EQUAL_SPLIT" | "ITEMIZED_SPLIT" union NewOtherFeeRequest declares.
+      // Both the fallback options above and every value useCalculationMethods()
+      // can currently return are drawn from that same two-value backend
+      // enum, so this cast holds in practice; it would need revisiting if
+      // the backend ever adds a third calculation method.
+      calculationMethod:
+        calculationMethod as NewOtherFeeRequest["calculationMethod"],
     };
 
     if (isEditing && fee) {
@@ -95,7 +105,7 @@ export function ExpenseFeeModal({
             toast({
               variant: "destructive",
               title: "Failed to update fee",
-              description: error.message || "Something went wrong",
+              description: getApiErrorMessage(error),
             });
           },
         },
@@ -113,7 +123,7 @@ export function ExpenseFeeModal({
           toast({
             variant: "destructive",
             title: "Failed to add fee",
-            description: error.message || "Something went wrong",
+            description: getApiErrorMessage(error),
           });
         },
       });
@@ -171,8 +181,10 @@ export function ExpenseFeeModal({
                     </SelectItem>
                   )) || (
                     <>
-                      <SelectItem value="FLAT">Flat Amount</SelectItem>
-                      <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                      <SelectItem value="EQUAL_SPLIT">Equal split</SelectItem>
+                      <SelectItem value="ITEMIZED_SPLIT">
+                        Itemized split
+                      </SelectItem>
                     </>
                   )}
                 </SelectContent>

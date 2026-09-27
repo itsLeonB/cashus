@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/shopspring/decimal"
 )
 
@@ -22,8 +23,9 @@ type GroupExpenseResponse struct {
 	ItemsTotalAmount decimal.Decimal `json:"itemsTotalAmount"`
 	FeesTotalAmount  decimal.Decimal `json:"feesTotalAmount"`
 	Description      string          `json:"description"`
-	Status           string          `json:"status"`
-	IsPreviewable    bool            `json:"isPreviewable"`
+	// enum values must be kept in sync with the expenses.ExpenseStatus consts
+	Status        expenses.ExpenseStatus `json:"status" enum:"DRAFT,READY,CONFIRMED"`
+	IsPreviewable bool                   `json:"isPreviewable"`
 
 	// Relationships
 	Payer        SimpleProfile                `json:"payer"`

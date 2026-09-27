@@ -1197,7 +1197,8 @@ export interface components {
             profile: components["schemas"]["SimpleProfile"];
             transactionDate: string;
             transferMethod: string;
-            type: string;
+            /** @enum {string} */
+            type: "LENT" | "BORROWED";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1351,7 +1352,8 @@ export interface components {
             createdAt: string;
             id: string;
             imageUrl: string;
-            status: string;
+            /** @enum {string} */
+            status: "NOT_UPLOADED" | "PENDING" | "EXTRACTED" | "FAILED_EXTRACTING" | "PARSED" | "FAILED_PARSING" | "NOT_DETECTED";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1409,7 +1411,8 @@ export interface components {
             profileId1: string;
             profileId2: string;
             slug?: string;
-            type: string;
+            /** @enum {string} */
+            type: "REAL" | "ANON";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1428,7 +1431,8 @@ export interface components {
             isRepayment: boolean;
             transactionDate: string;
             transferMethod: string;
-            type: string;
+            /** @enum {string} */
+            type: "LENT" | "BORROWED";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1458,7 +1462,8 @@ export interface components {
             profileAvatar: string;
             profileId: string;
             profileName: string;
-            type: string;
+            /** @enum {string} */
+            type: "REAL" | "ANON";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1479,7 +1484,8 @@ export interface components {
             otherFees: components["schemas"]["OtherFeeResponse"][] | null;
             participants: components["schemas"]["ExpenseParticipantResponse"][] | null;
             payer: components["schemas"]["SimpleProfile"];
-            status: string;
+            /** @enum {string} */
+            status: "DRAFT" | "READY" | "CONFIRMED";
             totalAmount: string;
             /** Format: date-time */
             updatedAt: string;
@@ -1528,7 +1534,8 @@ export interface components {
         };
         OtherFeeResponse: {
             amount: string;
-            calculationMethod: string;
+            /** @enum {string} */
+            calculationMethod: "EQUAL_SPLIT" | "ITEMIZED_SPLIT";
             /** Format: date-time */
             createdAt: string;
             id: string;

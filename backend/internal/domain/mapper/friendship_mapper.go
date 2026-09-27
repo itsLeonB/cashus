@@ -34,7 +34,7 @@ func FriendshipToResponse(userProfileID uuid.UUID, friendship users.Friendship) 
 
 	return dto.FriendshipResponse{
 		BaseDTO:       BaseToDTO(friendship.BaseEntity),
-		Type:          string(friendship.Type),
+		Type:          friendship.Type,
 		ProfileID:     friendProfile.ID,
 		ProfileName:   friendProfile.Name,
 		ProfileAvatar: friendProfile.Avatar,
@@ -97,7 +97,7 @@ func MapToFriendDetails(userProfileID uuid.UUID, friendship users.Friendship) (d
 		Email:      friendProfile.Email,
 		Avatar:     friendProfile.Avatar,
 		Slug:       friendEntity.Slug.String,
-		Type:       string(friendship.Type),
+		Type:       friendship.Type,
 		ProfileID1: friendship.ProfileID1,
 		ProfileID2: friendship.ProfileID2,
 	}, nil

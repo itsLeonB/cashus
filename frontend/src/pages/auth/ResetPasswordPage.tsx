@@ -13,6 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { Loader2, CheckCircle2, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function ResetPasswordPage() {
@@ -76,8 +77,10 @@ export default function ResetPasswordPage() {
           toast({
             variant: "destructive",
             title: "Reset failed",
-            description:
-              error.message || "Something went wrong. Please try again.",
+            description: getApiErrorMessage(
+              error,
+              "Something went wrong. Please try again.",
+            ),
           });
         },
       },

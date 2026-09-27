@@ -94,7 +94,7 @@ func (fds *friendDetailsServiceImpl) GetDetailsBySlug(ctx context.Context, slug 
 		ProfileID:  anonProfile.ID,
 		Name:       anonProfile.Name,
 		Avatar:     anonProfile.Avatar,
-		Type:       string(users.Anonymous),
+		Type:       users.Anonymous,
 		ProfileID1: ownerProfileID,
 		ProfileID2: anonProfile.ID,
 		Slug:       anonProfile.Slug.String,

@@ -291,10 +291,14 @@ export type ValidationError = components["schemas"]["ErrorDetail"];
 // components["schemas"]["ErrorModel"], with no synthetic `message`/
 // `statusCode` fields duplicating `detail`/`status` on top — that synthetic
 // layer was a leftover from before the frontend had access to the real
-// backend error contract at all. `isRefreshFailure` is the one genuinely
-// frontend-only addition, with no backend counterpart. Callers that need a
+// backend error contract at all. `isRefreshFailure`/`isNetworkError` are the
+// two genuinely frontend-only additions, with no backend counterpart: both
+// describe failures that never produced an HTTP response body at all (a
+// failed token refresh, a rejected `fetch()` before any response arrived),
+// so there's nothing for the backend to have sent. Callers that need a
 // display string compute one explicitly via `getApiErrorMessage` (see
 // errors.ts) rather than reading a baked-in `.message` field.
 export type ApiError = components["schemas"]["ErrorModel"] & {
   isRefreshFailure?: boolean;
+  isNetworkError?: boolean;
 };

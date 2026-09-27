@@ -19,6 +19,28 @@ const SESSION_EXPIRED_ERROR: ApiError = {
   isRefreshFailure: true,
 };
 
+// A rejected `fetch()` (offline, DNS failure, connection refused, CORS
+// preflight failure, ...) never produces an HTTP response at all, so there's
+// no status/body for parseErrorResponse to read - it's a distinct failure
+// mode from a real HTTP error response, marked here rather than left to leak
+// the browser's own Error.message text through an accidental property read.
+const NETWORK_ERROR: ApiError = {
+  type: "about:blank",
+  title: "Network Error",
+  isNetworkError: true,
+};
+
+async function fetchOrThrowNetworkError(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw NETWORK_ERROR;
+  }
+}
+
 // Backend error responses (see ungerr's errorBody / Huma's ErrorModel) are
 // shaped as `{ title, status, detail, errors }` — parsed here as close to
 // verbatim as possible and handed back as an ApiError. Turning this into a
@@ -157,7 +179,7 @@ class ApiClient {
       }
     }
 
-    const response = await fetch(url, {
+    const response = await fetchOrThrowNetworkError(url, {
       ...options,
       headers,
       credentials: "include",
@@ -246,7 +268,7 @@ class ApiClient {
       headers["X-CSRF-Token"] = csrf;
     }
 
-    const response = await fetch(url, {
+    const response = await fetchOrThrowNetworkError(url, {
       method: "POST",
       headers,
       body: formData,

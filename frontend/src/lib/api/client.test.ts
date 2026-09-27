@@ -141,4 +141,13 @@ describe("getApiErrorMessage", () => {
       "Custom fallback",
     );
   });
+
+  test("shows a connection-specific message for a classified network error, even with a 5xx-looking status", () => {
+    // isNetworkError is set by client.ts when fetch() itself rejects (no
+    // HTTP response at all) - takes priority over the 5xx branch since a
+    // network failure never actually carries a real HTTP status.
+    const error = { isNetworkError: true, status: 500 };
+
+    expect(getApiErrorMessage(error)).toContain("Unable to connect");
+  });
 });

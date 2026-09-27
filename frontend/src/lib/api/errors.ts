@@ -5,6 +5,9 @@ export const DEFAULT_ERROR_MESSAGE = "Something went wrong";
 const SERVER_ERROR_MESSAGE =
   "Something went wrong on our end. Please contact the developer if this keeps happening.";
 
+const NETWORK_ERROR_MESSAGE =
+  "Unable to connect. Please check your internet connection and try again.";
+
 /**
  * Computes a user-facing message from an error caught after an API call
  * (a mutation's `onError`, or a `catch` after `mutateAsync` — `catch`
@@ -13,11 +16,13 @@ const SERVER_ERROR_MESSAGE =
  *
  * Backend error responses (see ungerr's errorBody / Huma's ErrorModel) are
  * shaped as `{ title, status, detail, errors }`, not `{ message }`, so
- * there's no field to just read — the message has to be computed: a 5xx
- * status always shows a generic contact-the-developer message (never the
- * raw `detail`, which may be an internal error string); otherwise per-field
- * validation messages (`errors[].message`) take priority over the single
- * `detail` string; and `fallback` is used if neither is present.
+ * there's no field to just read — the message has to be computed: a
+ * client.ts-classified network failure (no HTTP response at all) always
+ * shows a connection-specific message first; otherwise a 5xx status shows a
+ * generic contact-the-developer message (never the raw `detail`, which may
+ * be an internal error string); otherwise per-field validation messages
+ * (`errors[].message`) take priority over the single `detail` string; and
+ * `fallback` is used if neither is present.
  */
 export function getApiErrorMessage<E = unknown>(
   error: E,
@@ -27,6 +32,10 @@ export function getApiErrorMessage<E = unknown>(
   // ApiError-shaped objects, so a value caught from an API call is safe to
   // treat as ApiError here.
   const apiError = error as ApiError;
+
+  if (apiError?.isNetworkError) {
+    return NETWORK_ERROR_MESSAGE;
+  }
 
   if (apiError?.status && apiError.status >= 500) {
     return SERVER_ERROR_MESSAGE;

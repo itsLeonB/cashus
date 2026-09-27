@@ -1,4 +1,4 @@
-import { useState, type FormEventHandler } from "react";
+import { useState, useEffect, type FormEventHandler } from "react";
 import {
   useFriendships,
   useCreateDebt,
@@ -17,15 +17,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCircle } from "@/components/AvatarCircle";
-import { Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import {
   TransactionDirectionSelector,
   directionConfig,
@@ -36,6 +41,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { TransactionDateField } from "@/components/TransactionDateField";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { cn } from "@/lib/utils";
 import {
   getTodayDateString,
   transactionDateSchema,
@@ -56,6 +62,8 @@ export function TransactionModal({
 }: Readonly<TransactionModalProps>) {
   const { user } = useAuth();
   const [friendId, setFriendId] = useState(defaultFriendId || "");
+  const [friendSelectOpen, setFriendSelectOpen] = useState(false);
+  const [friendCmdValue, setFriendCmdValue] = useState("");
   const [direction, setDirection] = useState<DebtDirection>(defaultDirection);
   const [isRepayment, setIsRepayment] = useState(false);
   const [amount, setAmount] = useState("");
@@ -85,6 +93,14 @@ export function TransactionModal({
   );
   const canZeroOutBalance =
     !!friendId && !Number.isNaN(zeroOutBalance) && zeroOutBalance !== 0;
+
+  useEffect(() => {
+    if (friendSelectOpen && selectedFriendship) {
+      setFriendCmdValue(`${friendId} ${selectedFriendship.profileName}`);
+    } else if (!friendSelectOpen) {
+      setFriendCmdValue("");
+    }
+  }, [friendSelectOpen, friendId, selectedFriendship]);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -140,6 +156,7 @@ export function TransactionModal({
 
   const resetForm = () => {
     setFriendId(defaultFriendId || "");
+    setFriendSelectOpen(false);
     setDirection(defaultDirection);
     setIsRepayment(false);
     setAmount("");
@@ -178,28 +195,78 @@ export function TransactionModal({
           {/* Friend Selection */}
           <div className="space-y-2">
             <Label>Friend</Label>
-            <Select value={friendId} onValueChange={setFriendId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a friend" />
-              </SelectTrigger>
-              <SelectContent>
-                {friendships?.map((friendship) => (
-                  <SelectItem
-                    key={friendship.profileId}
-                    value={friendship.profileId}
-                  >
-                    <div className="flex items-center gap-2">
+            <Popover
+              open={friendSelectOpen}
+              onOpenChange={setFriendSelectOpen}
+              modal={true}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={friendSelectOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedFriendship ? (
+                    <span className="flex items-center gap-2 truncate">
                       <AvatarCircle
-                        name={friendship.profileName}
-                        imageUrl={friendship.profileAvatar}
+                        name={selectedFriendship.profileName}
+                        imageUrl={selectedFriendship.profileAvatar}
                         size="xs"
                       />
-                      <span>{friendship.profileName}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                      <span className="truncate">
+                        {selectedFriendship.profileName}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Select a friend
+                    </span>
+                  )}
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+              >
+                <Command value={friendCmdValue} onValueChange={setFriendCmdValue}>
+                  <CommandInput
+                    placeholder="Search friends..."
+                    onValueChange={() => setFriendCmdValue("")}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No friend found.</CommandEmpty>
+                    {friendships?.map((friendship) => (
+                      <CommandItem
+                        key={friendship.profileId}
+                        value={`${friendship.profileId} ${friendship.profileName}`}
+                        onSelect={() => {
+                          setFriendId(friendship.profileId);
+                          setFriendSelectOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "h-4 w-4",
+                            friendId === friendship.profileId
+                              ? "opacity-100"
+                              : "opacity-0",
+                          )}
+                        />
+                        <AvatarCircle
+                          name={friendship.profileName}
+                          imageUrl={friendship.profileAvatar}
+                          size="xs"
+                        />
+                        <span>{friendship.profileName}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Currency */}

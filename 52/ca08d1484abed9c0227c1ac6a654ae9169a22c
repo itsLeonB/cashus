@@ -1,0 +1,43 @@
+backend/CLAUDE.md
+  s_56798b62733d7a::t_ba81c564caeaa8 76
+backend/internal/adapters/core/service/natsconn/natsconn.go
+  s_56798b62733d7a::t_fac60196427fe7 1-57
+backend/internal/adapters/core/service/natsconn/natsconn_test.go
+  s_56798b62733d7a::t_91c23d4a757b0b 1-38
+backend/internal/adapters/core/service/natsconn/natsconntest/natsconntest.go
+  s_56798b62733d7a::t_3e41981f6d758f 1-27
+backend/internal/adapters/core/service/queue/nats_client.go
+  s_56798b62733d7a::t_25c6683c8c70f5 8,17-19,21,24-25,27-38,50-56
+backend/internal/adapters/core/service/queue/nats_client_test.go
+  s_56798b62733d7a::t_092806d9662dfa 1-87
+backend/internal/adapters/core/service/store/nats_kv_state_store.go
+  s_56798b62733d7a::t_c393a0b63f53b2 9,16-20,22,25-26,28-63,70-76,88-93,95,103
+backend/internal/adapters/core/service/store/nats_kv_state_store_test.go
+  s_56798b62733d7a::t_d7fef9cf1772d0 5,9,99-214
+backend/internal/adapters/http/server.go
+  s_56798b62733d7a::t_550bb9fd4c84eb 15
+backend/internal/core/service/store/state_store.go
+  s_56798b62733d7a::t_808f7e9723d9a2 7,21-22,27-44
+backend/internal/provider/core_service_provider.go
+  s_56798b62733d7a::t_d3c165b52a6f12 6,23-34,40,48-62,74-76,144-180
+backend/internal/provider/wire.go
+  s_56798b62733d7a::t_8be04aa55eb013 10-13,21,32-44,49-55
+backend/internal/provider/wire_gen.go
+  s_56798b62733d7a::t_8591be2d4ef159 121-208,211-214,222,228-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "52ca08d1484abed9c0227c1ac6a654ae9169a22c",
+  "prompts": {},
+  "sessions": {
+    "s_56798b62733d7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_56798b62733d7a",
+        "model": "unknown"
+      },
+      "human_author": "itsLeonB <ellionblessan@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+backend/cmd/http/main.go
+  s_f749d7631d014f::t_420b92813580ac 5,7,17-18
+backend/internal/adapters/http/server.go
+  s_f749d7631d014f::t_ed1af0b309ac91 5-6,22-26
+backend/internal/provider/core_service_provider.go
+  s_f749d7631d014f::t_28507641ebd56e 4-8,79-82,97-104,122-129
+backend/otel/config.yaml
+  s_f749d7631d014f::t_32fe7ca291e63d 32-33,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "ec595385ba3e671bf93272a88dd5a194a6659f6c",
+  "prompts": {},
+  "sessions": {
+    "s_f749d7631d014f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f749d7631d014f",
+        "model": "unknown"
+      },
+      "human_author": "itsLeonB <ellionblessan@gmail.com>"
+    }
+  }
+}

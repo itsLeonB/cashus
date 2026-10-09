@@ -1,0 +1,19 @@
+backend/.railway/exp-nats.conf
+  s_09e4914c6a3989::t_be8396a7175a14 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f77f58b84fdd6addd0f17aed0a74d71c38105bab",
+  "prompts": {},
+  "sessions": {
+    "s_09e4914c6a3989": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_09e4914c6a3989",
+        "model": "unknown"
+      },
+      "human_author": "itsLeonB <ellionblessan@gmail.com>"
+    }
+  }
+}

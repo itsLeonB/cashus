@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/itsLeonB/cashback/internal/adapters/core/service/natsconn"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
@@ -13,12 +14,28 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// natsClient publishes tasks to JetStream. open yields the JetStream context
+// for one call plus a func to close it: a no-op for the shared connection
+// used by the worker and job, a real Close for the API's per-call connection.
 type natsClient struct {
-	js jetstream.JetStream
+	open natsconn.ConnectFunc
 }
 
+// NewNATSTaskQueue publishes over an already-open, long-lived JetStream
+// context owned by the caller (worker and job processes).
 func NewNATSTaskQueue(js jetstream.JetStream) *natsClient {
-	return &natsClient{js: js}
+	return &natsClient{open: func(context.Context) (jetstream.JetStream, func(), error) {
+		return js, func() {}, nil
+	}}
+}
+
+// NewPerCallNATSTaskQueue is the API-process variant: every Enqueue opens a
+// connection via connect, publishes, and closes it before returning, so no
+// idle socket outlives the call (an idle NATS socket keeps the Railway
+// service from sleeping). If NATS is down the error surfaces on the call
+// (after the connect timeout), not at boot.
+func NewPerCallNATSTaskQueue(connect natsconn.ConnectFunc) *natsClient {
+	return &natsClient{open: connect}
 }
 
 func (nc *natsClient) Enqueue(ctx context.Context, message queue.TaskMessage) error {
@@ -30,7 +47,13 @@ func (nc *natsClient) Enqueue(ctx context.Context, message queue.TaskMessage) er
 		return ungerr.Wrap(err, "error marshaling message to JSON")
 	}
 
-	ack, err := nc.js.Publish(ctx, message.Type(), payload)
+	js, closeConn, err := nc.open(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeConn()
+
+	ack, err := js.Publish(ctx, message.Type(), payload)
 	if err != nil {
 		return ungerr.Wrap(err, "error publishing message to NATS")
 	}

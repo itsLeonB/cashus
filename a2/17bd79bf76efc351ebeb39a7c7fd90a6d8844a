@@ -1,0 +1,19 @@
+docs/research/CASH-23-api-sleep-nats.md
+  s_b5d206ed8c6a77::t_a064277c94e1e2 1-425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a217bd79bf76efc351ebeb39a7c7fd90a6d8844a",
+  "prompts": {},
+  "sessions": {
+    "s_b5d206ed8c6a77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_b5d206ed8c6a77",
+        "model": "unknown"
+      },
+      "human_author": "itsLeonB <ellionblessan@gmail.com>"
+    }
+  }
+}

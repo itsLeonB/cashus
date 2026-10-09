@@ -1,0 +1,19 @@
+backend/.railway/exp-nats/Dockerfile
+  s_9515a415108b51::t_f3700f0bfa2192 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f05c140dd8073030ab0e76f85ad2dd493ad8327d",
+  "prompts": {},
+  "sessions": {
+    "s_9515a415108b51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_9515a415108b51",
+        "model": "unknown"
+      },
+      "human_author": "itsLeonB <ellionblessan@gmail.com>"
+    }
+  }
+}

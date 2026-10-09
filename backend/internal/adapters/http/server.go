@@ -2,6 +2,8 @@ package http
 
 import (
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -15,6 +17,11 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 	providers, cleanup, err := provider.InitializeProviders()
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// EXPERIMENT CASH-24: API-only (worker/job never call Setup)
+	if d, perr := time.ParseDuration(os.Getenv("EXP_NATS_CLOSE_AFTER")); perr == nil {
+		time.AfterFunc(d, providers.NATSConn.Close)
 	}
 
 	gin.SetMode(configs.App.Env)

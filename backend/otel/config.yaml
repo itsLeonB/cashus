@@ -29,6 +29,8 @@ processors:
     send_batch_max_size: 4000 # caps burst against Mimir's 15k ceiling
 
 exporters:
+  debug: # EXPERIMENT CASH-24: log each metric batch
+    verbosity: basic
   otlphttp/grafana:
     endpoint: ${env:GRAFANA_OTLP_ENDPOINT}
     headers:
@@ -50,7 +52,7 @@ service:
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, filter/drop_gcs_noise, interval, batch]
-      exporters: [otlphttp/grafana]
+      exporters: [otlphttp/grafana, debug]
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]

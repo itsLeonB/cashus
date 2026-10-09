@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/itsLeonB/cashback/internal/adapters/http"
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -12,6 +14,8 @@ import (
 )
 
 func main() {
+	fmt.Printf("EXP boot pid=%d ts=%s\n", os.Getpid(), time.Now().Format(time.RFC3339Nano)) // EXPERIMENT CASH-24
+
 	var exitCode int
 	defer func() {
 		os.Exit(exitCode)

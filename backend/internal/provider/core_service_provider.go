@@ -1,6 +1,11 @@
 package provider
 
 import (
+	"context"
+	"net"
+	"os"
+	"time"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/google/wire"
 	adapters "github.com/itsLeonB/cashback/internal/adapters/core/service/queue"
@@ -71,6 +76,10 @@ func ProvideGCSStorage() (storage.StorageRepository, func(), error) {
 
 // ProvideOCRClient opens the OCR client.
 func ProvideOCRClient() (ocr.OCRService, func(), error) {
+	if os.Getenv("EXP_SKIP_VISION") == "1" { // EXPERIMENT CASH-24: no Vision gRPC channel
+		return skippedOCR{}, func() {}, nil
+	}
+
 	ocrClient, err := ocr.NewOCRClient()
 	if err != nil {
 		return nil, nil, err
@@ -84,6 +93,14 @@ func ProvideOCRClient() (ocr.OCRService, func(), error) {
 
 	return ocrClient, cleanup, nil
 }
+
+// EXPERIMENT CASH-24: stand-in OCR service used when EXP_SKIP_VISION=1.
+type skippedOCR struct{}
+
+func (skippedOCR) ExtractFromURI(context.Context, string) (string, error) {
+	return "", ungerr.Unknown("OCR skipped (EXP_SKIP_VISION)")
+}
+func (skippedOCR) Shutdown() error { return nil }
 
 // ProvideNATSConn opens the NATS connection. Its cleanup drains the
 // connection; wire calls this cleanup before any of its own inputs' cleanups
@@ -102,7 +119,14 @@ func ProvideOCRClient() (ocr.OCRService, func(), error) {
 // pre-wire on the graceful full-shutdown path, so this is left as-is rather
 // than reintroducing a separate Close()-based failure branch.
 func ProvideNATSConn() (*nats.Conn, func(), error) {
-	nc, err := nats.Connect(config.Global.Url)
+	var opts []nats.Option
+	if d, err := time.ParseDuration(os.Getenv("EXP_NATS_PING_INTERVAL")); err == nil { // EXPERIMENT CASH-24
+		opts = append(opts, nats.PingInterval(d))
+	}
+	if os.Getenv("EXP_NATS_NO_KEEPALIVE") == "1" { // EXPERIMENT CASH-24
+		opts = append(opts, nats.Dialer(&net.Dialer{Timeout: 2 * time.Second, KeepAlive: -1}))
+	}
+	nc, err := nats.Connect(config.Global.Url, opts...)
 	if err != nil {
 		return nil, nil, ungerr.Wrap(err, "error connecting to NATS")
 	}

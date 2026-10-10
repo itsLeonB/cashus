@@ -12,7 +12,7 @@ import (
 )
 
 func Setup(configs config.Config) (*httpserver.Server, func(), error) {
-	providers, cleanup, err := provider.InitializeProviders()
+	providers, cleanup, err := provider.InitializeHTTPProviders()
 	if err != nil {
 		return nil, nil, err
 	}

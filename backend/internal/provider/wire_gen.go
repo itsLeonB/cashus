@@ -118,10 +118,100 @@ func InitializeProviders() (*Providers, func(), error) {
 	}, nil
 }
 
+// InitializeHTTPProviders is InitializeProviders for the API process; see
+// HTTPCoreServiceSet.
+func InitializeHTTPProviders() (*Providers, func(), error) {
+	dataSources, cleanup, err := ProvideDataSource()
+	if err != nil {
+		return nil, nil, err
+	}
+	db := dataSources.Gorm
+	transactor := ProvideTransactor(db)
+	repositories := ProvideRepositories(db, transactor)
+	llmService := ProvideLLMService()
+	mailService := ProvideMailService()
+	storageRepository, cleanup2, err := ProvideGCSStorage()
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	imageService := ProvideImageService(storageRepository)
+	connectFunc := ProvideNATSConnectFunc()
+	stateStore, cleanup3, err := ProvidePerCallStateStore(connectFunc)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	ocrService, cleanup4, err := ProvideOCRClient()
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	taskQueue, cleanup5 := ProvidePerCallTaskQueue(connectFunc)
+	client := ProvideWebPushClient()
+	langfuseClient, cleanup6 := ProvideLangfuseClient()
+	coreServices := &CoreServices{
+		LLM:      llmService,
+		Mail:     mailService,
+		Image:    imageService,
+		State:    stateStore,
+		OCR:      ocrService,
+		Storage:  storageRepository,
+		Queue:    taskQueue,
+		WebPush:  client,
+		Langfuse: langfuseClient,
+	}
+	services, cleanup7, err := ProvideServices(repositories, coreServices)
+	if err != nil {
+		cleanup6()
+		cleanup5()
+		cleanup4()
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	adminRepositories := admin.ProvideRepositories(db, transactor)
+	config := ProvideAdminConfig()
+	adminServices, err := admin.ProvideServices(adminRepositories, config)
+	if err != nil {
+		cleanup7()
+		cleanup6()
+		cleanup5()
+		cleanup4()
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	providers := &Providers{
+		DataSources:   dataSources,
+		Repositories:  repositories,
+		CoreServices:  coreServices,
+		Services:      services,
+		AdminRepos:    adminRepositories,
+		AdminServices: adminServices,
+	}
+	return providers, func() {
+		cleanup7()
+		cleanup6()
+		cleanup5()
+		cleanup4()
+		cleanup3()
+		cleanup2()
+		cleanup()
+	}, nil
+}
+
 // wire.go:
 
-// ProviderSet composes every provider set in this package plus the admin
-// sub-package's, and assembles the top-level Providers struct from them.
+// baseSet composes every provider set in this package plus the admin
+// sub-package's, and assembles the top-level Providers struct from them,
+// except for the CoreServices sub-resources, which differ between the
+// long-lived (ProviderSet) and per-call (HTTPProviderSet) variants.
 //
 // The admin config is supplied via ProvideAdminConfig, a normal runtime
 // provider function, not wire.Value(adminConfig.Global): wire.Value would
@@ -129,10 +219,22 @@ func InitializeProviders() (*Providers, func(), error) {
 // package-init time, before main() calls config.Load() (which is what
 // actually populates admin.Global) — permanently freezing it at nil. See
 // ProvideAdminConfig's doc comment for the full explanation.
-var ProviderSet = wire.NewSet(
+var baseSet = wire.NewSet(
 	DataSourceSet,
 	TransactorSet,
 	RepositorySet,
-	CoreServiceSet,
 	ServiceSet, admin.ProviderSet, ProvideAdminConfig, wire.FieldsOf(new(*DataSources), "Gorm"), wire.Struct(new(Providers), "*"),
+)
+
+// ProviderSet is the long-lived wiring used by the worker and job.
+var ProviderSet = wire.NewSet(
+	baseSet,
+	CoreServiceSet,
+)
+
+// HTTPProviderSet is ProviderSet for the API process, swapping in
+// HTTPCoreServiceSet so NATS is connected per call, not held open.
+var HTTPProviderSet = wire.NewSet(
+	baseSet,
+	HTTPCoreServiceSet,
 )

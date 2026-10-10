@@ -3,6 +3,7 @@ package provider
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/wire"
+	"github.com/itsLeonB/cashback/internal/adapters/core/service/natsconn"
 	adapters "github.com/itsLeonB/cashback/internal/adapters/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
@@ -19,23 +20,44 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-// CoreServiceSet is the wire provider set for CoreServices, assembled from
-// the individual sub-resource providers below via wire.Struct so that wire's
-// generated cleanup ordering handles partial-construction failures (e.g. a
-// later sub-resource failing after the NATS connection is already open).
-var CoreServiceSet = wire.NewSet(
+// coreSharedSet holds the CoreServices providers common to the long-lived
+// (worker, job) and per-call (API) variants.
+var coreSharedSet = wire.NewSet(
 	ProvideGCSStorage,
 	ProvideOCRClient,
-	ProvideNATSConn,
-	ProvideJetStream,
-	ProvideStateStore,
-	ProvideTaskQueue,
 	ProvideLangfuseClient,
 	ProvideLLMService,
 	ProvideMailService,
 	ProvideImageService,
 	ProvideWebPushClient,
+)
+
+// CoreServiceSet is the wire provider set for CoreServices, assembled from
+// the individual sub-resource providers below via wire.Struct so that wire's
+// generated cleanup ordering handles partial-construction failures (e.g. a
+// later sub-resource failing after the NATS connection is already open).
+var CoreServiceSet = wire.NewSet(
+	coreSharedSet,
+	ProvideNATSConn,
+	ProvideJetStream,
+	ProvideStateStore,
+	ProvideTaskQueue,
 	wire.Struct(new(CoreServices), "*"),
+)
+
+// HTTPCoreServiceSet is CoreServiceSet for the API process. The API must not
+// hold idle outbound sockets (an idle NATS connection keeps the Railway
+// service from sleeping), so instead of ProvideNATSConn/ProvideJetStream it
+// binds a connect func, and the state store and task queue open and close a
+// connection per call. NATSConn and JetStream are deliberately left nil (see
+// CoreServices); only the worker reads them. Boot no longer fails when NATS
+// is down; the error surfaces on the first call that needs it.
+var HTTPCoreServiceSet = wire.NewSet(
+	coreSharedSet,
+	ProvideNATSConnectFunc,
+	ProvidePerCallStateStore,
+	ProvidePerCallTaskQueue,
+	wire.Struct(new(CoreServices), "LLM", "Mail", "Image", "State", "OCR", "Storage", "Queue", "WebPush", "Langfuse"),
 )
 
 type CoreServices struct {
@@ -49,6 +71,9 @@ type CoreServices struct {
 	WebPush  webpush.Client
 	Langfuse langfuse.Client
 
+	// NATSConn and JetStream are set only by the long-lived CoreServiceSet
+	// (worker, job). They are nil in the API process (HTTPCoreServiceSet),
+	// which connects per call instead.
 	NATSConn  *nats.Conn
 	JetStream jetstream.JetStream
 }
@@ -114,6 +139,43 @@ func ProvideNATSConn() (*nats.Conn, func(), error) {
 	}
 
 	return nc, cleanup, nil
+}
+
+// ProvideNATSConnectFunc returns the per-call NATS connect func. It opens no
+// connection itself.
+func ProvideNATSConnectFunc() natsconn.ConnectFunc {
+	return natsconn.New(config.Global.Url)
+}
+
+// ProvidePerCallStateStore creates the state store for the API process; the
+// "nats" store connects per call.
+func ProvidePerCallStateStore(connect natsconn.ConnectFunc) (store.StateStore, func(), error) {
+	stateStore, err := store.NewPerCallStateStore(connect)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cleanup := func() {
+		if err := stateStore.Shutdown(); err != nil {
+			logger.Error(ungerr.Wrap(err, "error shutting down state store"))
+		}
+	}
+
+	return stateStore, cleanup, nil
+}
+
+// ProvidePerCallTaskQueue creates the task queue for the API process; every
+// enqueue connects, publishes and closes.
+func ProvidePerCallTaskQueue(connect natsconn.ConnectFunc) (queue.TaskQueue, func()) {
+	taskQueue := adapters.NewPerCallNATSTaskQueue(connect)
+
+	cleanup := func() {
+		if err := taskQueue.Shutdown(); err != nil {
+			logger.Error(ungerr.Wrap(err, "error shutting down task queue"))
+		}
+	}
+
+	return taskQueue, cleanup
 }
 
 // ProvideJetStream creates the JetStream context from the NATS connection.

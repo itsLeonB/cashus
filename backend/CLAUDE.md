@@ -73,6 +73,7 @@ internal/
 - Service interfaces are defined in `internal/domain/service/services.go`.
 - Repository interfaces are defined in `internal/domain/repository/`.
 - All wiring happens in `internal/provider/` — constructors use plain dependency injection (no DI container).
+- The API process must not hold idle outbound sockets (an idle socket keeps the Railway service from sleeping).
 
 ### Naming
 

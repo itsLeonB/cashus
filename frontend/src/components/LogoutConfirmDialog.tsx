@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { LogOut } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 interface LogoutConfirmDialogProps {
   open: boolean;
@@ -24,12 +25,15 @@ export function LogoutConfirmDialog({
   onConfirm,
 }: Readonly<LogoutConfirmDialogProps>) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
     setIsLoggingOut(true);
+    setError(null);
     try {
       await onConfirm();
-    } catch {
+    } catch (error) {
+      setError(getApiErrorMessage(error, "Could not sign out. Try again."));
       setIsLoggingOut(false);
     }
   };
@@ -43,6 +47,7 @@ export function LogoutConfirmDialog({
             Are you sure you want to sign out of your account?
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p role="alert">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoggingOut}>Cancel</AlertDialogCancel>
           <Button

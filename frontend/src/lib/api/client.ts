@@ -1,4 +1,5 @@
 import { ApiError } from "./types";
+import { session, SESSION_EXPIRED_ERROR } from "./session";
 import config from "@/config/config";
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -8,16 +9,6 @@ if (globalThis.localStorage) {
   localStorage.removeItem("authToken");
   localStorage.removeItem("refreshToken");
 }
-
-const CSRF_STORAGE_KEY = "csrfToken";
-
-const SESSION_EXPIRED_ERROR: ApiError = {
-  type: "about:blank",
-  title: "Session Expired",
-  detail: "Session expired",
-  status: 401,
-  isRefreshFailure: true,
-};
 
 // A rejected `fetch()` (offline, DNS failure, connection refused, CORS
 // preflight failure, ...) never produces an HTTP response at all, so there's
@@ -59,150 +50,104 @@ export async function parseErrorResponse(response: Response): Promise<ApiError> 
 }
 
 class ApiClient {
-  private readonly baseUrl: string;
-  private isRefreshing = false;
-  private refreshFailed = false;
-  private refreshSubscribers: {
-    resolve: () => void;
-    reject: (e: ApiError) => void;
-  }[] = [];
+  private refresh: { generation: number; promise: Promise<void> } | null = null;
+  private refreshVersion = 0;
+  private logoutRequest: Promise<unknown> | null = null;
+  private cookieTransport: Promise<Response> | null = null;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  private cookieFetch(url: string, init: RequestInit, generation: number, logout = false) {
+    const send = () => {
+      if (!logout) session.check(generation);
+      return fetchOrThrowNetworkError(url, init);
+    };
+    // Keep the real transport, not a generation-cancelled promise: headers can set cookies.
+    const request = this.cookieTransport ? this.cookieTransport.catch(() => {}).then(send) : send();
+    this.cookieTransport = request;
+    const clear = () => { if (this.cookieTransport === request) this.cookieTransport = null; };
+    request.then(clear, clear);
+    return request;
   }
+  constructor(private readonly baseUrl: string) {}
 
-  private getCsrfToken(): string | null {
-    return localStorage.getItem(CSRF_STORAGE_KEY);
-  }
-
-  setCsrfToken(token: string) {
-    localStorage.setItem(CSRF_STORAGE_KEY, token);
-  }
-
-  clearCsrfToken() {
-    localStorage.removeItem(CSRF_STORAGE_KEY);
-  }
-
-  hasSession(): boolean {
-    return this.getCsrfToken() !== null;
-  }
-
-  isRefreshFailed() {
-    return this.refreshFailed;
-  }
-
-  resetRefreshState() {
-    this.refreshFailed = false;
-  }
-
-  private notifySubscribersSuccess() {
-    this.refreshSubscribers.forEach((s) => s.resolve());
-    this.refreshSubscribers = [];
-  }
-
-  private notifySubscribersFailure() {
-    this.refreshSubscribers.forEach((s) =>
-      s.reject(SESSION_EXPIRED_ERROR),
-    );
-    this.refreshSubscribers = [];
-  }
-
-  private async handleRefreshFlow<T>(
-    retryAction: () => Promise<T>,
-  ): Promise<T> {
-    if (!this.isRefreshing) {
-      this.isRefreshing = true;
-      try {
-        const refreshResponse = await fetch(`${this.baseUrl}/auth/refresh`, {
-          method: "PUT",
-          credentials: "include",
-        });
-
-        if (!refreshResponse.ok) {
-          this.refreshFailed = true;
-          this.clearCsrfToken();
-          throw new Error("Refresh failed");
-        }
-
-        const data = await refreshResponse.json();
-        const csrfToken = data?.data?.csrfToken ?? data?.csrfToken;
-        if (csrfToken) {
-          this.setCsrfToken(csrfToken);
-        }
-
-        this.isRefreshing = false;
-        this.notifySubscribersSuccess();
-        return retryAction();
-      } catch (error) {
-        this.refreshFailed = true;
-        this.isRefreshing = false;
-        this.notifySubscribersFailure();
-        console.error("Token refresh failed:", error);
+  private refreshSession(generation: number, forLogout = false): Promise<void> {
+    if (this.logoutRequest && !forLogout) {
+      return session.guard(generation, this.logoutRequest.catch(() => {}).then(() => {
+        session.check(generation);
+        return this.refreshSession(generation);
+      }));
+    }
+    if (this.refresh?.generation === generation) return this.refresh.promise;
+    const promise = session.guard(generation, (async () => {
+      const response = await this.cookieFetch(`${this.baseUrl}/auth/refresh`, {
+        method: "PUT", credentials: "include",
+      }, generation);
+      session.check(generation);
+      if (response.status === 401 && !this.logoutRequest) {
+        session.change("expired");
         throw SESSION_EXPIRED_ERROR;
       }
-    }
-
-    return new Promise<T>((resolve, reject) => {
-      this.refreshSubscribers.push({
-        resolve: () => { retryAction().then(resolve).catch(reject); },
-        reject,
-      });
-    });
+      if (!response.ok) throw await parseErrorResponse(response);
+      const body = await response.json();
+      session.check(generation);
+      const token = body?.data?.csrfToken ?? body?.csrfToken;
+      if (token) session.adopt(token, generation);
+      this.refreshVersion++;
+    })());
+    this.refresh = { generation, promise };
+    const clear = () => { if (this.refresh?.promise === promise) this.refresh = null; };
+    promise.then(clear, clear);
+    return promise;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    isRetry = false,
-  ): Promise<T> {
-    if (this.refreshFailed) {
-      throw SESSION_EXPIRED_ERROR;
+  private request<T>(endpoint: string, options: RequestInit = {}, isRetry = false,
+    generation = session.read().generation): Promise<T> {
+    if (endpoint === "/auth/logout") {
+      // Wait for the HTTP response: generation cancellation cannot cancel Set-Cookie.
+      const request = this.send<T>(endpoint, options, isRetry, generation);
+      this.logoutRequest = request;
+      const clear = () => { if (this.logoutRequest === request) this.logoutRequest = null; };
+      request.then(clear, clear);
+      return request;
     }
+    return session.guard(generation, this.send<T>(endpoint, options, isRetry, generation));
+  }
 
-    const url = `${this.baseUrl}${endpoint}`;
-    const method = options.method || "GET";
-
-    const headers: HeadersInit = {};
-    if (options.body) {
-      headers["Content-Type"] = "application/json";
+  private async send<T>(endpoint: string, options: RequestInit, isRetry: boolean,
+    generation: number): Promise<T> {
+    session.check(generation);
+    const logout = endpoint === "/auth/logout";
+    // Public credentials never refresh; logout can refresh but remains usable after expiry.
+    const protectedRequest = !endpoint.startsWith("/auth/");
+    if (protectedRequest && session.read().status === "expired") throw SESSION_EXPIRED_ERROR;
+    const token = session.token();
+    const refreshVersion = this.refreshVersion;
+    const headers = new Headers(options.headers);
+    if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
     }
-    if (options.headers) {
-      // Merged after the default above so a caller-supplied header (e.g. a
-      // custom Content-Type) overrides it, matching fetch's usual semantics.
-      Object.assign(headers, options.headers);
+    if (token && options.method !== "GET" && options.method !== "HEAD") {
+      headers.set("X-CSRF-Token", token);
     }
-
-    if (method !== "GET" && method !== "HEAD") {
-      const csrf = this.getCsrfToken();
-      if (csrf) {
-        headers["X-CSRF-Token"] = csrf;
-      }
+    const init: RequestInit = { ...options, headers, credentials: "include" };
+    const changesCookies = /^\/auth\/(login|refresh|logout|reset-password|verify-registration|[^/]+\/callback)(\?|$)/.test(endpoint);
+    const response = await (changesCookies
+      ? this.cookieFetch(`${this.baseUrl}${endpoint}`, init, generation, logout)
+      : fetchOrThrowNetworkError(`${this.baseUrl}${endpoint}`, init));
+    if (!logout) session.check(generation);
+    if (response.status === 401 && (protectedRequest || logout) && !isRetry &&
+      generation === session.read().generation) {
+      // A late 401 can arrive after another request already refreshed the token.
+      if (this.refreshVersion === refreshVersion) await this.refreshSession(generation, logout);
+      session.check(generation);
+      return this.request<T>(endpoint, options, true, generation);
     }
-
-    const response = await fetchOrThrowNetworkError(url, {
-      ...options,
-      headers,
-      credentials: "include",
-    });
-
-    if (response.status === 401 && !isRetry) {
-      return this.handleRefreshFlow(() =>
-        this.request<T>(endpoint, options, true),
-      );
-    }
-
-    if (!response.ok) {
-      throw await parseErrorResponse(response);
-    }
-
+    if (!response.ok) throw await parseErrorResponse(response);
     if (response.status === 204) {
-      // SAFETY: HTTP 204 responses have no body. Callers of endpoints that
-      // return 204 type T as void/undefined-compatible, so an empty object
-      // is a safe stand-in for "no data".
+      // SAFETY: 204 endpoints use void-compatible result types and have no body.
       return {} as T;
     }
-
     const data = await response.json();
+    if (!logout) session.check(generation);
     return data && data instanceof Object && "data" in data ? data.data : data;
   }
 
@@ -247,46 +192,12 @@ class ApiClient {
     });
   }
 
-  delete<T>(endpoint: string) {
-    return this.request<T>(endpoint, { method: "DELETE" });
+  delete<T>(endpoint: string, options: RequestInit = {}) {
+    return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
 
-  async uploadFile<T>(
-    endpoint: string,
-    formData: FormData,
-    isRetry = false,
-  ): Promise<T> {
-    if (this.refreshFailed) {
-      throw SESSION_EXPIRED_ERROR;
-    }
-
-    const url = `${this.baseUrl}${endpoint}`;
-
-    const headers: HeadersInit = {};
-    const csrf = this.getCsrfToken();
-    if (csrf) {
-      headers["X-CSRF-Token"] = csrf;
-    }
-
-    const response = await fetchOrThrowNetworkError(url, {
-      method: "POST",
-      headers,
-      body: formData,
-      credentials: "include",
-    });
-
-    if (response.status === 401 && !isRetry) {
-      return this.handleRefreshFlow(() =>
-        this.uploadFile<T>(endpoint, formData, true),
-      );
-    }
-
-    if (!response.ok) {
-      throw await parseErrorResponse(response);
-    }
-
-    const data = await response.json();
-    return data && data instanceof Object && "data" in data ? data.data : data;
+  uploadFile<T>(endpoint: string, formData: FormData, isRetry = false): Promise<T> {
+    return this.request<T>(endpoint, { method: "POST", body: formData }, isRetry);
   }
 }
 

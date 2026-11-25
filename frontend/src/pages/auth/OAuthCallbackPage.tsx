@@ -6,7 +6,6 @@ import { Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearServiceWorkerCache } from "@/lib/sw-utils";
-import { apiClient } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function OAuthCallbackPage() {
@@ -43,15 +42,12 @@ export default function OAuthCallbackPage() {
     handleOAuth(
       { provider, code, state },
       {
-        onSuccess: async (data) => {
-          apiClient.setCsrfToken(data.csrfToken);
-          apiClient.resetRefreshState();
+        onSuccess: () => {
           clearServiceWorkerCache().catch((error) => {
             console.error("Failed to clear service worker cache:", error);
           });
           queryClient.clear();
           globalThis.location.replace("/dashboard");
-          await new Promise(() => {});
         },
         onError: (error) => {
           setError(

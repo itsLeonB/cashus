@@ -5,10 +5,15 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useSyncExternalStore,
+  useRef,
   ReactNode,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { UserProfile, authApi, apiClient, ApiError } from "@/lib/api";
+import { UserProfile, authApi } from "@/lib/api";
+import { session } from "@/lib/api/session";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import { Button } from "@/components/ui/button";
 import { clearNotificationContext } from "@/lib/notificationPersistence";
 import { clearServiceWorkerCache } from "@/lib/sw-utils";
 
@@ -33,45 +38,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshFailed, setIsRefreshFailed] = useState(false);
+  const snapshot = useSyncExternalStore(session.subscribe, session.read);
+  const isRefreshFailed = snapshot.status === "expired";
+  const [profileError, setProfileError] = useState<unknown>(null);
   const queryClient = useQueryClient();
+  const profileRequest = useRef(0);
 
   const refreshUser = useCallback(async () => {
+    const generation = session.read().generation;
+    const request = ++profileRequest.current;
+    setProfileError(null);
     try {
-      if (apiClient.isRefreshFailed()) {
-        setIsRefreshFailed(true);
-        setUser(null);
-        return;
-      }
-
       const profile = await authApi.getProfile();
-      setUser(profile);
-      setIsRefreshFailed(false);
+      if (generation === session.read().generation && request === profileRequest.current) setUser(profile);
     } catch (error) {
-      // SAFETY: authApi.getProfile() goes through apiClient (see
-      // src/lib/api/client.ts), which only ever throws/rejects with
-      // ApiError-shaped objects.
-      const err = error as ApiError;
-      if (err.isRefreshFailure) {
-        setIsRefreshFailed(true);
-      }
-      setUser(null);
+      if (generation === session.read().generation && request === profileRequest.current) setProfileError(error);
+    } finally {
+      if (generation === session.read().generation && request === profileRequest.current) setIsLoading(false);
     }
   }, []);
 
+  useEffect(() => session.subscribe(() => {
+    // Cancel before clearing so late query results cannot restore an old user's data.
+    void queryClient.cancelQueries();
+    queryClient.clear();
+    clearNotificationContext();
+    setUser(null);
+    setProfileError(null);
+  }), [queryClient]);
+
   useEffect(() => {
-    if (apiClient.hasSession()) {
-      refreshUser().finally(() => setIsLoading(false));
+    if (snapshot.status === "present") {
+      setIsLoading(true);
+      void refreshUser();
     } else {
       setIsLoading(false);
     }
-  }, [refreshUser]);
+    const request = profileRequest.current;
+    return () => { if (profileRequest.current === request) profileRequest.current = request + 1; };
+  }, [snapshot, refreshUser]);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const resp = await authApi.login({ email, password });
-      apiClient.setCsrfToken(resp.csrfToken);
-      apiClient.resetRefreshState();
+      await authApi.login({ email, password });
 
       clearServiceWorkerCache().catch((error) => {
         console.error("Failed to clear service worker cache:", error);
@@ -80,8 +89,6 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       queryClient.clear();
 
       globalThis.location.replace("/dashboard");
-      // Block React from returning — prevents SPA navigation before browser reloads
-      await new Promise(() => {});
     },
     [queryClient],
   );
@@ -94,23 +101,22 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   );
 
   const logout = useCallback(async () => {
+    const request = authApi.logout();
+    const generation = session.read().generation;
     try {
-      await authApi.logout();
+      await request;
     } catch (error) {
       console.error("Logout API failed (swallowed):", error);
-    } finally {
-      apiClient.clearCsrfToken();
-      clearNotificationContext();
-      queryClient.clear();
-
-      clearServiceWorkerCache().catch((error) => {
-        console.error("Failed to clear service worker cache:", error);
-      });
-
-      globalThis.location.replace("/login");
-      // Block React from returning — prevents SPA navigation before browser reloads
-      await new Promise(() => {});
     }
+    if (generation !== session.read().generation) return;
+    clearNotificationContext();
+    queryClient.clear();
+
+    clearServiceWorkerCache().catch((error) => {
+      console.error("Failed to clear service worker cache:", error);
+    });
+
+    globalThis.location.replace("/login");
   }, [queryClient]);
 
   const value = useMemo(
@@ -127,6 +133,14 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     [user, isLoading, login, register, logout, refreshUser, isRefreshFailed],
   );
 
+  if (!user && profileError && !isRefreshFailed) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 p-4">
+        <p role="alert"> {getApiErrorMessage(profileError, "Could not load your profile.")} </p>
+        <Button disabled={isLoading} onClick={() => { setIsLoading(true); void refreshUser(); }}>Retry</Button>
+      </div>
+    );
+  }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

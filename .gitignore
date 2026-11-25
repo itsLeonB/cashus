@@ -11,3 +11,5 @@ Thumbs.db
 
 # Agent worktree checkouts (isolation for parallel subagent dispatches)
 .claude/worktrees/
+
+.mcp.json

@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "postgres-prod": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "DATABASE_URI",
+        "crystaldba/postgres-mcp",
+        "--access-mode=restricted"
+      ],
+      "env": {
+        "DATABASE_URI": "${POSTGRES_PROD_URI}"
+      }
+    },
+    "postgres-dev": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "DATABASE_URI",
+        "crystaldba/postgres-mcp",
+        "--access-mode=unrestricted"
+      ],
+      "env": {
+        "DATABASE_URI": "${POSTGRES_DEV_URI}"
+      }
+    },
+    "grafana": {
+      "type": "http",
+      "url": "https://mcp.grafana.com/mcp",
+      "headers": {
+        "X-Grafana-URL": "${GRAFANA_STACK_URL}"
+      }
+    },
+    "youtrack": {
+      "type": "http",
+      "url": "https://youtrack.cashus.online/mcp",
+      "headers": {
+        "Authorization": "Bearer ${YOUTRACK_TOKEN}"
+      }
+    }
+  }
+}

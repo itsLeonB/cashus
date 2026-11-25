@@ -52,16 +52,37 @@ export async function parseErrorResponse(response: Response): Promise<ApiError> 
 class ApiClient {
   private refresh: { generation: number; promise: Promise<void> } | null = null;
   private refreshVersion = 0;
+  private logoutRequest: Promise<unknown> | null = null;
+  private cookieTransport: Promise<Response> | null = null;
+
+  private cookieFetch(url: string, init: RequestInit, generation: number, logout = false) {
+    const send = () => {
+      if (!logout) session.check(generation);
+      return fetchOrThrowNetworkError(url, init);
+    };
+    // Keep the real transport, not a generation-cancelled promise: headers can set cookies.
+    const request = this.cookieTransport ? this.cookieTransport.catch(() => {}).then(send) : send();
+    this.cookieTransport = request;
+    const clear = () => { if (this.cookieTransport === request) this.cookieTransport = null; };
+    request.then(clear, clear);
+    return request;
+  }
   constructor(private readonly baseUrl: string) {}
 
-  private refreshSession(generation: number): Promise<void> {
+  private refreshSession(generation: number, forLogout = false): Promise<void> {
+    if (this.logoutRequest && !forLogout) {
+      return session.guard(generation, this.logoutRequest.catch(() => {}).then(() => {
+        session.check(generation);
+        return this.refreshSession(generation);
+      }));
+    }
     if (this.refresh?.generation === generation) return this.refresh.promise;
     const promise = session.guard(generation, (async () => {
-      const response = await fetchOrThrowNetworkError(`${this.baseUrl}/auth/refresh`, {
+      const response = await this.cookieFetch(`${this.baseUrl}/auth/refresh`, {
         method: "PUT", credentials: "include",
-      });
+      }, generation);
       session.check(generation);
-      if (response.status === 401) {
+      if (response.status === 401 && !this.logoutRequest) {
         session.change("expired");
         throw SESSION_EXPIRED_ERROR;
       }
@@ -80,15 +101,22 @@ class ApiClient {
 
   private request<T>(endpoint: string, options: RequestInit = {}, isRetry = false,
     generation = session.read().generation): Promise<T> {
-    const work = this.send<T>(endpoint, options, isRetry, generation);
-    // Wait for logout's HTTP response: generation cancellation cannot cancel Set-Cookie.
-    return endpoint === "/auth/logout" ? work : session.guard(generation, work);
+    if (endpoint === "/auth/logout") {
+      // Wait for the HTTP response: generation cancellation cannot cancel Set-Cookie.
+      const request = this.send<T>(endpoint, options, isRetry, generation);
+      this.logoutRequest = request;
+      const clear = () => { if (this.logoutRequest === request) this.logoutRequest = null; };
+      request.then(clear, clear);
+      return request;
+    }
+    return session.guard(generation, this.send<T>(endpoint, options, isRetry, generation));
   }
 
   private async send<T>(endpoint: string, options: RequestInit, isRetry: boolean,
     generation: number): Promise<T> {
     session.check(generation);
-    // Auth routes must remain usable after expiry and must never refresh bad credentials.
+    const logout = endpoint === "/auth/logout";
+    // Public credentials never refresh; logout can refresh but remains usable after expiry.
     const protectedRequest = !endpoint.startsWith("/auth/");
     if (protectedRequest && session.read().status === "expired") throw SESSION_EXPIRED_ERROR;
     const token = session.token();
@@ -100,13 +128,16 @@ class ApiClient {
     if (token && options.method !== "GET" && options.method !== "HEAD") {
       headers.set("X-CSRF-Token", token);
     }
-    const response = await fetchOrThrowNetworkError(`${this.baseUrl}${endpoint}`, {
-      ...options, headers, credentials: "include",
-    });
-    session.check(generation);
-    if (response.status === 401 && protectedRequest && !isRetry) {
+    const init: RequestInit = { ...options, headers, credentials: "include" };
+    const changesCookies = /^\/auth\/(login|refresh|logout|reset-password|verify-registration|[^/]+\/callback)(\?|$)/.test(endpoint);
+    const response = await (changesCookies
+      ? this.cookieFetch(`${this.baseUrl}${endpoint}`, init, generation, logout)
+      : fetchOrThrowNetworkError(`${this.baseUrl}${endpoint}`, init));
+    if (!logout) session.check(generation);
+    if (response.status === 401 && (protectedRequest || logout) && !isRetry &&
+      generation === session.read().generation) {
       // A late 401 can arrive after another request already refreshed the token.
-      if (this.refreshVersion === refreshVersion) await this.refreshSession(generation);
+      if (this.refreshVersion === refreshVersion) await this.refreshSession(generation, logout);
       session.check(generation);
       return this.request<T>(endpoint, options, true, generation);
     }
@@ -116,7 +147,7 @@ class ApiClient {
       return {} as T;
     }
     const data = await response.json();
-    session.check(generation);
+    if (!logout) session.check(generation);
     return data && data instanceof Object && "data" in data ? data.data : data;
   }
 

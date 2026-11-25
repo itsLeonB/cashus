@@ -36,12 +36,14 @@ export const authApi = {
     apiClient.get<AuthResponse>(`/auth/verify-registration?token=${encodeURIComponent(token)}`)),
   refreshToken: async () => {
     const generation = session.read().generation;
+    if (pendingLogout) await pendingLogout.catch(() => {});
+    session.check(generation);
     try {
       const response = await apiClient.put<AuthResponse>("/auth/refresh");
       if (response.csrfToken) session.adopt(response.csrfToken, generation);
       return response;
     } catch (error) {
-      if (generation === session.read().generation && error?.status === 401) session.change("expired");
+      if (!pendingLogout && generation === session.read().generation && error?.status === 401) session.change("expired");
       throw error;
     }
   },
@@ -60,9 +62,18 @@ export const authApi = {
   logout: () => {
     if (pendingLogout) return pendingLogout;
     const token = session.token();
-    session.change();
+    const generation = session.read().generation;
+    session.clearToken();
     const request = apiClient.delete("/auth/logout", {
       headers: token ? { "X-CSRF-Token": token } : {},
+    }).then((response) => {
+      if (generation === session.read().generation) session.change();
+      return response;
+    }, (error) => {
+      if (generation === session.read().generation && token && !session.token()) {
+        session.adopt(token, generation);
+      }
+      throw error;
     });
     pendingLogout = request;
     const clear = () => { if (pendingLogout === request) pendingLogout = null; };

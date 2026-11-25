@@ -16,7 +16,10 @@ export const session = {
     listeners.add(listener);
     return () => { listeners.delete(listener); };
   },
+  // shortcut: no cross-tab sync; read() can describe the old account while token() reads another tab's token.
+  // Add storage-event account-change invalidation (profile/cache too), distinct from same-session rotation.
   token: () => globalThis.localStorage?.getItem("csrfToken") ?? null,
+  clearToken: () => globalThis.localStorage?.removeItem("csrfToken"),
   change(status = "anonymous") {
     globalThis.localStorage?.removeItem("csrfToken");
     snapshot = { generation: snapshot.generation + 1, status };

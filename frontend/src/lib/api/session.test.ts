@@ -41,6 +41,118 @@ afterEach(async () => {
 });
 
 describe("request/session behavior", () => {
+  for (const explicit of [false, true]) {
+    test(`cookie transport waits for pending ${explicit ? "explicit" : "automatic"} refresh before login`, async () => {
+      const refresh = deferred<Response>();
+      const started = deferred<void>();
+      let cookie = "old";
+      const events: string[] = [];
+      serve((url) => {
+        if (url.endsWith("/auth/refresh")) {
+          started.resolve();
+          return refresh.promise.then((response) => { cookie = "stale"; return response; });
+        }
+        if (url.endsWith("/auth/login")) {
+          events.push("login"); cookie = "new"; return ok({ csrfToken: "new" });
+        }
+        return fail(401);
+      });
+      const old = Promise.allSettled([explicit ? authApi.refreshToken() : apiClient.get("/a")]);
+      await started.promise;
+      const next = authApi.login({ email: "new", password: "password" });
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+      const before = [...events];
+      expect((await old)[0].status).toBe("rejected");
+      refresh.resolve(ok({ csrfToken: "stale" }));
+      await next;
+      await old;
+      expect(before).toEqual([]);
+      expect(cookie).toBe("new");
+      expect(session.token()).toBe("new");
+    });
+  }
+
+  test("failed logout preserves the session and does not notify data-clearing listeners", async () => {
+    const snapshot = session.read();
+    let notices = 0;
+    const unsubscribe = session.subscribe(() => { notices++; });
+    serve(() => fail(500));
+    try {
+      await expect(authApi.logout()).rejects.toMatchObject({ status: 500 });
+      expect(session.read()).toBe(snapshot);
+      expect(session.token()).toBe("old");
+      expect(notices).toBe(0);
+    } finally { unsubscribe(); }
+  });
+
+  for (const status of [0, 500, 401]) {
+    test(`logout failure ${status} keeps state and limits refresh/replay`, async () => {
+      let calls = 0;
+      let refreshes = 0;
+      serve((url) => {
+        if (url.endsWith("/auth/refresh")) { refreshes++; return ok({ csrfToken: "rotated" }); }
+        calls++;
+        return status ? fail(status) : Promise.reject(new Error("offline"));
+      });
+      await expect(authApi.logout()).rejects.toMatchObject(status ? { status } : { isNetworkError: true });
+      expect(calls).toBe(status === 401 ? 2 : 1);
+      expect(refreshes).toBe(status === 401 ? 1 : 0);
+      expect(session.read().status).toBe("present");
+      expect(session.token()).toBe(status === 401 ? "rotated" : "old");
+    });
+  }
+
+  test("refresh 401 during rejected logout does not clear signed-in state", async () => {
+    const snapshot = session.read();
+    serve(() => fail(401));
+    await expect(authApi.logout()).rejects.toMatchObject({ status: 401 });
+    expect(session.read()).toBe(snapshot);
+    expect(session.token()).toBe("old");
+  });
+
+  test("logout after expiry still sends and can refresh once", async () => {
+    session.change("expired");
+    let calls = 0;
+    serve((url) => url.endsWith("/auth/refresh") ? ok({ csrfToken: "rotated" }) : ++calls === 1 ? fail(401) : ok());
+    await authApi.logout();
+    expect(calls).toBe(2);
+    expect(session.read().status).toBe("anonymous");
+  });
+
+  for (const explicit of [false, true]) {
+    test(`new ${explicit ? "explicit" : "automatic"} refresh waits for logout and cannot recreate its cookies`, async () => {
+      const response = deferred<Response>();
+      let refreshes = 0;
+      serve((url) => {
+        if (url.endsWith("/auth/logout")) return response.promise;
+        if (url.endsWith("/auth/refresh")) { refreshes++; return ok({ csrfToken: "wrong" }); }
+        return fail(401);
+      });
+      const logout = authApi.logout();
+      const pending = Promise.allSettled([explicit ? authApi.refreshToken() : apiClient.get("/a")]);
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+      expect(refreshes).toBe(0);
+      response.resolve(ok());
+      await logout;
+      expect((await pending)[0].status).toBe("rejected");
+      expect(refreshes).toBe(0);
+      expect(session.token()).toBeNull();
+    });
+  }
+
+  test("logout refreshes once on 401 and replays with the refreshed CSRF token", async () => {
+    const tokens: (string | null)[] = [];
+    let refreshes = 0;
+    serve((url, init) => {
+      if (url.endsWith("/auth/refresh")) { refreshes++; return ok({ csrfToken: "rotated" }); }
+      tokens.push(new Headers(init.headers).get("X-CSRF-Token"));
+      return tokens.length === 1 ? fail(401) : ok();
+    });
+    await authApi.logout();
+    expect(tokens).toEqual(["old", "rotated"]);
+    expect(refreshes).toBe(1);
+    expect(session.token()).toBeNull();
+  });
   test("concurrent JSON and multipart requests share refresh and adopt its token", async () => {
     const refresh = deferred<Response>();
     const started = deferred<void>();
@@ -178,12 +290,14 @@ describe("request/session behavior", () => {
         return ok({ csrfToken: "new" });
       });
       const logout = Promise.allSettled([authApi.logout()]);
-      await authApi.refreshToken().catch(() => {});
+      session.change("expired");
       const newLogin = authApi.login({ email: "new@example.com", password: "password" });
       for (let tick = 0; tick < 10; tick++) await Promise.resolve();
       const beforeCompletion = [...events];
       response.resolve(logoutStatus === 200 ? ok() : fail(logoutStatus));
-      await logout;
+      const [outcome] = await logout;
+      expect(outcome.status).toBe(logoutStatus === 200 ? "fulfilled" : "rejected");
+      if (outcome.status === "rejected") expect(outcome.reason).toMatchObject({ status: logoutStatus, title: `HTTP ${logoutStatus}` });
       await newLogin;
       expect(beforeCompletion).toEqual(["logout"]);
       expect(events).toEqual(["logout", "login"]);
@@ -237,10 +351,12 @@ describe("request/session behavior", () => {
         });
         const pending = Promise.allSettled([apiClient.get("/a"), apiClient.get("/b")]);
         await started.promise;
-        if (transition === "login") await login("new-login");
-        else { serve(() => ok()); await authApi.logout(); }
-        expect((await pending).every((result) => result.status === "rejected")).toBe(true);
+        serve(() => ok({ csrfToken: "new-login" }));
+        const next = transition === "login"
+          ? authApi.login({ email: "new", password: "password" }) : authApi.logout();
         refresh.resolve(refreshStatus === 200 ? ok({ csrfToken: "stale" }) : fail(401));
+        await next;
+        expect((await pending).every((result) => result.status === "rejected")).toBe(true);
         await Promise.resolve();
         await Promise.resolve();
         expect(session.token()).toBe(transition === "login" ? "new-login" : null);

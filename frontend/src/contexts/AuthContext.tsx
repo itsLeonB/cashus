@@ -103,12 +103,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const logout = useCallback(async () => {
     const request = authApi.logout();
     const generation = session.read().generation;
-    try {
-      await request;
-    } catch (error) {
-      console.error("Logout API failed (swallowed):", error);
-    }
-    if (generation !== session.read().generation) return;
+    await request;
+    // A confirmed logout advances once; a newer login must not redirect back to /login.
+    if (generation + 1 !== session.read().generation || session.read().status !== "anonymous") return;
     clearNotificationContext();
     queryClient.clear();
 

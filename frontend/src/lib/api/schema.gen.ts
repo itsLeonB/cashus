@@ -546,6 +546,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/friendships/{friendshipID}/split-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List open split reminders */
+        get: operations["list-split-reminders"];
+        put?: never;
+        /** Send a split reminder */
+        post: operations["send-split-reminder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/group-expenses": {
         parameters: {
             query?: never;
@@ -1029,6 +1047,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/split-reminders/{reminderID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a split reminder */
+        get: operations["get-split-reminder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subscriptions/{subscriptionID}": {
         parameters: {
             query?: never;
@@ -1271,6 +1306,9 @@ export interface components {
         EnvelopeListSearchProfileResponse: {
             data: components["schemas"]["SearchProfileResponse"][] | null;
         };
+        EnvelopeListSplitReminderResponse: {
+            data: components["schemas"]["SplitReminderResponse"][] | null;
+        };
         EnvelopeListSubscriptionResponse: {
             data: components["schemas"]["SubscriptionResponse"][] | null;
         };
@@ -1302,6 +1340,9 @@ export interface components {
         };
         EnvelopeProfileTransferMethodResponse: {
             data: components["schemas"]["ProfileTransferMethodResponse"];
+        };
+        EnvelopeSplitReminderResponse: {
+            data: components["schemas"]["SplitReminderResponse"];
         };
         EnvelopeSubscriptionResponse: {
             data: components["schemas"]["SubscriptionResponse"];
@@ -1654,11 +1695,33 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        SendSplitReminderRequest: {
+            description: string;
+            mealDate?: string | null;
+        };
         SimpleProfile: {
             avatar: string;
             id: string;
             isUser: boolean;
             name: string;
+        };
+        SplitReminderResponse: {
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            description: string;
+            draftExpenseId: string;
+            expenseId: string;
+            friendshipId: string;
+            id: string;
+            mealDate: string | null;
+            recipientProfileId: string;
+            senderProfileId: string;
+            /** @enum {string} */
+            status: "OPEN" | "CANCELLED" | "DECLINED" | "COMPLETED" | "FRIENDSHIP_CLOSED";
+            /** Format: date-time */
+            updatedAt: string;
         };
         SubscribeToPushInputBody: {
             endpoint: string;
@@ -3255,6 +3318,74 @@ export interface operations {
             };
         };
     };
+    "list-split-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                friendshipID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeListSplitReminderResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "send-split-reminder": {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                friendshipID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendSplitReminderRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeSplitReminderResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-group-expenses": {
         parameters: {
             query?: {
@@ -4338,6 +4469,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-split-reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reminderID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeSplitReminderResponse"];
+                };
             };
             /** @description Error */
             default: {

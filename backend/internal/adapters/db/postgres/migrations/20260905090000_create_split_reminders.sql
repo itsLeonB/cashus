@@ -14,17 +14,6 @@ CREATE TABLE split_reminders (
  CHECK (sender_profile_id <> recipient_profile_id)
 );
 CREATE INDEX split_reminders_open_list ON split_reminders(friendship_id,created_at DESC,id DESC) WHERE status = 'OPEN';
--- The friendship row lock used by send also serializes physical removal.
--- +goose StatementBegin
-CREATE FUNCTION close_friendship_split_reminders() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
- UPDATE split_reminders SET status='FRIENDSHIP_CLOSED',closed_at=now(),updated_at=now() WHERE friendship_id=OLD.id AND status='OPEN';
- RETURN OLD;
-END $$;
--- +goose StatementEnd
-CREATE TRIGGER close_friendship_split_reminders BEFORE DELETE ON friendships FOR EACH ROW EXECUTE FUNCTION close_friendship_split_reminders();
 
 -- +goose Down
-DROP TRIGGER close_friendship_split_reminders ON friendships;
-DROP FUNCTION close_friendship_split_reminders();
 DROP TABLE split_reminders;

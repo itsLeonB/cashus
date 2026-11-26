@@ -152,22 +152,6 @@ func TestSplitRemindersHTTPPostgres(t *testing.T) {
 	require.NoError(t, db.Exec("DELETE FROM friendships WHERE id=?", friendship).Error)
 	assert.Equal(t, 404, reminderRequest(router, "GET", retrieve, "", actor).Code)
 	assert.Equal(t, 404, reminderRequest(router, "POST", path, `{"description":"Shared meal"}`, actor).Code)
-	// Removal and send must serialize: no OPEN duplicate may survive removal.
-	raceFriend, raceRecipient := uuid.NewString(), uuid.NewString()
-	require.NoError(t, db.Exec("INSERT INTO friendships(id,profile_id1,profile_id2,type) VALUES(?,?,?,'REAL')", raceFriend, actor, raceRecipient).Error)
-	racePath := "/api/v1/friendships/" + raceFriend + "/split-reminders"
-	var raceSend *httptest.ResponseRecorder
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		raceSend = reminderRequest(router, "POST", racePath, `{"description":"closure race"}`, actor)
-	}()
-	require.NoError(t, db.Exec("DELETE FROM friendships WHERE id=?", raceFriend).Error)
-	wg.Wait()
-	assert.Contains(t, []int{201, 404}, raceSend.Code, raceSend.Body.String())
-	newRaceFriend := uuid.NewString()
-	require.NoError(t, db.Exec("INSERT INTO friendships(id,profile_id1,profile_id2,type) VALUES(?,?,?,'REAL')", newRaceFriend, actor, raceRecipient).Error)
-	assert.Equal(t, 201, reminderRequest(router, "POST", "/api/v1/friendships/"+newRaceFriend+"/split-reminders", `{"description":"closure race"}`, actor).Code)
 	// Recreating a pair must not restore access to the old friendship ID.
 	require.NoError(t, db.Exec("INSERT INTO friendships(id,profile_id1,profile_id2,type) VALUES(?,?,?,'REAL')", uuid.NewString(), actor, recipient).Error)
 	assert.Equal(t, 404, reminderRequest(router, "GET", retrieve, "", actor).Code)

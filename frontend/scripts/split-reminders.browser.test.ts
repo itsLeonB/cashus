@@ -13,12 +13,20 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
   let socket: WebSocket | undefined;
   try {
     await server.listen();
-    browser = Bun.spawn([chrome!, "--headless", "--no-sandbox", "--disable-gpu", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"], { stdout: "ignore", stderr: "ignore" });
+    browser = Bun.spawn([chrome!, "--headless", "--no-sandbox", "--disable-gpu", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"], { stdout: "ignore", stderr: "pipe" });
+    const startupErrors = new Response(browser.stderr).text();
     let port = "";
     for (let i = 0; i < 100; i++) {
-      try { port = (await readFile(join(profile, "DevToolsActivePort"), "utf8")).split("\n")[0]; break; } catch { await Bun.sleep(50); }
+      try { port = (await readFile(join(profile, "DevToolsActivePort"), "utf8")).split("\n")[0]; break; } catch {
+        if (browser.exitCode !== null) break;
+        await Bun.sleep(50);
+      }
     }
-    expect(port).not.toBe("");
+    if (!port) {
+      browser.kill();
+      const code = await browser.exited;
+      throw new Error(`Chrome did not start (exit ${code}): ${await startupErrors}`);
+    }
     const targets = await (await fetch(`http://localhost:${port}/json`)).json();
     socket = new WebSocket(targets.find((target: { type: string }) => target.type === "page").webSocketDebuggerUrl);
     await new Promise<void>((resolve, reject) => { socket!.onopen = () => resolve(); socket!.onerror = reject; });

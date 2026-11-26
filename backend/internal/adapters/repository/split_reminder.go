@@ -22,8 +22,6 @@ func NewSplitReminderRepository(db *gorm.DB) *splitReminderRepository {
 
 type reminderRow struct {
 	dto.SplitReminderResponse `gorm:"embedded"`
-	IdempotencyKey            uuid.UUID
-	DuplicateDescription      string
 }
 
 func (reminderRow) TableName() string { return "split_reminders" }
@@ -40,13 +38,9 @@ func accessibleFriendship(db *gorm.DB, actor, id uuid.UUID) (users.Friendship, e
 	return f, nil
 }
 
-func (r *splitReminderRepository) Send(ctx context.Context, actor, friendship, key uuid.UUID, body dto.SendSplitReminderRequest) (dto.SplitReminderResponse, error) {
+func (r *splitReminderRepository) Send(ctx context.Context, actor, friendship uuid.UUID, body dto.SendSplitReminderRequest) (dto.SplitReminderResponse, error) {
 	var row reminderRow
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Serialize the sender's persistent keys, including keys reused across friendships.
-		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", actor.String()).Error; err != nil {
-			return ungerr.Wrap(err, "lock reminder sender")
-		}
 		f, err := accessibleFriendship(tx, actor, friendship)
 		if err != nil {
 			return err
@@ -54,35 +48,36 @@ func (r *splitReminderRepository) Send(ctx context.Context, actor, friendship, k
 		if f.Type != users.Real {
 			return ungerr.ConflictError("split reminders require a real friendship")
 		}
-		err = tx.Where("sender_profile_id = ? AND idempotency_key = ?", actor, key).Take(&row).Error
-		if err == nil {
-			sameDate := row.MealDate == nil && body.MealDate == nil || row.MealDate != nil && body.MealDate != nil && *row.MealDate == *body.MealDate
-			if row.FriendshipID != friendship || row.Description != body.Description || !sameDate {
-				return ungerr.ConflictError("idempotency key already used for another meal")
-			}
-			return nil
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return ungerr.Wrap(err, "read reminder replay")
-		}
 		recipient := f.ProfileID1
 		if recipient == actor {
 			recipient = f.ProfileID2
 		}
-		row = reminderRow{SplitReminderResponse: dto.SplitReminderResponse{ID: uuid.New(), FriendshipID: friendship, SenderProfileID: actor, RecipientProfileID: recipient, Description: body.Description, MealDate: body.MealDate, Status: "OPEN"}, IdempotencyKey: key, DuplicateDescription: strings.ToLower(body.Description)}
-		var count int64
-		query := tx.Model(&reminderRow{}).Where("sender_profile_id = ? AND recipient_profile_id = ? AND duplicate_description = ? AND status = 'OPEN'", actor, recipient, row.DuplicateDescription)
-		if body.MealDate == nil {
+		var mealDate *time.Time
+		if body.MealDate != nil {
+			parsed, err := time.Parse(time.RFC3339Nano, *body.MealDate)
+			if err != nil {
+				return ungerr.Wrap(err, "parse meal timestamp")
+			}
+			normalized := parsed.UTC().Truncate(time.Microsecond)
+			mealDate = &normalized
+		}
+		query := tx.Where("sender_profile_id = ? AND recipient_profile_id = ? AND status = 'OPEN'", actor, recipient)
+		if mealDate == nil {
 			query = query.Where("meal_date IS NULL")
 		} else {
-			query = query.Where("meal_date = ?", *body.MealDate)
+			query = query.Where("meal_date = ?", *mealDate)
 		}
-		if err := query.Count(&count).Error; err != nil {
+		var candidates []reminderRow
+		if err := query.Find(&candidates).Error; err != nil {
 			return ungerr.Wrap(err, "check duplicate reminder")
 		}
-		if count > 0 {
-			return ungerr.ConflictError("an open reminder already exists for this meal")
+		description := strings.ToLower(body.Description)
+		for _, candidate := range candidates {
+			if strings.ToLower(candidate.Description) == description {
+				return ungerr.ConflictError("an open reminder already exists for this meal")
+			}
 		}
+		row = reminderRow{SplitReminderResponse: dto.SplitReminderResponse{FriendshipID: friendship, SenderProfileID: actor, RecipientProfileID: recipient, Description: body.Description, MealDate: mealDate, Status: "OPEN"}}
 		row.CreatedAt = time.Now().UTC().Truncate(time.Microsecond)
 		row.UpdatedAt = row.CreatedAt
 		if err := tx.Create(&row).Error; err != nil {
@@ -90,6 +85,10 @@ func (r *splitReminderRepository) Send(ctx context.Context, actor, friendship, k
 		}
 		return nil
 	})
+	if row.MealDate != nil {
+		utc := row.MealDate.UTC()
+		row.MealDate = &utc
+	}
 	row.CreatedAt = row.CreatedAt.UTC()
 	row.UpdatedAt = row.UpdatedAt.UTC()
 	return row.SplitReminderResponse, err
@@ -106,6 +105,10 @@ func (r *splitReminderRepository) List(ctx context.Context, actor, friendship uu
 			return ungerr.Wrap(err, "list reminders")
 		}
 		for _, row := range rows {
+			if row.MealDate != nil {
+				utc := row.MealDate.UTC()
+				row.MealDate = &utc
+			}
 			row.CreatedAt = row.CreatedAt.UTC()
 			row.UpdatedAt = row.UpdatedAt.UTC()
 			result = append(result, row.SplitReminderResponse)
@@ -127,6 +130,10 @@ func (r *splitReminderRepository) Get(ctx context.Context, actor, id uuid.UUID) 
 		_, err = accessibleFriendship(tx, actor, row.FriendshipID)
 		return err
 	})
+	if row.MealDate != nil {
+		utc := row.MealDate.UTC()
+		row.MealDate = &utc
+	}
 	row.CreatedAt = row.CreatedAt.UTC()
 	row.UpdatedAt = row.UpdatedAt.UTC()
 	return row.SplitReminderResponse, err

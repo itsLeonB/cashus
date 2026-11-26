@@ -2335,12 +2335,6 @@
           "description": {
             "type": "string"
           },
-          "draftExpenseId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "expenseId": {
             "type": [
               "string",
@@ -2354,6 +2348,7 @@
             "type": "string"
           },
           "mealDate": {
+            "format": "date-time",
             "type": [
               "string",
               "null"
@@ -2391,7 +2386,6 @@
           "createdAt",
           "updatedAt",
           "closedAt",
-          "draftExpenseId",
           "expenseId"
         ],
         "type": "object"
@@ -4988,14 +4982,6 @@
           {
             "in": "path",
             "name": "friendshipID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Idempotency-Key",
             "required": true,
             "schema": {
               "type": "string"

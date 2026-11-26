@@ -14,7 +14,7 @@ import (
 )
 
 type SplitReminderService interface {
-	Send(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, dto.SendSplitReminderRequest) (dto.SplitReminderResponse, error)
+	Send(context.Context, uuid.UUID, uuid.UUID, dto.SendSplitReminderRequest) (dto.SplitReminderResponse, error)
 	List(context.Context, uuid.UUID, uuid.UUID) ([]dto.SplitReminderResponse, error)
 	Get(context.Context, uuid.UUID, uuid.UUID) (dto.SplitReminderResponse, error)
 }

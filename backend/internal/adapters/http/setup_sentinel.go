@@ -18,7 +18,6 @@ func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger
 			"Content-Type",
 			"Accept",
 			"Authorization",
-			"Idempotency-Key",
 			"X-Requested-With",
 			"Content-Length",
 			"Accept-Encoding",

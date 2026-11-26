@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSplitReminderPreflightAllowsIdempotencyKey(t *testing.T) {
+func TestSplitReminderPreflightAllowsJSON(t *testing.T) {
 	old := config.Global
 	t.Cleanup(func() { config.Global = old })
 	config.Global = &config.Config{}
@@ -25,9 +25,9 @@ func TestSplitReminderPreflightAllowsIdempotencyKey(t *testing.T) {
 	request := httptest.NewRequest(http.MethodOptions, "/api/v1/friendships/123/split-reminders", nil)
 	request.Header.Set("Origin", "https://app.example.com")
 	request.Header.Set("Access-Control-Request-Method", "POST")
-	request.Header.Set("Access-Control-Request-Headers", "authorization,content-type,idempotency-key")
+	request.Header.Set("Access-Control-Request-Headers", "authorization,content-type")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 	assert.Less(t, response.Code, 400)
-	assert.Contains(t, response.Header().Get("Access-Control-Allow-Headers"), "Idempotency-Key")
+	assert.Contains(t, response.Header().Get("Access-Control-Allow-Headers"), "Content-Type")
 }

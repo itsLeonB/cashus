@@ -15,9 +15,8 @@ type SplitReminderHandler struct {
 }
 type SendSplitReminderInput struct {
 	httpapi.AuthInput
-	FriendshipID   uuid.UUID `path:"friendshipID"`
-	IdempotencyKey uuid.UUID `header:"Idempotency-Key" required:"true"`
-	Body           dto.SendSplitReminderRequest
+	FriendshipID uuid.UUID `path:"friendshipID"`
+	Body         dto.SendSplitReminderRequest
 }
 type ListSplitRemindersInput struct {
 	httpapi.AuthInput
@@ -29,7 +28,7 @@ type GetSplitReminderInput struct {
 }
 
 func (h *SplitReminderHandler) sendSplitReminder(ctx context.Context, in SendSplitReminderInput) (dto.SplitReminderResponse, error) {
-	return h.Repository.Send(ctx, in.ProfileID, in.FriendshipID, in.IdempotencyKey, in.Body)
+	return h.Repository.Send(ctx, in.ProfileID, in.FriendshipID, in.Body)
 }
 func (h *SplitReminderHandler) listSplitReminders(ctx context.Context, in ListSplitRemindersInput) ([]dto.SplitReminderResponse, error) {
 	return h.Repository.List(ctx, in.ProfileID, in.FriendshipID)

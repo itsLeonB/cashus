@@ -14,7 +14,7 @@ export function FriendSplitReminders({ friendshipId, friendProfileId, anonymous 
     <CardContent className="space-y-4">
       <p>Ask the friend who paid to record and split a shared expense. This does not create a debt.</p>
       {anonymous ? <p>Split reminders need a real profile. Link this friend to a real profile first.</p> : <>
-        <SplitReminderForm onSend={async (data, key) => { await send.mutateAsync({ data, key }); }} />
+        <SplitReminderForm onSend={async (data) => { await send.mutateAsync(data); }} />
         <h3 className="font-semibold">Open reminders</h3>
         {reminders.isPending && <p role="status">Loading reminders…</p>}
         {reminders.isError ? <div role="alert">

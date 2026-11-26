@@ -5,14 +5,14 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import FriendDetailPage from "@/pages/FriendDetailPage";
 
 // Exercise the real query hooks and API client; only the HTTP boundary is fake.
-Object.assign(window, { requests: [], fail: true, hold: false, release: () => {} });
+Object.assign(window, { requests: [], fail: true, failureStatus: 500, hold: false, release: () => {} });
 let reminders = [];
 window.fetch = async (_url, init) => {
   if (init?.method === "POST") {
-    const request = { data: JSON.parse(String(init.body)), key: new Headers(init.headers).get("Idempotency-Key") };
+    const request = { data: JSON.parse(String(init.body)), headers: Object.fromEntries(new Headers(init.headers)) };
     window.requests.push(request);
     if (window.hold) await new Promise<void>((resolve) => { window.release = resolve; });
-    if (window.fail) return Response.json({ message: "Lost response" }, { status: 500 });
+    if (window.fail) return Response.json({ detail: window.failureStatus === 409 ? "This meal already has an open reminder." : "Lost response" }, { status: window.failureStatus });
     reminders = [{ ...request.data, id: "sent", senderProfileId: "me", status: "OPEN" }];
     return Response.json(reminders[0]);
   }
@@ -32,8 +32,9 @@ createRoot(document.getElementById("root")!).render(
 
 declare global {
   interface Window {
-    requests: { data: { description: string; mealDate: string | null }; key: string }[];
+    requests: { data: { description: string; mealDate: string | null }; headers: Record<string, string> }[];
     fail: boolean;
+    failureStatus: number;
     hold: boolean;
     release: () => void;
   }

@@ -42,8 +42,8 @@ export function useSplitReminder(id: string) {
 export function useSendSplitReminder(friendshipId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ data, key }: { data: SendSplitReminder; key: string }) =>
-      splitRemindersApi.send(friendshipId, data, key),
+    mutationFn: (data: SendSplitReminder) =>
+      splitRemindersApi.send(friendshipId, data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.splitReminders.open(friendshipId) });
     },

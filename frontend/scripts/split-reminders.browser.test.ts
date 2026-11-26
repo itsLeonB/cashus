@@ -62,28 +62,26 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     expect(await evaluate("document.querySelector('[name=mealDate]').value")).toBe("2026-07-04");
     expect(await evaluate("document.querySelector('[role=alert]').textContent.length > 0")).toBe(true);
     expect(await evaluate("window.requests[0].data.mealDate")).toBe("2026-07-03T15:00:00.000Z");
-    const key = await evaluate("window.requests[0].key");
+    expect(await evaluate("window.requests.every(request => !request.headers['idempotency-key'])")).toBe(true);
+    await evaluate("window.failureStatus = 409");
     await command("Emulation.setTimezoneOverride", { timezoneId: "America/Los_Angeles" });
     await enter();
     await wait("window.requests.length === 2 && !document.querySelector('fieldset').disabled");
-    expect(await evaluate("window.requests[1].key")).toBe(key);
     expect(await evaluate("window.requests[1].data.mealDate")).toBe("2026-07-03T15:00:00.000Z");
+    expect(await evaluate("document.querySelector('[role=alert]').textContent")).toContain("This meal already has an open reminder.");
     await edit("Lunch   ");
     await enter();
     await wait("window.requests.length === 3 && !document.querySelector('fieldset').disabled");
-    expect(await evaluate("window.requests[2].key")).toBe(key);
     expect(await evaluate("window.requests[2].data.description")).toBe("Lunch");
     await edit("2026-07-05", "mealDate");
     await enter();
     await wait("window.requests.length === 4 && !document.querySelector('fieldset').disabled");
-    const dateKey = await evaluate("window.requests[3].key");
-    expect(dateKey).not.toBe(key);
+    expect(await evaluate("window.requests[3].data.mealDate")).toBe("2026-07-05T07:00:00.000Z");
     await command("Emulation.setTimezoneOverride", { timezoneId: "Asia/Tokyo" });
     await edit("Dinner");
     await evaluate("window.hold = true; window.fail = false");
     await enter();
     await wait("window.requests.length === 5 && document.querySelector('fieldset').disabled");
-    expect(await evaluate("window.requests[4].key")).not.toBe(dateKey);
     expect(await evaluate("[...document.querySelectorAll('fieldset input, fieldset button')].every(control => control.matches(':disabled'))")).toBe(true);
     // Even direct submit events cannot bypass the in-flight ref guard.
     await evaluate("document.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))");
@@ -94,6 +92,7 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     expect(await evaluate("document.querySelector('time').textContent")).toBe("7/5/2026");
     expect(await evaluate("document.querySelector('[name=description]').value")).toBe("");
     expect(await evaluate("document.body.textContent.includes('Split reminder sent.')")).toBe(true);
+    expect(await evaluate("window.requests.every(request => !('idempotency-key' in request.headers))")).toBe(true);
   } finally {
     socket?.close();
     browser?.kill();

@@ -6,14 +6,14 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import type { SendSplitReminder } from "@/lib/api/split-reminders";
 
 export function SplitReminderForm({ onSend }: Readonly<{
-  onSend: (data: SendSplitReminder, key: string) => Promise<void>;
+  onSend: (data: SendSplitReminder) => Promise<void>;
 }>) {
   const [description, setDescription] = useState("");
   const [mealDate, setMealDate] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const submission = useRef<{ payload: string; key: string; data: SendSplitReminder } | null>(null);
+  const submission = useRef<{ payload: string; data: SendSplitReminder } | null>(null);
   const busy = useRef(false);
   return <form aria-label="Send split reminder" className="space-y-3" onSubmit={async (event) => {
     event.preventDefault();
@@ -31,7 +31,7 @@ export function SplitReminderForm({ onSend }: Readonly<{
         return;
       }
       submission.current = {
-        payload, key: crypto.randomUUID(),
+        payload,
         data: { description: normalized, mealDate: date?.toISOString() ?? null },
       };
     }
@@ -40,7 +40,7 @@ export function SplitReminderForm({ onSend }: Readonly<{
     setError("");
     setSuccess(false);
     try {
-      await onSend(submission.current.data, submission.current.key);
+      await onSend(submission.current.data);
       submission.current = null;
       setDescription("");
       setMealDate("");

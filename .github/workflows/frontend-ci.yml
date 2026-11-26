@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
-    paths: ["frontend/**", "backend/openapi.json"]
+    paths: ["frontend/**", "backend/openapi.json", ".github/workflows/frontend-ci.yml"]
   pull_request:
     branches: [main, dev]
-    paths: ["frontend/**", "backend/openapi.json"]
+    paths: ["frontend/**", "backend/openapi.json", ".github/workflows/frontend-ci.yml"]
 
 defaults:
   run:
@@ -22,7 +22,12 @@ jobs:
         uses: ./.github/actions/setup-bun
         with:
           working-directory: frontend
-      - run: bun test
+      - name: Run tests with Chrome
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          test -x "$CHROME_BIN"
+          bun test
 
   lint:
     name: Run Lint

@@ -11,6 +11,10 @@ export const queryKeys = {
     all: ["friendships"] as const,
     detail: (id: string) => ["friendships", id] as const,
   },
+  splitReminders: {
+    open: (id: string) => ["split-reminders", "open", id] as const,
+    detail: (id: string) => ["split-reminders", id] as const,
+  },
   friendRequests: {
     all: ["friend-requests"] as const,
     sent: ["friend-requests", "sent"] as const,

@@ -171,8 +171,9 @@ class ApiClient {
     return this.request<T>(url, { method: "GET" });
   }
 
-  post<T, D = unknown>(endpoint: string, data?: D) {
+  post<T, D = unknown>(endpoint: string, data?: D, headers?: HeadersInit) {
     return this.request<T>(endpoint, {
+      headers,
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
     });

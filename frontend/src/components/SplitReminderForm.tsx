@@ -46,10 +46,10 @@ export function SplitReminderForm({ onSend }: Readonly<{
     <fieldset disabled={pending} className="space-y-3">
       <div><Label htmlFor="split-description">Meal description</Label>
         <Input id="split-description" name="description" required value={description}
-          aria-describedby="split-error" onChange={(event) => { setDescription(event.target.value); submission.current = null; }} /></div>
+          aria-describedby="split-error" onChange={(event) => setDescription(event.target.value)} /></div>
       <div><Label htmlFor="split-meal-date">Meal date (optional)</Label>
         <Input id="split-meal-date" name="mealDate" type="date" min="0001-01-01" max="9999-12-31"
-          aria-describedby="split-error" value={mealDate} onChange={(event) => { setMealDate(event.target.value); submission.current = null; }} /></div>
+          aria-describedby="split-error" value={mealDate} onChange={(event) => setMealDate(event.target.value)} /></div>
       <Button type="submit">{pending ? "Sending…" : "Send split reminder"}</Button>
     </fieldset>
     <p id="split-error" role="alert">{error}</p>

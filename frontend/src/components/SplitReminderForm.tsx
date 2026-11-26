@@ -13,7 +13,7 @@ export function SplitReminderForm({ onSend }: Readonly<{
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const submission = useRef<{ payload: string; key: string } | null>(null);
+  const submission = useRef<{ payload: string; key: string; data: SendSplitReminder } | null>(null);
   const busy = useRef(false);
   return <form aria-label="Send split reminder" className="space-y-3" onSubmit={async (event) => {
     event.preventDefault();
@@ -23,15 +23,24 @@ export function SplitReminderForm({ onSend }: Readonly<{
       setError("Enter a description of 1–200 characters.");
       return;
     }
-    const data = { description: normalized, mealDate: mealDate || null };
-    const payload = JSON.stringify(data);
-    if (submission.current?.payload !== payload) submission.current = { payload, key: crypto.randomUUID() };
+    const payload = JSON.stringify({ description: normalized, mealDate });
+    if (submission.current?.payload !== payload) {
+      const date = mealDate ? new Date(`${mealDate}T00:00:00`) : null;
+      if (date && (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1 || date.getUTCFullYear() > 9999)) {
+        setError("Choose a date within UTC years 0001–9999.");
+        return;
+      }
+      submission.current = {
+        payload, key: crypto.randomUUID(),
+        data: { description: normalized, mealDate: date?.toISOString() ?? null },
+      };
+    }
     busy.current = true;
     setPending(true);
     setError("");
     setSuccess(false);
     try {
-      await onSend(data, submission.current.key);
+      await onSend(submission.current.data, submission.current.key);
       submission.current = null;
       setDescription("");
       setMealDate("");

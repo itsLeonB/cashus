@@ -47,6 +47,8 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
       await command("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", text: "\r", windowsVirtualKeyCode: 13 });
       await command("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     };
+    await command("Emulation.setTimezoneOverride", { timezoneId: "Asia/Tokyo" });
+    await command("Emulation.setLocaleOverride", { locale: "en-US" });
     await command("Page.navigate", { url: `${server.resolvedUrls!.local[0]}scripts/__fixtures__/split-reminders.html` });
     await wait("!!document.querySelector('[name=description]')");
     expect(await evaluate("document.querySelector('h1').textContent.trim()")).toBe("Test Friend");
@@ -59,10 +61,13 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     expect(await evaluate("document.querySelector('[name=description]').value")).toBe("Lunch");
     expect(await evaluate("document.querySelector('[name=mealDate]').value")).toBe("2026-07-04");
     expect(await evaluate("document.querySelector('[role=alert]').textContent.length > 0")).toBe(true);
+    expect(await evaluate("window.requests[0].data.mealDate")).toBe("2026-07-03T15:00:00.000Z");
     const key = await evaluate("window.requests[0].key");
+    await command("Emulation.setTimezoneOverride", { timezoneId: "America/Los_Angeles" });
     await enter();
     await wait("window.requests.length === 2 && !document.querySelector('fieldset').disabled");
     expect(await evaluate("window.requests[1].key")).toBe(key);
+    expect(await evaluate("window.requests[1].data.mealDate")).toBe("2026-07-03T15:00:00.000Z");
     await edit("Lunch   ");
     await enter();
     await wait("window.requests.length === 3 && !document.querySelector('fieldset').disabled");
@@ -73,6 +78,7 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     await wait("window.requests.length === 4 && !document.querySelector('fieldset').disabled");
     const dateKey = await evaluate("window.requests[3].key");
     expect(dateKey).not.toBe(key);
+    await command("Emulation.setTimezoneOverride", { timezoneId: "Asia/Tokyo" });
     await edit("Dinner");
     await evaluate("window.hold = true; window.fail = false");
     await enter();
@@ -84,6 +90,8 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     expect(await evaluate("window.requests.length")).toBe(5);
     await evaluate("window.release()");
     await wait("!!document.querySelector('li') && document.querySelector('li').textContent.includes('Dinner')");
+    expect(await evaluate("document.querySelector('time').dateTime")).toBe("2026-07-04T15:00:00.000Z");
+    expect(await evaluate("document.querySelector('time').textContent")).toBe("7/5/2026");
     expect(await evaluate("document.querySelector('[name=description]').value")).toBe("");
     expect(await evaluate("document.body.textContent.includes('Split reminder sent.')")).toBe(true);
   } finally {

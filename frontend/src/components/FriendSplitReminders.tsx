@@ -24,7 +24,7 @@ export function FriendSplitReminders({ friendshipId, friendProfileId, anonymous 
           {reminders.data?.map((reminder) => <li key={reminder.id} className="rounded-md border p-3">
             <p>{reminder.senderProfileId === friendProfileId ? "Received" : "Sent"} · {reminder.status}</p>
             <p>{reminder.description}</p>
-            {reminder.mealDate && <p>Meal date: <time dateTime={reminder.mealDate}>{reminder.mealDate}</time></p>}
+            {reminder.mealDate && <p>Meal date: <time dateTime={reminder.mealDate}>{new Date(reminder.mealDate).toLocaleDateString()}</time></p>}
           </li>)}
         </ul>}
       </>}

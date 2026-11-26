@@ -26,14 +26,14 @@ test("validation, duplicate and inaccessible reminder errors remain available to
   }
 });
 afterEach(() => { globalThis.fetch = originalFetch; });
-test("send carries its retry key and unwraps the reminder", async () => {
+for (const mealDate of [null, "2026-07-03T15:00:00.123456Z"]) test(`send preserves timestamp ${mealDate} and retry key`, async () => {
   // SAFETY: the replacement implements the fetch RequestInit/Response boundary used by apiClient.
   globalThis.fetch = (async (url, init) => {
     expect(String(url)).toEndWith("/friendships/friend/split-reminders");
     expect(init?.method).toBe("POST");
     expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("retry-key");
-    expect(JSON.parse(String(init?.body))).toEqual({ description: "Lunch", mealDate: null });
+    expect(JSON.parse(String(init?.body))).toEqual({ description: "Lunch", mealDate });
     return Response.json({ data: { id: "reminder", status: "OPEN" } }, { status: 201 });
   }) as typeof fetch;
-  expect(await splitRemindersApi.send("friend", { description: "Lunch", mealDate: null }, "retry-key")).toEqual({ id: "reminder", status: "OPEN" });
+  expect(await splitRemindersApi.send("friend", { description: "Lunch", mealDate }, "retry-key")).toEqual({ id: "reminder", status: "OPEN" });
 });

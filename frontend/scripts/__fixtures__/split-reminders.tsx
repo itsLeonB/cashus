@@ -17,7 +17,7 @@ window.fetch = async (_url, init) => {
     return Response.json(reminders[0]);
   }
   if (String(_url).endsWith('/friendships/friendship')) return Response.json({
-    friend: { id: 'friendship', profileId: 'friend', name: 'Test Friend', type: 'REAL', createdAt: '2026-01-01' },
+    friend: { id: 'friendship', profileId: 'friend', name: 'Test Friend', type: 'REAL', createdAt: '2026-01-01T00:00:00Z' },
     balancesPerCurrency: {},
   });
   return Response.json(String(_url).includes('split-reminders') ? reminders : []);

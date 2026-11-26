@@ -1711,10 +1711,10 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             description: string;
-            draftExpenseId: string | null;
             expenseId: string | null;
             friendshipId: string;
             id: string;
+            /** Format: date-time */
             mealDate: string | null;
             recipientProfileId: string;
             senderProfileId: string;
@@ -3352,9 +3352,7 @@ export interface operations {
     "send-split-reminder": {
         parameters: {
             query?: never;
-            header: {
-                "Idempotency-Key": string;
-            };
+            header?: never;
             path: {
                 friendshipID: string;
             };

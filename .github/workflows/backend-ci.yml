@@ -53,6 +53,8 @@ jobs:
           go mod verify
 
       - name: Run tests
+        env:
+          GOFLAGS: -tags=integration
         run: make test-coverage
 
       - name: Upload coverage to Codecov

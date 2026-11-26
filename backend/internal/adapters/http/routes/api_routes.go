@@ -48,6 +48,7 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 	endpoint.RegisterAll(api, handlers.Subscription.Routes(), protectedMW...)
 
 	endpoint.RegisterAll(api, handlers.Friendship.Routes(), protectedMW...)
+	endpoint.RegisterAll(api, handlers.SplitReminder.Routes(), protectedMW...)
 
 	endpoint.RegisterAll(api, handlers.FriendshipRequest.SendRoutes(), profilesMW...)
 	endpoint.RegisterAll(api, handlers.FriendshipRequest.Routes(), protectedMW...)

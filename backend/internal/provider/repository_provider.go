@@ -28,7 +28,8 @@ func ProvideTransactor(db *gorm.DB) crud.Transactor {
 }
 
 type Repositories struct {
-	Transactor crud.Transactor
+	SplitReminder repository.SplitReminderRepository
+	Transactor    crud.Transactor
 
 	// Users
 	User               repository.UserRepository
@@ -65,7 +66,8 @@ type Repositories struct {
 
 func ProvideRepositories(db *gorm.DB, transactor crud.Transactor) *Repositories {
 	return &Repositories{
-		Transactor: transactor,
+		Transactor:    transactor,
+		SplitReminder: adapters.NewSplitReminderRepository(db),
 
 		User:               adapters.NewUserRepository(db),
 		Profile:            adapters.NewProfileRepository(db),

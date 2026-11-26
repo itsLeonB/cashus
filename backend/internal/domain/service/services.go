@@ -13,6 +13,12 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type SplitReminderService interface {
+	Send(context.Context, uuid.UUID, uuid.UUID, dto.SendSplitReminderRequest) (dto.SplitReminderResponse, error)
+	List(context.Context, uuid.UUID, uuid.UUID) ([]dto.SplitReminderResponse, error)
+	Get(context.Context, uuid.UUID, uuid.UUID) (dto.SplitReminderResponse, error)
+}
+
 type UserService interface {
 	CreateNew(ctx context.Context, request dto.NewUserRequest) (users.User, error)
 	FindByEmail(ctx context.Context, email string) (users.User, error)

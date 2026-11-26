@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { shareFriendProfile } from "@/utils/share";
 import { useToast } from "@/hooks/use-toast";
 import { FriendBalanceSection } from "@/components/FriendBalanceSection";
+import { FriendSplitReminders } from "@/components/FriendSplitReminders";
 
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString("en-US", {
@@ -201,6 +202,13 @@ export default function FriendDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <FriendSplitReminders
+        key={friendId}
+        friendshipId={friendId}
+        friendProfileId={friendship.friend.profileId}
+        anonymous={friendship.friend.type === "ANON"}
+      />
 
       <FriendBalanceSection
         balancesPerCurrency={balancesPerCurrency}

@@ -24,6 +24,7 @@ import (
 var ServiceSet = wire.NewSet(ProvideServices)
 
 type Services struct {
+	SplitReminder service.SplitReminderService
 	// Auth
 	AuthKit *authkit.AuthKit
 	Captcha service.CaptchaService
@@ -158,8 +159,9 @@ func ProvideServices(
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue, repos.Transactor, friendshipBalance)
 
 	services := &Services{
-		AuthKit: authKit,
-		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
+		SplitReminder: service.NewSplitReminderService(repos.SplitReminder),
+		AuthKit:       authKit,
+		Captcha:       service.NewTurnstileService(authConfig.TurnstileSecretKey),
 
 		User:              user,
 		Profile:           profile,

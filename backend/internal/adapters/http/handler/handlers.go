@@ -9,6 +9,7 @@ import (
 )
 
 type Handlers struct {
+	SplitReminder         *SplitReminderHandler
 	Auth                  *AuthHandler
 	Friendship            *FriendshipHandler
 	FriendshipRequest     *FriendshipRequestHandler
@@ -40,6 +41,7 @@ func ProvideHandlers(services *provider.Services, transport *authgin.CookieTrans
 	authHandler := NewAuthHandler(services.AuthKit, transport, services.Captcha, emailLimiter)
 
 	return &Handlers{
+		SplitReminder:         &SplitReminderHandler{Repository: services.SplitReminder},
 		Auth:                  authHandler,
 		Friendship:            NewFriendshipHandler(services.Friendship, services.FriendDetails, services.FriendshipBalance),
 		FriendshipRequest:     NewFriendshipRequestHandler(services.FriendshipRequest),

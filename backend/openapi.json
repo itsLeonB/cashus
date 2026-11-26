@@ -910,6 +910,24 @@
         ],
         "type": "object"
       },
+      "EnvelopeListSplitReminderResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SplitReminderResponse"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "EnvelopeListSubscriptionResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1038,6 +1056,18 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/ProfileTransferMethodResponse"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "EnvelopeSplitReminderResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SplitReminderResponse"
           }
         },
         "required": [
@@ -2246,6 +2276,24 @@
         ],
         "type": "object"
       },
+      "SendSplitReminderRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mealDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "type": "object"
+      },
       "SimpleProfile": {
         "additionalProperties": false,
         "properties": {
@@ -2267,6 +2315,78 @@
           "name",
           "avatar",
           "isUser"
+        ],
+        "type": "object"
+      },
+      "SplitReminderResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "closedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expenseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "friendshipId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mealDate": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recipientProfileId": {
+            "type": "string"
+          },
+          "senderProfileId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "CANCELLED",
+              "DECLINED",
+              "COMPLETED",
+              "FRIENDSHIP_CLOSED"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "friendshipId",
+          "senderProfileId",
+          "recipientProfileId",
+          "description",
+          "mealDate",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "closedAt",
+          "expenseId"
         ],
         "type": "object"
       },
@@ -4811,6 +4931,106 @@
         ]
       }
     },
+    "/api/v1/friendships/{friendshipID}/split-reminders": {
+      "get": {
+        "operationId": "list-split-reminders",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendshipID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeListSplitReminderResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List open split reminders",
+        "tags": [
+          "split-reminders"
+        ]
+      },
+      "post": {
+        "operationId": "send-split-reminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "friendshipID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendSplitReminderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSplitReminderResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Send a split reminder",
+        "tags": [
+          "split-reminders"
+        ]
+      }
+    },
     "/api/v1/group-expenses": {
       "get": {
         "operationId": "get-group-expenses",
@@ -6363,6 +6583,52 @@
         "summary": "Unsubscribe from push notifications",
         "tags": [
           "push"
+        ]
+      }
+    },
+    "/api/v1/split-reminders/{reminderID}": {
+      "get": {
+        "operationId": "get-split-reminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reminderID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvelopeSplitReminderResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a split reminder",
+        "tags": [
+          "split-reminders"
         ]
       }
     },

@@ -23,6 +23,32 @@ import { profilesApi } from "@/lib/api/profiles";
 import { queryKeys } from "@/lib/queryKeys";
 import { notificationApi } from "@/lib/api/notifications";
 import { planApi } from "@/lib/api/plan";
+import { splitRemindersApi, type SendSplitReminder } from "@/lib/api/split-reminders";
+
+export function useSplitReminders(friendshipId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.splitReminders.open(friendshipId),
+    queryFn: () => splitRemindersApi.list(friendshipId),
+    enabled: !!friendshipId && enabled,
+  });
+}
+export function useSplitReminder(id: string) {
+  return useQuery({
+    queryKey: queryKeys.splitReminders.detail(id),
+    queryFn: () => splitRemindersApi.get(id),
+    enabled: !!id,
+  });
+}
+export function useSendSplitReminder(friendshipId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SendSplitReminder) =>
+      splitRemindersApi.send(friendshipId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.splitReminders.open(friendshipId) });
+    },
+  });
+}
 
 // Profile hooks
 export function useMyTransferMethods() {

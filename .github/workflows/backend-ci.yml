@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
-    paths: ["backend/**"]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
   pull_request:
     branches: [main, dev]
-    paths: ["backend/**"]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
 
 permissions:
   contents: read
@@ -21,6 +21,22 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cashus_test
+          POSTGRES_PASSWORD: cashus_test
+          POSTGRES_DB: cashus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cashus_test -d cashus_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SPLIT_REMINDER_TEST_DSN: "host=localhost port=5432 user=cashus_test password=cashus_test dbname=cashus_test sslmode=disable"
 
     steps:
       - name: Checkout code

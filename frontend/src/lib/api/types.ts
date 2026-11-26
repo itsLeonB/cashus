@@ -44,6 +44,9 @@
 // with no wire counterpart at all — each has its own comment explaining why.
 import type { components } from "./schema.gen";
 
+export type SplitReminder = components["schemas"]["SplitReminderResponse"];
+export type SendSplitReminder = components["schemas"]["SendSplitReminderRequest"];
+
 // Authentication Types
 export type LoginRequest = components["schemas"]["LoginAuthInputBody"];
 export type RegisterRequest = components["schemas"]["RegisterAuthInputBody"];

@@ -2336,10 +2336,16 @@
             "type": "string"
           },
           "draftExpenseId": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "expenseId": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "friendshipId": {
             "type": "string"

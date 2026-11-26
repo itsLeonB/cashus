@@ -22,6 +22,6 @@ type SplitReminderResponse struct {
 	CreatedAt          time.Time  `json:"createdAt"`
 	UpdatedAt          time.Time  `json:"updatedAt"`
 	ClosedAt           *time.Time `json:"closedAt"`
-	DraftExpenseID     *uuid.UUID `json:"draftExpenseId"`
-	ExpenseID          *uuid.UUID `json:"expenseId"`
+	DraftExpenseID     *uuid.UUID `json:"draftExpenseId" nullable:"true"`
+	ExpenseID          *uuid.UUID `json:"expenseId" nullable:"true"`
 }

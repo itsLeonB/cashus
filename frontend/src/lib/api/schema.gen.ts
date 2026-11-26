@@ -1711,8 +1711,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             description: string;
-            draftExpenseId: string;
-            expenseId: string;
+            draftExpenseId: string | null;
+            expenseId: string | null;
             friendshipId: string;
             id: string;
             mealDate: string | null;

@@ -31,7 +31,7 @@ No Idempotency-Key validation or retry-key storage. Each POST is a fresh send su
 
 ## Friendship and notifications
 
-Blocking/removing a friendship closes OPEN reminders in both directions as FRIENDSHIP_CLOSED in the same transaction and prevents further access/actions. Recreating contact never restores old access or reopens records. Serialize send with closure. Use the existing friendship lifecycle; if no public block/remove endpoint exists, test its shared transaction boundary instead of adding an endpoint.
+There is no public friendship block/remove action in the current app. Do not add a database deletion trigger or speculative closure hook in SR-01. Missing friendships deny reminder reads/actions through current access checks; direct SQL deletion does not change reminder status. When real friendship block/remove support is added, that feature must close OPEN reminders in both directions as FRIENDSHIP_CLOSED in its transaction, serialize with sends, and prevent later recreation from restoring old access. That future lifecycle integration is not implemented in SR-01.
 
 Existing anonymous-profile merges preserve ownership/references and cannot enable sends to anonymous friends. No new general profile-merge flow is required.
 
@@ -41,6 +41,6 @@ Persist reminders independently of notification read state and push delivery. Do
 
 Friend detail page: labelled send form, both sent/received OPEN reminders, clear roles/details/status, useful accessible errors, refresh list on success. ANON friends show an explanation instead of send controls. No amount. Disable in-flight submissions and retain failed input. No UUID generation or retry-key tracking in the form/client. Retain the prepared timestamp while retrying unchanged input so timezone changes do not change a pending submission's meal time.
 
-Test send/list/retrieve, validation, privacy, lowercase/space/null-timestamp duplicate checks, repeated/concurrent requests under the revised non-idempotent contract, and friendship closure/merge safety. Test labels, keyboard submission, failed input retention, pending guard, date conversion/local rendering, and friend-page entry point. Generate backend OpenAPI and frontend types. No new dependencies.
+Test send/list/retrieve, validation, privacy, lowercase/space/null-timestamp duplicate checks, repeated/concurrent requests under the revised non-idempotent contract, and access denial for missing friendships plus existing merge safety. Test labels, keyboard submission, failed input retention, pending guard, date conversion/local rendering, and friend-page entry point. Generate backend OpenAPI and frontend types. No new dependencies.
 
 Manual cancellation/decline, history UI, bill creation/linking, and notifications remain later slices. No scheduled alerts, resend action, public reminders, or amounts. SR-01 has no duplicate-deletion UI; SR-02 owns cancellation.

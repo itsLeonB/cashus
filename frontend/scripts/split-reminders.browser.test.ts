@@ -16,17 +16,21 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     browser = Bun.spawn([chrome!, "--headless", "--no-sandbox", "--disable-gpu", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"], { stdout: "ignore", stderr: "pipe" });
     const startupErrors = new Response(browser.stderr).text();
     let port = "";
-    for (let i = 0; i < 100; i++) {
+    const startedAt = performance.now();
+    // Cold CI startup can exceed five seconds; leave the remaining test budget for UI assertions.
+    while (performance.now() - startedAt < 15000) {
       try { port = (await readFile(join(profile, "DevToolsActivePort"), "utf8")).split("\n")[0]; break; } catch {
         if (browser.exitCode !== null) break;
         await Bun.sleep(50);
       }
     }
     if (!port) {
+      const reason = browser.exitCode === null ? "startup deadline reached while process alive" : `exited early (${browser.exitCode})`;
       browser.kill();
       const code = await browser.exited;
-      throw new Error(`Chrome did not start (exit ${code}): ${await startupErrors}`);
+      throw new Error(`Chrome ${reason} after ${Math.round(performance.now() - startedAt)}ms (shutdown exit ${code}): ${await startupErrors}`);
     }
+    console.info(`Chrome ready after ${Math.round(performance.now() - startedAt)}ms`);
     const targets = await (await fetch(`http://localhost:${port}/json`)).json();
     socket = new WebSocket(targets.find((target: { type: string }) => target.type === "page").webSocketDebuggerUrl);
     await new Promise<void>((resolve, reject) => { socket!.onopen = () => resolve(); socket!.onerror = reject; });
@@ -60,6 +64,13 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     await command("Page.navigate", { url: `${server.resolvedUrls!.local[0]}scripts/__fixtures__/split-reminders.html` });
     await wait("!!document.querySelector('[name=description]')");
     expect(await evaluate("document.querySelector('h1').textContent.trim()")).toBe("Test Friend");
+    await wait("window.calls.some(call => call.path.endsWith('/split-reminders'))");
+    expect(await evaluate("window.calls.filter(call => call.path.endsWith('/split-reminders')).map(call => ({ method: call.method, path: call.path.slice(call.path.indexOf('/friendships/')) }))")).toEqual([
+      { path: "/friendships/friendship/split-reminders", method: "GET" },
+    ]);
+    expect(await evaluate("fetch('/friendships/friend/split-reminders').then(response => response.status)")).toBe(404);
+    expect(await evaluate("fetch('/friendships/friend/split-reminders', {method: 'POST', body: '{}'}).then(response => response.status)")).toBe(404);
+    await evaluate("window.calls = []");
     expect(await evaluate("document.querySelector('label[for=split-description]').control.name")).toBe("description");
     expect(await evaluate("document.querySelector('label[for=split-meal-date]').control.name")).toBe("mealDate");
     await edit("2026-07-04", "mealDate");
@@ -78,10 +89,12 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     expect(await evaluate("window.requests[1].data.mealDate")).toBe("2026-07-03T15:00:00.000Z");
     expect(await evaluate("document.querySelector('[role=alert]').textContent")).toContain("This meal already has an open reminder.");
     await edit("Lunch   ");
+    expect(await evaluate("document.querySelector('[role=alert]').textContent")).toBe("");
     await enter();
     await wait("window.requests.length === 3 && !document.querySelector('fieldset').disabled");
     expect(await evaluate("window.requests[2].data.description")).toBe("Lunch");
     await edit("2026-07-05", "mealDate");
+    expect(await evaluate("document.querySelector('[role=alert]').textContent")).toBe("");
     await enter();
     await wait("window.requests.length === 4 && !document.querySelector('fieldset').disabled");
     expect(await evaluate("window.requests[3].data.mealDate")).toBe("2026-07-05T07:00:00.000Z");
@@ -96,6 +109,12 @@ test.skipIf(!chrome)("live reminder form: keyboard, retries, duplicate guard and
     expect(await evaluate("window.requests.length")).toBe(5);
     await evaluate("window.release()");
     await wait("!!document.querySelector('li') && document.querySelector('li').textContent.includes('Dinner')");
+    expect(await evaluate("window.calls.filter(call => call.method === 'POST').map(call => call.path.slice(call.path.indexOf('/friendships/')))")).toEqual(
+      Array(5).fill("/friendships/friendship/split-reminders"),
+    );
+    expect(await evaluate("window.calls.filter(call => call.method === 'GET' && call.path.endsWith('/split-reminders')).map(call => call.path.slice(call.path.indexOf('/friendships/')))")).toEqual([
+      "/friendships/friendship/split-reminders",
+    ]);
     expect(await evaluate("document.querySelector('time').dateTime")).toBe("2026-07-04T15:00:00.000Z");
     expect(await evaluate("document.querySelector('time').textContent")).toBe("7/5/2026");
     expect(await evaluate("document.querySelector('[name=description]').value")).toBe("");

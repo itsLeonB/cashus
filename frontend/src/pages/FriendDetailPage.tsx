@@ -204,8 +204,8 @@ export default function FriendDetailPage() {
       </Card>
 
       <FriendSplitReminders
-        key={friendship.friend.id}
-        friendshipId={friendship.friend.id}
+        key={friendId}
+        friendshipId={friendId}
         friendProfileId={friendship.friend.profileId}
         anonymous={friendship.friend.type === "ANON"}
       />

@@ -27,8 +27,9 @@ func newTestDatabase(t *testing.T) *testDatabase {
 	d.container = strings.TrimSpace(d.command("docker", "run", "--rm", "-d", "-e", "POSTGRES_PASSWORD=disposable", "-p", "127.0.0.1::5432", "postgres:18"))
 	t.Cleanup(func() { d.command("docker", "rm", "-f", d.container) })
 	deadline := time.Now().Add(30 * time.Second)
+	// The image bootstrap server accepts Unix sockets before the final TCP server starts.
 	for {
-		if exec.Command("docker", "exec", d.container, "psql", "-U", "postgres", "-d", "postgres", "-c", "SELECT 1").Run() == nil {
+		if exec.Command("docker", "exec", d.container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "postgres").Run() == nil {
 			break
 		}
 		require.True(t, time.Now().Before(deadline), "PostgreSQL startup timeout")

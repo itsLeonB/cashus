@@ -1,6 +1,6 @@
 .PHONY: help \
 lint lint-backend lint-frontend \
-test test-backend test-frontend \
+test test-backend test-frontend test-scripts \
 vulncheck vulncheck-backend \
 build-all build-all-backend build-frontend \
 openapi openapi-backend openapi-frontend \
@@ -11,7 +11,8 @@ install-language-servers
 help:
 	@echo "Makefile commands:"
 	@echo "  make lint                    - Lint backend + frontend"
-	@echo "  make test                    - Test backend + frontend"
+	@echo "  make test                    - Test backend + frontend + scripts"
+	@echo "  make test-scripts            - Test Dokploy diagnostics locally (no cloud calls)"
 	@echo "  make vulncheck               - Run backend govulncheck (no frontend equivalent)"
 	@echo "  make build-all               - Build backend binaries + frontend bundle"
 	@echo "  make openapi                 - Regenerate backend/openapi.json and the frontend types generated from it"
@@ -28,13 +29,16 @@ lint-backend:
 lint-frontend:
 	cd frontend && bun lint
 
-test: test-backend test-frontend
+test: test-backend test-frontend test-scripts
 
 test-backend:
 	$(MAKE) -C backend test
 
 test-frontend:
 	cd frontend && bun test
+
+test-scripts:
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_dokploy_diagnostics.py'
 
 vulncheck: vulncheck-backend
 

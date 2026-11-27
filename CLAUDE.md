@@ -52,6 +52,10 @@ After `backend-agent` or `frontend-agent` finishes *implementing* something (not
 3. **Doubt escalates to the orchestrator, not back to the reviewer.** If the implementation subagent disagrees with a finding, or isn't sure whether applying it is correct, it stops and reports the specific finding + its concern to the orchestrator instead of re-arguing with the reviewer or guessing. The orchestrator decides, then tells the implementation subagent how to proceed.
 4. For a cross-cutting feature, this happens independently for each side after both implementation subagents return from their worktrees — same one-shot rule, once per component, not once for the whole feature.
 
+## Investigation
+
+Look up facts in repo files, versioned docs/source, and approved read-only APIs before asking the user. Ask for decisions, missing access, or approval outside the agreed scope. After repeated failures, inspect the response or logs and test the failed assumption before retrying; report what changed. For Dokploy access checks and disposable test payloads, use `docs/agents/dokploy-diagnostics.md`.
+
 ## Agent skills
 
 ### Issue tracker

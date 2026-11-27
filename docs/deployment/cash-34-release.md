@@ -82,8 +82,11 @@ Administrative `make -C backend job` now runs asset sync without migrations.
 1. Verify the target project/environment, three application IDs, repository, and
    branch. Confirm database and messaging prerequisites exist before release
    requests. Use `main` for production. Use GitHub source, build path `/backend`,
-   Dockerfile build type, and Docker context `.` on each app. Dockerfiles are
-   `Dockerfile`, `Dockerfile.worker`, and `Dockerfile.migrate` respectively.
+   Dockerfile build type, and Docker context `./backend` on each app. Dokploy
+   resolves the context from the repository checkout, not from `buildPath`;
+   `.` would omit the backend `go.mod`/`go.sum` from Docker's COPY source paths.
+   Dockerfiles are `Dockerfile`, `Dockerfile.worker`, and `Dockerfile.migrate`
+   respectively.
 2. Set the migrator to a normal replicated service, one replica, with
    `restartPolicySwarm: {"Condition":"none"}`, `modeSwarm: null`, and no command
    override. Use the image entrypoint. Do not use `ReplicatedJob`: the researched
@@ -240,7 +243,7 @@ advisory key and observes its retry query; changes to Goose may need a test upda
 The existing-history fixture is representative schema/data, not a production copy.
 
 `make test` at the repo root passes the backend suite, 65 frontend tests, and
-22 offline script tests. The script checks cover concurrent requests, branch
+23 offline script tests. The script checks cover concurrent requests, branch
 updates, preflight rejection, partial failures, interruption after requests start,
 and explicit retry. These use a fake HTTP boundary, not a live Dokploy release.
 
@@ -273,3 +276,4 @@ them. Version-pinned Dokploy source:
 - [Swarm config and default UpdateConfig](https://github.com/Dokploy/dokploy/blob/37b34768a00b6fb7b19a0db4dcae64c8fff9dfc8/packages/server/src/utils/docker/utils.ts#L644-L714)
 - [Service builder](https://github.com/Dokploy/dokploy/blob/37b34768a00b6fb7b19a0db4dcae64c8fff9dfc8/packages/server/src/utils/builders/index.ts#L146-L280)
 - [Branch clone path](https://github.com/Dokploy/dokploy/blob/37b34768a00b6fb7b19a0db4dcae64c8fff9dfc8/packages/server/src/utils/providers/github.ts#L224-L238)
+- [Dockerfile and context path resolution](https://github.com/Dokploy/dokploy/blob/37b34768a00b6fb7b19a0db4dcae64c8fff9dfc8/packages/server/src/utils/filesystem/directory.ts#L102-L145)

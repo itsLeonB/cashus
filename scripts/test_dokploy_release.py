@@ -21,6 +21,7 @@ ARGS = ["--branch", "main", "--requested-sha", "a" * 40,
 class FakeDokploy:
     def __init__(self, overrides=None, failed_id=None, deploy_response=None, interrupted_id=None):
         self.requests = []
+        self.applications = {}
         self.barrier = threading.Barrier(3)
         self.overrides = overrides or {}
         self.failed_id = failed_id
@@ -39,11 +40,12 @@ class FakeDokploy:
                     "buildType": "dockerfile", "dockerfile": {
                         "api": "Dockerfile", "worker": "Dockerfile.worker",
                         "migrator": "Dockerfile.migrate"}[app_id],
-                    "buildPath": "/backend", "dockerContextPath": ".",
+                    "buildPath": "/backend", "dockerContextPath": "./backend",
                     "environmentId": "env", "owner": "owner", "repository": "cashus",
                     "modeSwarm": None, "replicas": 1,
                     "restartPolicySwarm": {"Condition": "none"}, "env": "secret-do-not-print"}
             body.update(self.overrides.get(app_id, {}))
+            self.applications[app_id] = body
         else:
             # All three deploy requests must arrive before any response completes.
             self.barrier.wait(timeout=3)
@@ -79,9 +81,23 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(all(record["process_status"] == "unknown" for record in records))
         self.assertTrue(all(record["observed_revision"] is None for record in records))
 
+    def test_accepted_context_resolves_copy_sources_from_checkout_not_build_path(self):
+        api = FakeDokploy()
+        status, output, _ = self.run_cli(ARGS + ["--execute"], api)
+        self.assertEqual(status, 0, output)
+        checkout = Path(__file__).resolve().parents[1]
+        for app in api.applications.values():
+            # Dokploy v0.31.4 directory.ts getDockerContextPath joins code/context.
+            context = checkout / app["dockerContextPath"]
+            dockerfile = checkout / app["buildPath"].lstrip("/") / app["dockerfile"]
+            self.assertTrue(dockerfile.is_file())
+            for source in ("go.mod", "go.sum"):
+                self.assertTrue((context / source).is_file(), f"COPY {source} must exist in {context}")
+
     def test_misconfigured_targets_stop_before_any_deployment(self):
         cases = [
             {"api": {"branch": "old-branch"}},
+            {"api": {"dockerContextPath": "."}},
             {"worker": {"repository": "other-repo"}},
             {"worker": {"environmentId": "other-env"}},
             {"migrator": {"restartPolicySwarm": {"Condition": "any"}}},

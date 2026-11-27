@@ -49,7 +49,7 @@ def check_target(app, component, app_id, branch):
         app.get("applicationId") != app_id, app.get("sourceType") != "github",
         app.get("branch") != branch, app.get("buildType") != "dockerfile",
         app.get("dockerfile") != expected_file, app.get("buildPath") != "/backend",
-        app.get("dockerContextPath") != ".",
+        app.get("dockerContextPath") not in ("backend", "./backend"),
     )):
         raise ValueError(f"{component}: target must use the requested GitHub branch and backend Dockerfile/context.")
     policy = app.get("restartPolicySwarm")

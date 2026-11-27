@@ -58,6 +58,6 @@ deployment status. Keep created resource IDs for cleanup approval.
 
 ## Local checks
 
-Run `make test-scripts`. Tests use fake responses and synthetic credentials; they
-make no cloud calls. CI runs the same check when the helper, tests, Makefile, or
-script-check workflow changes. Live API compatibility still needs an approved test.
+Run `make test-scripts`. Tests use fake responses and synthetic credentials;
+they make no cloud calls. No dedicated CI workflow runs these tests. Live API
+compatibility still needs an approved test.

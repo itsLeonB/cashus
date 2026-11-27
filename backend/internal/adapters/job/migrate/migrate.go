@@ -1,33 +1,48 @@
 package migrate
 
 import (
+	"context"
 	"database/sql"
+	"io/fs"
+	"time"
 
-	appembed "github.com/itsLeonB/cashback"
-	"github.com/itsLeonB/cashback/internal/core/logger"
-	"github.com/itsLeonB/cashback/internal/provider"
-	"github.com/itsLeonB/ungerr"
+	"github.com/itsLeonB/cashback/internal/adapters/db/postgres"
 	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 )
 
 type Migrate struct {
-	db *sql.DB
+	provider *goose.Provider
 }
 
-func Setup(providers *provider.Providers) (*Migrate, error) {
-	goose.SetBaseFS(appembed.Migrations)
-	goose.SetLogger(logger.Global)
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		return nil, ungerr.Wrap(err, "error setting migrator dialect to postgres")
+func Setup(db *sql.DB, lockTimeout time.Duration) (*Migrate, error) {
+	locker, err := lock.NewPostgresSessionLocker(
+		lock.WithLockTimeout(1, uint64(lockTimeout/time.Second)),
+		lock.WithUnlockTimeout(1, 5),
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	return &Migrate{providers.SQL}, nil
+	migrations, err := fs.Sub(postgres.Migrations, "migrations")
+	if err != nil {
+		return nil, err
+	}
+	provider, err := goose.NewProvider(goose.DialectPostgres, db, migrations,
+		goose.WithSessionLocker(locker), goose.WithLogger(goose.NopLogger()))
+	if err != nil {
+		return nil, err
+	}
+	return &Migrate{provider: provider}, nil
 }
 
-func (m *Migrate) Run() error {
-	if err := goose.Up(m.db, "internal/adapters/db/postgres/migrations"); err != nil {
-		return ungerr.Wrap(err, "error running migrations")
+func (m *Migrate) Run(ctx context.Context) (int64, int, error) {
+	results, err := m.provider.Up(ctx)
+	if err != nil {
+		return 0, 0, err
 	}
-	return nil
+	version, err := m.provider.GetDBVersion(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	return version, len(results), nil
 }

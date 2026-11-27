@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net"
 	"net/url"
 	"os"
@@ -15,13 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/itsLeonB/cashback/internal/adapters/db/postgres"
+	jobmigrate "github.com/itsLeonB/cashback/internal/adapters/job/migrate"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pressly/goose/v3"
-	"github.com/pressly/goose/v3/lock"
 )
 
 type databaseConfig struct {
@@ -94,27 +92,15 @@ func run() int {
 	if err != nil {
 		return failure("connect", err)
 	}
-	locker, err := lock.NewPostgresSessionLocker(lock.WithLockTimeout(1, uint64(waits.LockTimeout/time.Second)), lock.WithUnlockTimeout(1, 5))
-	if err != nil {
-		return failure("lock configuration", err)
-	}
-	migrations, err := fs.Sub(postgres.Migrations, "migrations")
-	if err != nil {
-		return failure("embedded migrations", err)
-	}
-	provider, err := goose.NewProvider(goose.DialectPostgres, db, migrations, goose.WithSessionLocker(locker), goose.WithLogger(goose.NopLogger()))
+	migrator, err := jobmigrate.Setup(db, waits.LockTimeout)
 	if err != nil {
 		return failure("migration provider", err)
 	}
-	results, err := provider.Up(ctx)
+	version, applied, err := migrator.Run(ctx)
 	if err != nil {
 		return failure("migration", err)
 	}
-	version, err := provider.GetDBVersion(ctx)
-	if err != nil {
-		return failure("version", err)
-	}
-	fmt.Printf("migration succeeded version=%d applied=%d exit_status=0\n", version, len(results))
+	fmt.Printf("migration succeeded version=%d applied=%d exit_status=0\n", version, applied)
 	return 0
 }
 

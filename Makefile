@@ -12,7 +12,7 @@ help:
 	@echo "Makefile commands:"
 	@echo "  make lint                    - Lint backend + frontend"
 	@echo "  make test                    - Test backend + frontend + scripts"
-	@echo "  make test-scripts            - Test Dokploy diagnostics and release requests (no cloud calls)"
+	@echo "  make test-scripts            - Test Dokploy diagnostics locally (no cloud calls)"
 	@echo "  make vulncheck               - Run backend govulncheck (no frontend equivalent)"
 	@echo "  make build-all               - Build backend binaries + frontend bundle"
 	@echo "  make openapi                 - Regenerate backend/openapi.json and the frontend types generated from it"
@@ -38,7 +38,7 @@ test-frontend:
 	cd frontend && bun test
 
 test-scripts:
-	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_dokploy_*.py'
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_dokploy_diagnostics.py'
 
 vulncheck: vulncheck-backend
 

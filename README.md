@@ -15,13 +15,6 @@ See each component's own README for its setup and development commands.
 
 `make lint` / `make test` / `make vulncheck` / `make build-all` wrap both components' own tooling, running only against whichever component changed. `make install-pre-push-hook` installs a git pre-push hook that runs the same checks automatically before every push. `make install-language-servers` installs the Go and TypeScript language servers used by Serena MCP — useful in environments (e.g. Claude Code cloud sessions) where they aren't installed by default.
 
-## Backend releases
-
-[CASH-34 release and adoption](docs/deployment/cash-34-release.md) covers the
-independent migrator, parallel Dokploy deployment requests, and the owner-run
-production checklist. The release workflow stays disabled until adoption approval.
-Run `make test-scripts` for offline release-tool checks.
-
 ## Preview deployments
 
 Every pull request gets a temporary Neon + Railway + Vercel preview stack — see [`docs/deployment/preview-environments.md`](docs/deployment/preview-environments.md) for how it works and [`scripts/setup-preview-environments.sh`](scripts/setup-preview-environments.sh) for the one-time credential setup.

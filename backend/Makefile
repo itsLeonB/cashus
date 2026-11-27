@@ -14,6 +14,9 @@ test-coverage-html \
 test-clean \
 build \
 build-all \
+migrate \
+build-migrate \
+test-migrate \
 openapi \
 openapi-check
 
@@ -23,7 +26,7 @@ help:
 	@echo "  make http-hot                - Start the HTTP server with hot reload (requires air)"
 	@echo "  make worker                  - Start the worker"
 	@echo "  make worker-hot              - Start the worker with hot reload (requires air)"
-	@echo "  make job                     - Run migrations + asset sync (production)"
+	@echo "  make job                     - Run administrative asset sync"
 	@echo "  make wire                    - Regenerate internal/provider/wire_gen.go"
 	@echo "  make lint                    - Run golangci-lint on the codebase"
 	@echo "  make vulncheck               - Run govulncheck for known vulnerabilities"
@@ -34,6 +37,9 @@ help:
 	@echo "  make test-clean              - Clean test cache and run tests"
 	@echo "  make build                   - Build HTTP server for production"
 	@echo "  make build-all               - Build all programs for production"
+	@echo "  make migrate                 - Run database migrations"
+	@echo "  make build-migrate           - Build the migration CLI"
+	@echo "  make test-migrate            - Run migration integration tests"
 	@echo "  make openapi                 - Regenerate openapi.json from the Huma router wiring"
 	@echo "  make openapi-check           - Verify openapi.json matches the current router wiring"
 
@@ -51,6 +57,16 @@ worker-hot:
 
 job:
 	go run -tags job ./cmd/job
+
+.PHONY: migrate build-migrate test-migrate
+migrate:
+	go run ./cmd/migrate
+
+build-migrate:
+	CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/migrate ./cmd/migrate
+
+test-migrate: build-migrate
+	go test -tags integration -count=1 -v ./cmd/migrate $(TEST_ARGS)
 
 wire:
 	go generate ./internal/provider/...
@@ -95,6 +111,7 @@ build-all:
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/http ./cmd/http
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/worker ./cmd/worker
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags job -o bin/job ./cmd/job
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/migrate ./cmd/migrate
 	@echo "Build success! Binaries are located in bin/"
 	@ls -lh bin/
 

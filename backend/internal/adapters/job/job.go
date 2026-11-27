@@ -2,7 +2,6 @@ package job
 
 import (
 	"github.com/itsLeonB/cashback/internal/adapters/job/asset"
-	"github.com/itsLeonB/cashback/internal/adapters/job/migrate"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider"
@@ -11,7 +10,6 @@ import (
 type Job struct {
 	cleanup func()
 	asset   *asset.Asset
-	migrate *migrate.Migrate
 }
 
 func Setup(cfg *config.Config) (*Job, error) {
@@ -20,25 +18,13 @@ func Setup(cfg *config.Config) (*Job, error) {
 		return nil, err
 	}
 
-	migrator, err := migrate.Setup(providers)
-	if err != nil {
-		cleanup()
-		return nil, err
-	}
-
-	return &Job{cleanup, asset.Setup(providers), migrator}, nil
+	return &Job{cleanup, asset.Setup(providers)}, nil
 }
 
 func (j *Job) Run() {
 	logger.Info("running all jobs...")
 
 	defer j.cleanup()
-
-	logger.Info("running migrations...")
-	if err := j.migrate.Run(); err != nil {
-		logger.Fatal(err)
-	}
-	logger.Info("success running migrations")
 
 	logger.Info("running asset sync...")
 	if err := j.asset.Run(); err != nil {

@@ -1,0 +1,44 @@
+name: Backend branch release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "scripts/dokploy_release.py"
+      - "scripts/dokploy_diagnostics.py"
+      - ".github/workflows/backend-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Keep in-flight requests intact. A queued run still builds current main HEAD,
+# not necessarily github.sha; the SHA below is an audit label, not a build pin.
+concurrency:
+  group: backend-production-release
+  cancel-in-progress: false
+
+jobs:
+  request-release:
+    if: github.ref == 'refs/heads/main' && vars.BACKEND_RELEASE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Request all three deployments (not migration execution or completion)
+        env:
+          DOKPLOY_HOST: ${{ secrets.DOKPLOY_HOST }}
+          DOKPLOY_TOKEN: ${{ secrets.DOKPLOY_TOKEN }}
+          CF_CLIENT_ID: ${{ secrets.CF_CLIENT_ID }}
+          CF_CLIENT_SECRET: ${{ secrets.CF_CLIENT_SECRET }}
+          API_ID: ${{ vars.DOKPLOY_API_ID }}
+          WORKER_ID: ${{ vars.DOKPLOY_WORKER_ID }}
+          MIGRATOR_ID: ${{ vars.DOKPLOY_MIGRATOR_ID }}
+          REQUESTED_SHA: ${{ github.sha }}
+        run: |
+          python3 scripts/dokploy_release.py \
+            --branch main --requested-sha "$REQUESTED_SHA" \
+            --api-id "$API_ID" --worker-id "$WORKER_ID" --migrator-id "$MIGRATOR_ID" \
+            --execute

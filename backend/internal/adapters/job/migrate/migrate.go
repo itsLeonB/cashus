@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"time"
 
@@ -21,16 +22,16 @@ func Setup(db *sql.DB, lockTimeout time.Duration) (*Migrate, error) {
 		lock.WithUnlockTimeout(1, 5),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create migration locker: %w", err)
 	}
 	migrations, err := fs.Sub(postgres.Migrations, "migrations")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open embedded migrations: %w", err)
 	}
 	provider, err := goose.NewProvider(goose.DialectPostgres, db, migrations,
 		goose.WithSessionLocker(locker), goose.WithLogger(goose.NopLogger()))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create migration provider: %w", err)
 	}
 	return &Migrate{provider: provider}, nil
 }
@@ -38,11 +39,11 @@ func Setup(db *sql.DB, lockTimeout time.Duration) (*Migrate, error) {
 func (m *Migrate) Run(ctx context.Context) (int64, int, error) {
 	results, err := m.provider.Up(ctx)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("run migrations: %w", err)
 	}
 	version, err := m.provider.GetDBVersion(ctx)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("read migration version: %w", err)
 	}
 	return version, len(results), nil
 }

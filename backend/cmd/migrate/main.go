@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	migrationjob "github.com/itsLeonB/cashback/internal/adapters/job/migrate"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider"
@@ -53,7 +54,17 @@ func run() int {
 
 	version, applied, err := migration.Runner.Run(ctx)
 	if err != nil {
-		return failure("migration", err)
+		stage := "migration"
+		var runError *migrationjob.RunError
+		if errors.As(err, &runError) {
+			switch runError.Stage {
+			case migrationjob.StageVersion:
+				stage = string(migrationjob.StageVersion)
+			case migrationjob.StageExecution:
+				stage = string(migrationjob.StageExecution)
+			}
+		}
+		return failure(stage, err)
 	}
 	fmt.Printf("migration succeeded version=%d applied=%d exit_status=0\n", version, applied)
 	return 0

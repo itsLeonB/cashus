@@ -3,14 +3,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +51,39 @@ func newTestDatabase(t *testing.T) *testDatabase {
 	port := strings.TrimSpace(d.command("docker", "port", d.container, "5432/tcp"))
 	port = strings.TrimPrefix(port, "127.0.0.1:")
 	d.env = []string{"DB_HOST=127.0.0.1", "DB_PORT=" + port, "DB_USER=postgres", "DB_PASSWORD=disposable", "DB_NAME=postgres", "DB_SSL_ROOT_CERT=" + cert}
+	require.NoError(t, waitForVerifiedTLS(d.env, 10*time.Second))
 	return d
+}
+
+func waitForVerifiedTLS(env []string, timeout time.Duration) error {
+	port, err := strconv.Atoi(envValue(env, "DB_PORT"))
+	if err != nil {
+		return fmt.Errorf("invalid PostgreSQL test port")
+	}
+	dsn := url.URL{Scheme: "postgres", Host: net.JoinHostPort(envValue(env, "DB_HOST"), strconv.Itoa(port)), User: url.UserPassword(envValue(env, "DB_USER"), envValue(env, "DB_PASSWORD")), Path: "/" + envValue(env, "DB_NAME")}
+	dsn.RawQuery = url.Values{"sslmode": {"verify-full"}, "sslrootcert": {envValue(env, "DB_SSL_ROOT_CERT")}, "connect_timeout": {"2"}}.Encode()
+	config, err := pgx.ParseConfig(dsn.String())
+	if err != nil {
+		return fmt.Errorf("invalid verified TLS test connection settings")
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+		db := stdlib.OpenDB(*config)
+		err = db.PingContext(ctx)
+		cancel()
+		closeErr := db.Close()
+		if closeErr != nil {
+			return fmt.Errorf("close TLS readiness connection")
+		}
+		if err == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("verified TLS connection timeout")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (d *testDatabase) command(name string, args ...string) string {
@@ -75,6 +113,7 @@ func TestFailedMigrationCanRetry(t *testing.T) {
 	d.sql("CREATE TABLE split_reminders (conflict boolean)")
 	output, err := d.cli().CombinedOutput()
 	require.Error(t, err)
+	require.Contains(t, string(output), "stage=migration")
 	require.NotContains(t, string(output), "disposable")
 	require.Equal(t, "0", d.sql("SELECT count(*) FROM goose_db_version WHERE version_id=20260905090000 AND is_applied"))
 	d.sql("DROP TABLE split_reminders")
